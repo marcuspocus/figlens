@@ -58,6 +58,8 @@
 | Cursor | `git clone --depth 1 https://github.com/runkids/figlens ~/.cursor/plugins/local/figlens`，再重新載入視窗 |
 | Kimi Code | 在 session 中執行 `/plugins install https://github.com/runkids/figlens/tree/main`，再執行 `/reload` |
 
+[skillshare](https://github.com/runkids/skillshare) 可一次把同一個 plugin 安裝到多個宿主：`skillshare plugin add https://github.com/runkids/figlens.git --target claude --target codex --target cursor -g`；之後用 `skillshare plugin update figlens -g` 更新。
+
 重新啟動宿主或開新的 session，確認 figlens tools 已列出。Plugin 安裝會複製 repository：約 7 MB，Codex 另外保留 Git 歷史（約 60 MB）。Antigravity 只載入 skill 的前 24 KB；完整指引由 server 的 `workflow` tool 提供。目前還不支援 Muse。[宿主對照表與驗證範圍](wiki/host-plugins.md)
 
 <a id="setup-mcp"></a>

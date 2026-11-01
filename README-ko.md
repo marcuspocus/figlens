@@ -58,6 +58,8 @@
 | Cursor | `git clone --depth 1 https://github.com/runkids/figlens ~/.cursor/plugins/local/figlens` 후 창을 다시 로드 |
 | Kimi Code | 세션에서 `/plugins install https://github.com/runkids/figlens/tree/main` 실행 후 `/reload` |
 
+[skillshare](https://github.com/runkids/skillshare)로 같은 plugin을 여러 호스트에 한 번에 설치할 수 있습니다: `skillshare plugin add https://github.com/runkids/figlens.git --target claude --target codex --target cursor -g`; 이후 업데이트는 `skillshare plugin update figlens -g`.
+
 호스트를 다시 시작하거나 새 세션을 열고 figlens 도구가 표시되는지 확인하세요. 플러그인 설치는 저장소를 복사합니다(약 7 MB, Codex는 Git 기록도 보관해 약 60 MB). Antigravity는 skill의 처음 24 KB만 로드하며, 전체 지침은 서버의 `workflow` 도구가 제공합니다. Muse는 아직 지원하지 않습니다. [호스트 표와 검증 범위](wiki/host-plugins.md)
 
 <a id="setup-mcp"></a>

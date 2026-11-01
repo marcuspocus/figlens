@@ -58,6 +58,8 @@ Uma única instalação adiciona o skill do figlens e o servidor MCP ao seu agen
 | Cursor | `git clone --depth 1 https://github.com/runkids/figlens ~/.cursor/plugins/local/figlens` e recarregue a janela |
 | Kimi Code | `/plugins install https://github.com/runkids/figlens/tree/main` em uma sessão e depois `/reload` |
 
+[skillshare](https://github.com/runkids/skillshare) instala o mesmo plugin em vários hosts de uma vez: `skillshare plugin add https://github.com/runkids/figlens.git --target claude --target codex --target cursor -g`; atualize depois com `skillshare plugin update figlens -g`.
+
 Reinicie o host ou abra uma nova sessão e confira se as ferramentas do figlens aparecem. A instalação de um plugin copia o repositório: cerca de 7 MB, mais o histórico do Git (cerca de 60 MB) no Codex. O Antigravity carrega só os primeiros 24 KB do skill; a ferramenta `workflow` do servidor fornece o guia completo. O Muse ainda não é suportado. [Tabela de hosts e o que foi verificado](wiki/host-plugins.md)
 
 <a id="setup-mcp"></a>

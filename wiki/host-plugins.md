@@ -18,7 +18,7 @@ No root `.mcp.json`: Claude Code would offer it to everyone who opens this repos
 
 ## Install source
 
-Claude Code's and Codex's marketplace entries use `"source": "./"`, the form single-plugin repositories use and tools such as Skillshare read. Every host installs from the default branch (Antigravity and Kimi Code from `/tree/main`, Cursor from a plain `git clone`), so between a feature merge and the next release the skill can name a tool or flag the pinned server lacks, and the server answers with an error; frequent releases keep that window short. Pinning the tag with a `github` or `url` source and `ref` would keep the skill at the release, but Skillshare rejects such an entry as an external source.
+Claude Code's and Codex's marketplace entries use `"source": "./"`, the form single-plugin repositories use and tools such as Skillshare read. Every host installs from the default branch (Antigravity and Kimi Code from `/tree/main`, Cursor from a plain `git clone`), so between a feature merge and the next release the skill can name a tool or flag the pinned server lacks, and the server answers with an error; frequent releases keep that window short. Pinning the tag with a `github` or `url` source and `ref` would keep the skill at the release, but Skillshare rejects such an entry as an external source. Skillshare installs the plugin from the repository URL on its `claude`, `codex` and `cursor` targets (`skillshare plugin add https://github.com/runkids/figlens.git --target claude -g`); its Antigravity desktop target finds no manifest it accepts and is blocked.
 
 Between merging the Release Please PR and Publish Release, the manifests' bumped pins name an npm version that is not published yet, so publish promptly.
 
