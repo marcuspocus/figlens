@@ -67,7 +67,10 @@ pub fn decode(bytes: &[u8]) -> Result<Pixmap, Box<dyn Error>> {
 
 /// Compares `shot` with node `id` rendered over its layout box at `scale`, or at the scale that
 /// fits the screenshot's width. Returns the report (regions in frame pixels from the frame's
-/// top-left) and, when `want_diff`, a diff image the size of the compared area.
+/// top-left) and, when `want_diff`, a diff image the size of the compared area. `full_page`
+/// states the screenshot is the whole page: a shorter one is compared over its height and the
+/// frame rows it lacks count as one differing region.
+#[allow(clippy::too_many_arguments)]
 pub fn compare(
     tree: &Tree,
     fig: &Path,
@@ -76,6 +79,7 @@ pub fn compare(
     scale: Option<f64>,
     limit: usize,
     want_diff: bool,
+    full_page: bool,
 ) -> Result<(Json, Option<Pixmap>), Box<dyn Error>> {
     let prepared = Prepared::new(tree, fig, id)?;
     let n = prepared.node();
@@ -121,30 +125,44 @@ pub fn compare(
         )));
     }
     // A slightly shorter capture (rounding, a scrollbar) still compares; a viewport capture of
-    // a taller frame does not.
-    if f64::from(sh) < rh - (rh * 0.01).max(2.0) {
+    // a taller frame does not. A stated whole page is short past rounding: its rows are missing.
+    let slack = if full_page { 1.0 } else { (rh * 0.01).max(2.0) };
+    let short = f64::from(sh) < rh - slack;
+    if short && !full_page {
         return Err(invalid(format!(
-            "screenshot is {sw}x{sh} px but node {id} ({size}) is {rw}x{rh} px at scale {}; capture the whole frame (a full-page screenshot at the frame's width) or crop the screenshot to the frame",
+            "screenshot is {sw}x{sh} px but node {id} ({size}) is {rw}x{rh} px at scale {}; capture the whole frame (a full-page screenshot at the frame's width) or crop the screenshot to the frame; if it already is the whole page, pass --full-page (MCP fullPage) to compare it and report the missing rows",
             num(scale)
         )));
     }
     let render = render::pixmap(&prepared.export_svg_in(tree, area, scale, true))?;
     let (w, h) = (render.width().min(sw), render.height().min(sh));
+    // Scored rows: the overlap, plus the frame rows a short full-page capture lacks.
+    let full = if short { render.height() } else { h };
     // One CSS pixel; capped so a tiny node in a large screenshot cannot make each pixel's
     // neighbourhood search huge.
     let radius = scale.ceil().clamp(1.0, 4.0) as u32;
-    let mask = differing(shot, &render, w, h, radius);
+    let mut mask = differing(shot, &render, w, h, radius);
+    mask.resize((w * full) as usize, true);
 
-    // Group differing pixels by grid cell: count and tight bounds per cell.
+    // Group differing pixels by grid cell: count and tight bounds per cell. Missing rows start
+    // their own cell rows, so they form a region of their own.
     let cell = (CELL * scale).round().max(2.0) as u32;
-    let (cols, rows) = (w.div_ceil(cell), h.div_ceil(cell));
+    let overlap_rows = h.div_ceil(cell);
+    let row = |y: u32| {
+        if y < h {
+            y / cell
+        } else {
+            overlap_rows + (y - h) / cell
+        }
+    };
+    let (cols, rows) = (w.div_ceil(cell), overlap_rows + (full - h).div_ceil(cell));
     let mut cells: Vec<Cell> = vec![(0, u32::MAX, u32::MAX, 0, 0); (cols * rows) as usize];
     let mut total = 0u64;
-    for y in 0..h {
+    for y in 0..full {
         for x in 0..w {
             if mask[(y * w + x) as usize] {
                 total += 1;
-                let c = &mut cells[((y / cell) * cols + x / cell) as usize];
+                let c = &mut cells[(row(y) * cols + x / cell) as usize];
                 *c = (c.0 + 1, c.1.min(x), c.2.min(y), c.3.max(x), c.4.max(y));
             }
         }
@@ -178,7 +196,8 @@ pub fn compare(
             pixels += c.0;
             b = (b.0.min(c.1), b.1.min(c.2), b.2.max(c.3), b.3.max(c.4));
             let under = attribute(&layers, page(&c));
-            if under.iter().any(|&k| layers[k].kind == "TEXT") {
+            let missing = i as u32 / cols >= overlap_rows;
+            if !missing && under.iter().any(|&k| layers[k].kind == "TEXT") {
                 text += c.0;
             }
             let area = |k: &usize| {
@@ -206,6 +225,9 @@ pub fn compare(
                 if x < 0 || y < 0 || x >= cols as i64 || y >= rows as i64 {
                     continue;
                 }
+                if (y >= i64::from(overlap_rows)) != missing {
+                    continue;
+                }
                 let j = (y as u32 * cols + x as u32) as usize;
                 if !seen[j] && cells[j].0 > 0 {
                     seen[j] = true;
@@ -213,14 +235,15 @@ pub fn compare(
                 }
             }
         }
-        if pixels >= min_pixels {
+        // Missing rows are a known height difference, never noise; the flood stays on one side.
+        if pixels >= min_pixels || start as u32 / cols >= overlap_rows {
             weights.sort_by_key(|w| std::cmp::Reverse(w.1));
             weights.truncate(MAX_NODES);
             regions.push((pixels, text, b, weights));
         }
     }
     regions.sort_by_key(|r| std::cmp::Reverse(r.0));
-    let compared = u64::from(w) * u64::from(h);
+    let compared = u64::from(w) * u64::from(full);
     let ratio = |p: u64| (p as f64 / compared as f64 * 1e5).round() / 1e5;
     let (mut text_pixels, mut other_regions) = (0u64, 0usize);
     let mut listed = Vec::new();
@@ -264,7 +287,10 @@ pub fn compare(
     if sh > h {
         report["uncompared"] = json!({"below": sh - h});
     }
-    let diff = want_diff.then(|| diff_image(shot, &mask, w, h, &report["regions"], scale));
+    if full > h {
+        report["uncompared"] = json!({"missing": full - h});
+    }
+    let diff = want_diff.then(|| diff_image(shot, &mask, w, full, &report["regions"], scale));
     Ok((report, diff))
 }
 
@@ -392,10 +418,11 @@ fn diff_image(shot: &Pixmap, mask: &[bool], w: u32, h: u32, regions: &Json, scal
     for y in 0..h {
         for x in 0..w {
             let i = (y * w + x) as usize;
-            let p = over_white(d, (y as usize * shot.width() as usize + x as usize) * 4);
+            // Missing rows past the screenshot are all differing, so it is read only above them.
             let px = if mask[i] {
                 [230, 0, 0]
             } else {
+                let p = over_white(d, (y as usize * shot.width() as usize + x as usize) * 4);
                 let l = (u32::from(p[0]) * 3 + u32::from(p[1]) * 6 + u32::from(p[2])) / 10;
                 let g = (255 - (255 - l) / 4) as u8;
                 [g, g, g]
@@ -449,7 +476,7 @@ mod tests {
     }
 
     fn run(tree: &Tree, shot: &Pixmap, scale: Option<f64>) -> Result<Json, Box<dyn Error>> {
-        compare(tree, Path::new(FIG), "0:1", shot, scale, 10, false).map(|r| r.0)
+        compare(tree, Path::new(FIG), "0:1", shot, scale, 10, false, false).map(|r| r.0)
     }
 
     fn ids(region: &Json) -> Vec<&str> {
@@ -552,11 +579,66 @@ mod tests {
     }
 
     #[test]
+    fn a_short_full_page_capture_reports_the_missing_rows_as_a_region() {
+        with_render(1.0, |tree, shot| {
+            // The first 100 of the frame's 180 rows, as a page that came out shorter.
+            let mut short = Pixmap::new(320, 100).unwrap();
+            let n = short.data().len();
+            short.data_mut().copy_from_slice(&shot.data()[..n]);
+            let (report, diff) =
+                compare(tree, Path::new(FIG), "0:1", &short, None, 10, true, true).unwrap();
+            assert_eq!(report["uncompared"]["missing"], 80);
+            assert_eq!(report["mismatch"], 0.44444);
+            assert_eq!(report["nonTextMismatch"], 0.44444);
+            let region = &report["regions"][0];
+            assert_eq!(
+                [&region["y"], &region["height"], &region["text"]],
+                [&json!(100.0), &json!(80.0), &json!(false)],
+                "{report}"
+            );
+            assert!(!ids(region).is_empty(), "{report}");
+            assert_eq!(diff.unwrap().height(), 180);
+        });
+    }
+
+    #[test]
+    fn a_missing_band_under_the_noise_floor_is_still_a_region() {
+        // The 24 px triangle at scale 5: two missing rows are 240 px, under 12 * 5² = 300.
+        let mut doc = Document::open(Path::new(FIG)).unwrap();
+        let message = doc.take_message().unwrap();
+        let tree = Tree::new(&message);
+        let prepared = Prepared::new(&tree, Path::new(FIG), "0:6").unwrap();
+        let area = render::layout_bounds(prepared.node()).unwrap();
+        let full = render::pixmap(&prepared.export_svg_in(&tree, area, 5.0, true)).unwrap();
+        let mut short = Pixmap::new(full.width(), full.height() - 2).unwrap();
+        let n = short.data().len();
+        short.data_mut().copy_from_slice(&full.data()[..n]);
+        let report = compare(&tree, Path::new(FIG), "0:6", &short, None, 10, false, true)
+            .unwrap()
+            .0;
+        assert_eq!(report["regionCount"], 1, "{report}");
+    }
+
+    #[test]
+    fn a_full_page_capture_two_rows_short_reports_them() {
+        with_render(1.0, |tree, shot| {
+            // Within the viewport slack (2 px of 180), but a stated whole page lacks them.
+            let mut short = Pixmap::new(320, 178).unwrap();
+            let n = short.data().len();
+            short.data_mut().copy_from_slice(&shot.data()[..n]);
+            let report = compare(tree, Path::new(FIG), "0:1", &short, None, 10, false, true)
+                .unwrap()
+                .0;
+            assert_eq!(report["uncompared"]["missing"], 2, "{report}");
+        });
+    }
+
+    #[test]
     fn a_short_capture_or_a_width_off_scale_is_refused() {
         with_render(1.0, |tree, _| {
             let short = Pixmap::new(320, 100).unwrap();
             let error = run(tree, &short, None).unwrap_err().to_string();
-            assert!(error.contains("full-page"), "{error}");
+            assert!(error.contains("--full-page"), "{error}");
             let wide = Pixmap::new(320, 180).unwrap();
             let error = run(tree, &wide, Some(2.0)).unwrap_err().to_string();
             assert!(error.contains("omit scale"), "{error}");

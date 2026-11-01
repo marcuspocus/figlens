@@ -101,10 +101,40 @@
       "description": "Measuring output against Figma's own exports, running compare or compare-image, finding test files, the CI regression corpus.",
       "sources": [
         {
-          "path": "wiki/accuracy.md"
+          "path": "wiki/accuracy.md",
+          "heading": "Test files"
+        },
+        {
+          "path": "wiki/accuracy.md",
+          "heading": "Getting a reference"
+        },
+        {
+          "path": "wiki/accuracy.md",
+          "heading": "Running compare"
+        },
+        {
+          "path": "wiki/accuracy.md",
+          "heading": "Regression corpus"
+        },
+        {
+          "path": "wiki/accuracy.md",
+          "heading": "Results"
         },
         {
           "path": "wiki/compare-image.md"
+        }
+      ]
+    },
+    "demos": {
+      "description": "Recording or updating the README demos: what was recorded, how, credits, timing and caveats.",
+      "sources": [
+        {
+          "path": "wiki/accuracy.md",
+          "heading": "Local design-to-HTML demo"
+        },
+        {
+          "path": "wiki/accuracy.md",
+          "heading": "Taskflow React and Tailwind demo"
         }
       ]
     },

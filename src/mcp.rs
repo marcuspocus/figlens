@@ -545,6 +545,7 @@ impl AdmittedCall {
                         self.call.argument("scale").as_f64(),
                         self.call.argument("limit").as_u64().unwrap() as usize,
                         self.output.as_deref(),
+                        self.call.argument("fullPage") == true,
                     )?;
                     return Ok(command::Output::Json {
                         value,

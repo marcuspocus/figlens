@@ -58,9 +58,10 @@ python3 scripts/ai-context.py check     # validate paths, headings, links, orpha
 | `integrations` | Changing OpenCode V2/OMP, packaging or permissions |
 | `plugins` | Per-host plugin manifests |
 | `host-acceptance` | Installed-host lanes |
-| `accuracy` | Measuring output against Figma's exports, `compare`/`compare-image`, test files, the CI regression corpus |
-| `release` | Packaging, GitHub releases, Homebrew, npm, installers, `figlens update` |
-| `review` | Delivering features/optimizations across all interfaces; reviews, PR follow-up and opening issues |
+| `accuracy` | Measuring output against Figma's exports, `compare`/`compare-image`, test files, CI corpus |
+| `demos` | README demo recordings |
+| `release` | Packaging, releases, Homebrew, npm, installers, `figlens update` |
+| `review` | Delivering features/optimizations across all interfaces; reviews, PR follow-up, issues |
 | `direction` | Deciding what to build next, or revisiting a past decision |
 | `ai-context` | Adding, moving or splitting docs and topics; `check` failures |
 

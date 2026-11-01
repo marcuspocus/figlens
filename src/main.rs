@@ -226,7 +226,7 @@ usage:
   figlens node <file.fig> <node>               print one raw .fig node as JSON
   figlens compare <file.fig> <nodes.json> <node>   diff a frame against a REST nodes.json export
   figlens compare <file.fig> --frames <list.txt>   same for every `node|nodes.json[|variables.json]` line
-  figlens compare-image <file.fig> <node> <screenshot.png> [--scale N] [--limit N] [--out diff.png]
+  figlens compare-image <file.fig> <node> <screenshot.png> [--scale N] [--limit N] [--out diff.png] [--full-page]
                                              compare a PNG screenshot of the built screen with the node
                                              rendered over its layout box at the screenshot's scale (its
                                              width / the node's, or --scale); prints sizes, mismatch,
@@ -234,7 +234,10 @@ usage:
                                              10, 1-50) in node pixels from its top-left, each with the
                                              deepest layers under it and text: true when all are TEXT
                                              (often font fallback; review each); rows past the node's height are
-                                             reported, not compared; --out writes a diff PNG
+                                             reported, not compared; a shorter one is refused unless
+                                             --full-page states it is the whole page: then its rows are
+                                             compared and the missing ones are a differing region;
+                                             --out writes a diff PNG
   figlens mcp [--root DIR]... [--storage-root DIR]...
                                              serve workflow guidance, tree, find, search, usages, diff, inspect,
                                              nodes, variables, bundle, export, compare_image, index, jobs,
@@ -696,7 +699,8 @@ fn run(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
             out.push_str(&command.execute(&tree, &path)?.text()?);
         }
         "compare-image" => {
-            let (node, shot, scale, limit, diff) = command::compare_image_args(&args[2..])?;
+            let (node, shot, scale, limit, diff, full_page) =
+                command::compare_image_args(&args[2..])?;
             let report = command::compare_image(
                 &tree,
                 &path,
@@ -705,6 +709,7 @@ fn run(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
                 scale,
                 limit,
                 diff.as_deref().map(Path::new),
+                full_page,
             )?;
             writeln!(out, "{}", serde_json::to_string_pretty(&report)?)?;
         }

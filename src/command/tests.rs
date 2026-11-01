@@ -1508,3 +1508,9 @@ fn cli_export_batch_prints_a_manifest_and_rejects_a_repeated_out_before_writing(
         std::fs::metadata(&b).unwrap().len()
     );
 }
+
+#[test]
+fn compare_image_args_read_full_page() {
+    let args: Vec<String> = ["0:1", "shot.png", "--full-page"].map(String::from).into();
+    assert!(crate::command::compare_image_args(&args).unwrap().5);
+}

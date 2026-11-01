@@ -664,6 +664,28 @@ fn export_batch_checks_every_path_and_the_cap_before_writing_and_reports_items()
 }
 
 #[test]
+fn compare_image_full_page_admits_a_short_screenshot() {
+    let dir = TestDir::new();
+    let file = fixture(&dir, "design.fig");
+    let roots = [dir.join("").canonicalize().unwrap()];
+    let shot = dir.join("short.png");
+    let blank = resvg::tiny_skia::Pixmap::new(320, 100).unwrap();
+    std::fs::write(&shot, figlens::render::encode_png(&blank).unwrap()).unwrap();
+    let reply = |id, full: bool| {
+        let args = json!({"file":file,"node":"0:1","image":shot,"fullPage":full});
+        rooted_reply(&call(json!(id), "compare_image", args), &roots)["result"].clone()
+    };
+    assert_eq!(
+        reply(1, false)["_meta"]["figlens"]["code"],
+        "invalid_arguments"
+    );
+    assert_eq!(
+        reply(2, true)["structuredContent"]["uncompared"]["missing"],
+        80
+    );
+}
+
+#[test]
 fn compare_image_reads_and_writes_only_inside_the_roots() {
     let inside = TestDir::new();
     let outside = TestDir::new();

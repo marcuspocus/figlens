@@ -29,7 +29,8 @@ The wiki holds procedures, reference and decisions, and no task needs all of it 
 | `integrations` | Changing OpenCode V2/OMP, shared package or permissions | `integrations.md` |
 | `plugins` | Changing per-host plugin manifests or adding a host | `host-plugins.md` |
 | `host-acceptance` | Running or changing installed-host lanes (OpenCode, OMP, Pi) | `host-acceptance.md` |
-| `accuracy` | Measuring output against Figma's own exports, running `compare` or `compare-image`, finding test files, the CI regression corpus | `accuracy.md`, `compare-image.md` |
+| `accuracy` | Measuring output against Figma's own exports, running `compare` or `compare-image`, finding test files, the CI regression corpus | `accuracy.md` (all but the demos), `compare-image.md` |
+| `demos` | Recording or updating the README demos and their notes | `accuracy.md` § Local design-to-HTML demo, § Taskflow React and Tailwind demo |
 | `release` | Packaging, installation acceptance, GitHub releases, Homebrew and npm | `release.md`, `installation.md` |
 | `review` | Delivering features/optimizations across CLI, MCP, Pi, OpenCode and OMP; reviews, PR follow-up and opening issues | `review.md` |
 | `direction` | Deciding what to build next, or revisiting a past decision | `direction.md`, `handoff-research.md` |

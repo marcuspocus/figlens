@@ -852,12 +852,14 @@ pub fn export_items(items: &Value, default_max_size: u32) -> Result<Vec<ExportIt
         .collect()
 }
 
-/// CLI `compare-image` arguments after the file: node, screenshot, scale, limit and diff path.
+/// CLI `compare-image` arguments after the file: node, screenshot, scale, limit, diff path and
+/// whether the screenshot is the whole page.
 #[allow(clippy::type_complexity)]
 pub fn compare_image_args(
     args: &[String],
-) -> Result<(String, String, Option<f64>, usize, Option<String>), Box<dyn Error>> {
+) -> Result<(String, String, Option<f64>, usize, Option<String>, bool), Box<dyn Error>> {
     let (mut positional, mut scale, mut limit, mut out) = (Vec::new(), None, 10, None);
+    let mut full_page = false;
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         let mut value = || rest.next().ok_or(format!("{arg} needs a value"));
@@ -882,16 +884,18 @@ pub fn compare_image_args(
                 }
                 out = Some(path);
             }
+            "--full-page" => full_page = true,
             _ if !arg.starts_with("--") => positional.push(arg.clone()),
             _ => return Err(USAGE.into()),
         }
     }
     let [node, shot] = <[String; 2]>::try_from(positional).map_err(|_| USAGE)?;
-    Ok((node, shot, scale, limit, out))
+    Ok((node, shot, scale, limit, out, full_page))
 }
 
 /// Compares a screenshot with a node for CLI and MCP; with `out`, also writes the diff PNG and
 /// names it as `path`.
+#[allow(clippy::too_many_arguments)]
 pub fn compare_image(
     tree: &Tree,
     fig: &Path,
@@ -900,6 +904,7 @@ pub fn compare_image(
     scale: Option<f64>,
     limit: usize,
     out: Option<&Path>,
+    full_page: bool,
 ) -> Result<Value, Box<dyn Error>> {
     let id = normalize_id(node);
     require_target_root(tree, &id)?;
@@ -913,8 +918,16 @@ pub fn compare_image(
         .into());
     }
     let shot = figlens::compare_image::decode(&figlens::compare_image::read(shot)?)?;
-    let (mut report, diff) =
-        figlens::compare_image::compare(tree, fig, &id, &shot, scale, limit, out.is_some())?;
+    let (mut report, diff) = figlens::compare_image::compare(
+        tree,
+        fig,
+        &id,
+        &shot,
+        scale,
+        limit,
+        out.is_some(),
+        full_page,
+    )?;
     if let (Some(out), Some(diff)) = (out, diff) {
         let bytes = figlens::render::encode_png(&diff)?;
         figlens::output::write(fig, out, |file| {
