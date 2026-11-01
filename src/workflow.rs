@@ -11,14 +11,10 @@ pub const TOPICS: &[&str] = &[
     "yolo",
 ];
 
-pub const INSTRUCTIONS: &str = "Read local Figma .fig snapshots with figlens. Resolve the requested screen from names or visible text using find/tree, or search for copy inside instance overrides, properties and swaps; ask about recognizable choices only when materially ambiguous, and resolve node IDs yourself. Use inspect for compact layout/text, nodes for full styles/masks/component data, variables for tokens, export for reference pixels or assets, compare_image to check a screenshot of the built screen against a frame, and verify to check a bundle against its manifest, list its font faces and read its handoff preflight findings. For implementation, call workflow(topic=build); for comparing existing UI with a design or correcting layout differences, call workflow(topic=audit); for implementation planning or careful reproduction, also load plan; for website image preparation, load images. Load planning-details only for page/multi-page scope or unresolved dependencies. Load yolo, which already includes the build sections it needs, only when the user explicitly requests autonomous implementation and cleanup of what the run created. A plan-only request ends with a plan, and so does a request to plan the whole scope before implementing: detail every slice, then wait for approval; an authorized build continues through implementation, visual checks and corrections using the project's existing architecture. Simple questions and exports use the design tools directly; when the host can run code, chain related calls in one script and return only the values you need. Ordinary design questions search the file directly and create nothing. Only when the user asks to create or enable an index for a design, index prepare its file with the scope to search (figlens picks the storage; no setup step), poll jobs status until succeeded, reporting queued, running or failed jobs as such, then search with workspaceId and node set to that scope, and reuse that workspace afterwards. To find screens that look like an image the user gives, search that workspace with image (a PNG path inside the roots) or a result's imageRef; never a URL or base64. Run index reset or replaceUnavailable only on the user's explicit request. For where a component, variable, style or image is used, call usages with its exact id on the file, or on an enabled index within its prepared scope. For what changed between two saved copies of a design, call diff with old and file (local paths); unknown is not removed. Only when the user asks to follow a design's changes, which opts in to preparing that scope when no index covers it, index track its scope, watch subscribe once its baseline succeeded, watch start that scope so saves are recorded while this server runs, page changes with workspaceId and that subscriptionId, and after handling a page and its revisions' detail pages watch ack that page's nextCursor, never a detail one or null; to follow a search's results instead, watch subscribe with query, watch evaluate after a refresh, and read changes with it; refreshRequired in tracking means index refresh records the change; watch unsubscribe stops following, and untrack only when the user asks. To reuse an earlier index (a project's is found by workspace or workspaceId, not file), narrow a multi-design workspace, recover one or read usages results, read workflow(topic=search). Workflow reads return guidance, not executed work; host tools and permissions govern project edits, browser checks and cleanup. Check isError and content on failed calls. Native Dev Mode annotations and font files are unavailable; report material gaps rather than guessing.";
+pub const INSTRUCTIONS: &str = "Read local Figma .fig snapshots with figlens. Resolve the requested screen from names or visible text using find/tree, or search for copy inside instance overrides, properties and swaps; ask about recognizable choices only when materially ambiguous, and resolve node IDs yourself. Use inspect for compact layout/text, nodes for full styles/masks/component data, variables for tokens, export for reference pixels or assets, compare_image to check a screenshot of the built screen against a frame, and verify to check a bundle against its manifest, list its font faces and read its handoff preflight findings. For implementation, call workflow(topic=build); for comparing existing UI with a design or correcting layout differences, call workflow(topic=audit); for implementation planning or careful reproduction, also load plan; for website image preparation, load images. Load planning-details only for page/multi-page scope or unresolved dependencies. Load yolo, which already includes the build sections it needs, only when the user explicitly requests autonomous implementation and cleanup of what the run created. A plan-only request ends with a plan, and so does a request to plan the whole scope before implementing: detail every slice, then wait for approval; an authorized build continues through implementation, code review, visual checks and corrections using the project's existing architecture, building components, data and layout as a frontend engineer would rather than reproducing the layer tree. Simple questions and exports use the design tools directly; when the host can run code, chain related calls in one script and return only the values you need. Ordinary design questions search the file directly and create nothing. Only when the user asks to create or enable an index for a design, index prepare its file with the scope to search (figlens picks the storage; no setup step), poll jobs status until succeeded, reporting queued, running or failed jobs as such, then search with workspaceId and node set to that scope, and reuse that workspace afterwards. To find screens that look like an image the user gives, search that workspace with image (a PNG path inside the roots) or a result's imageRef; never a URL or base64. Run index reset or replaceUnavailable only on the user's explicit request. For where a component, variable, style or image is used, call usages with its exact id on the file, or on an enabled index within its prepared scope. For what changed between two saved copies of a design, call diff with old and file (local paths); unknown is not removed. Only when the user asks to follow a design's changes, which opts in to preparing that scope when no index covers it, index track its scope, watch subscribe once its baseline succeeded, watch start that scope so saves are recorded while this server runs, page changes with workspaceId and that subscriptionId, and after handling a page and its revisions' detail pages watch ack that page's nextCursor, never a detail one or null; to follow a search's results instead, watch subscribe with query, watch evaluate after a refresh, and read changes with it; refreshRequired in tracking means index refresh records the change; watch unsubscribe stops following, and untrack only when the user asks. To reuse an earlier index (a project's is found by workspace or workspaceId, not file), narrow a multi-design workspace, recover one or read usages results, read workflow(topic=search). Workflow reads return guidance, not executed work; host tools and permissions govern project edits, browser checks and cleanup. Check isError and content on failed calls. Native Dev Mode annotations and font files are unavailable; report material gaps rather than guessing.";
 
 const MCP_PREAMBLE: &str = "Use this guidance in the current agent context and within the user's authorized scope. It does not execute work or grant permissions. Use the configured figlens MCP tools with absolute file/output paths; CLI examples describe equivalent tool arguments. Project inspection/edits, directory creation, bundle extraction and browser checks require the host's own tools. Retrieve another topic only for missing guidance needed now: images covers image delivery; build covers design reading and project reuse; search covers an index, usages and following changes. Links beginning workflow: name another topic of this tool, with an optional section anchor; no local skill installation is needed.\n\n";
 const CLI_PREAMBLE: &str = "Use this guidance in the current agent context and within the user's authorized scope. It does not execute work or grant permissions. Run the figlens commands shown; MCP argument names map to the same CLI arguments. Project inspection/edits, directory creation, bundle extraction and browser checks require the host's own tools. Retrieve another topic only for missing guidance needed now: images covers image delivery; build covers design reading and project reuse; search covers an index, usages and following changes. A link beginning workflow: names another topic: run `figlens workflow <topic>`; no local skill installation is needed.\n\n";
-
-/// Where build and audit cut the search section: after its decision table.
-const SEARCH_DETAILS: &str = "\n\nAn earlier session";
-const SEARCH_POINTER: &str = "\n\nThe rest of this section, which the rows above refer to, is [Search and local index](workflow:search#search-and-local-index): checking for an index another session enabled, the opt-in steps, maintenance and failures, semantic and image search, Where it is used and Following changes. Load it before calling `usages`, `index`, `jobs`, `changes` or `watch`.";
 
 pub fn read(topic: &str) -> Result<String, String> {
     compose(topic, MCP_PREAMBLE)
@@ -88,17 +84,11 @@ fn compose(topic: &str, preamble: &str) -> Result<String, String> {
         let section = section
             .split_once("\n## ")
             .map_or(section, |(first, _)| first);
-        if *heading == "Search and local index" && topic != "search" {
-            // The decision table is what build and audit need; the index steps are their own topic.
-            let (table, _) = section
-                .split_once(SEARCH_DETAILS)
-                .ok_or("embedded workflow section changed: Search and local index")?;
-            text.push_str(table);
-            text.push_str(SEARCH_POINTER);
-        } else {
-            text.push_str(section);
-        }
+        text.push_str(section);
         text.push_str("\n\n");
+    }
+    if topic == "search" {
+        text.push_str(include_str!("../skills/figlens/references/search.md"));
     }
     for (file, topic) in [
         ("../SKILL.md", "build"),
@@ -106,6 +96,7 @@ fn compose(topic: &str, preamble: &str) -> Result<String, String> {
         ("planning.md", "plan"),
         ("planning-details.md", "planning-details"),
         ("yolo.md", "yolo"),
+        ("search.md", "search"),
     ] {
         text = text.replace(
             &format!("(references/{file}"),
@@ -185,10 +176,9 @@ mod tests {
             .split("\n## ")
             .next()
             .unwrap()
-            .replace("(#where-it-is-used", "(workflow:search#where-it-is-used");
+            .replace("(#where-it-is-used", "(workflow:search#where-it-is-used")
+            .replace("(references/search.md", "(workflow:search");
         assert!(section.contains("needs no index"));
-        assert!(section.contains("\"node\": \"<scope>\""));
-        assert!(section.contains("never authorizes them"));
         for topic in ["images", "yolo", "build"] {
             assert!(
                 read(topic)
@@ -196,13 +186,37 @@ mod tests {
                     .contains("](workflow:search#search-and-local-index)")
             );
         }
+        // The index steps live in their own guide, served only by the search topic.
         let full = read("search").unwrap().replace("\r\n", "\n");
         assert!(full.contains(&section));
-        let table = section.split_once(SEARCH_DETAILS).unwrap().0;
+        assert!(full.contains("never authorizes them") && full.contains("### Following changes"));
+        assert!(full.contains("## What changed between two copies"));
         for topic in ["audit", "build"] {
             let text = read(topic).unwrap().replace("\r\n", "\n");
-            assert!(text.contains(table) && text.contains(SEARCH_POINTER));
+            assert!(text.contains(&section));
             assert!(!text.contains("Opt-in steps:") && !text.contains("### Following changes"));
+        }
+    }
+
+    #[test]
+    fn implementation_guides_ask_for_frontend_code_not_a_copy_of_the_layer_tree() {
+        // An agent given only design data replayed the node tree as a runtime; every
+        // implementation entry point must frame the job as components, data and layout.
+        for topic in ["build", "yolo"] {
+            let text = read(topic).unwrap();
+            assert!(text.contains("**Decide the frontend structure") && text.contains("**Data:**"));
+            // A new project gets a professional setup, not the smallest one that renders.
+            assert!(text.contains("**New project:**"));
+            // Code review, project checks included, comes before pixels.
+            assert!(text.contains("type check, lint and format pass"));
+        }
+        let yolo = read("yolo").unwrap();
+        assert!(yolo.contains("## The job") && yolo.contains("design component → code file"));
+        assert!(read("plan").unwrap().contains("2. **Structure:**"));
+        assert!(INSTRUCTIONS.contains("rather than reproducing the layer tree"));
+        // A "keep it minimal" instruction must not lower the bar on any implementation path.
+        for topic in ["build", "yolo", "plan"] {
+            assert!(read(topic).unwrap().contains("never this bar"));
         }
     }
 

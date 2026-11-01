@@ -301,7 +301,8 @@ def main():
                 'opencode/index.mjs', 'opencode/tui.mjs', 'opencode/adapter.mjs', 'opencode/rpc.mjs',
                 'opencode/review-rpc.mjs', 'opencode/review-ui.mjs', 'opencode/watch-holder.mjs', 'opencode/package.json', 'opencode/README.md',
                 'skills/figlens/SKILL.md', 'skills/figlens/references/audit.md', 'skills/figlens/references/planning.md',
-                'skills/figlens/references/planning-details.md', 'skills/figlens/references/yolo.md'}
+                'skills/figlens/references/planning-details.md', 'skills/figlens/references/yolo.md',
+                'skills/figlens/references/search.md'}
     with tarfile.open(package) as archive:
         files = {p.name.removeprefix('package/') for p in archive.getmembers() if p.isfile()}
         assert files == required, f'Unexpected npm package files: missing={required-files}, extra={files-required}'

@@ -25,7 +25,7 @@ When `compare-image` regions sit over content that comes from data (back-office 
 
 ## 3. Correct and stop on evidence
 
-When fixes are authorized, correct confirmed differences in the shared implementation and rerun the state that exposed each one. Run relevant project checks as well; compilation/lint does not replace the visual regression check. Leave unsupported design intent as a question rather than inventing product behavior.
+When fixes are authorized, correct confirmed differences in the shared implementation, within the project's components, tokens and conventions and keeping its checks passing, and rerun the state that exposed each one. Run relevant project checks as well; compilation/lint does not replace the visual regression check. Leave unsupported design intent as a question rather than inventing product behavior.
 
 Each further read or rerun must answer a named unresolved question with new evidence: a relevant state, descendant, effective code path or implementation screenshot. If rereading the same evidence leaves the decision unresolved, name the missing evidence and its next action. Stop that item until new evidence is available; finish independent items instead of restarting the audit.
 

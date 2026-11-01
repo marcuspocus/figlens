@@ -69,7 +69,7 @@ Pick the closest topic; load a second only when a task crosses two seams.
 
 When no topic fits, read `wiki/README.md`; to add a topic, load `ai-context`.
 
-If a topic goes over budget, split it rather than raising the cap. Skills are workflow adapters that load topics. They are not the source of truth.
+Over budget: split the topic, never raise the cap. Skills are workflow adapters over topics, not the source of truth.
 
 ## Verification
 
@@ -92,12 +92,13 @@ Blur backdrops reference blur-free copies within the per-export budget, or neste
 Reproduce a browser SVG misdraw with the consumer's optimizer and inlining before changing export coordinates or ids; see `render`.
 Cancel a job only after its worker exits; publish via fence; see `index`.
 Keep libdeflate's Zig SIMD guards; see `release`.
+Build guidance asks for real frontend code, reviewed before pixels; see `mcp`.
 
 ```sh
 docker compose run --rm dev cargo test
 docker compose run --rm dev sh -c 'cargo fmt --check && cargo clippy --all-targets -- -D warnings'
 (cd npm && node --test)
-npm test                             # Pi, OpenCode and OMP tests, npm package contents
-python3 scripts/ai-context.py check    # doc/topic changes; also runs in CI
-docker compose run --rm dev python3 -B scripts/corpus-check.py ...  # output changes; setup and --update in `accuracy`
+npm test  # host, viewer and npm package tests
+python3 scripts/ai-context.py check  # doc/topic changes; runs in CI
+docker compose run --rm dev python3 -B scripts/corpus-check.py ...  # output changes; see `accuracy`
 ```

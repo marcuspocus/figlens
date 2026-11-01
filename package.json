@@ -18,7 +18,7 @@
     "@opencode/plugin": "2.2.0"
   },
   "scripts": {
-    "test": "node --test pi/*.test.mjs opencode/*.test.mjs omp/*.test.mjs"
+    "test": "node --test pi/*.test.mjs opencode/*.test.mjs omp/*.test.mjs scripts/preview.test.cjs"
   },
   "engines": {
     "node": ">=22"

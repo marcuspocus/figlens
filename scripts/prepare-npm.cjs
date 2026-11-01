@@ -12,7 +12,7 @@ for (const [directory, files] of Object.entries({
   for (const file of files) copyFileSync(path.join(root, directory, file), path.join(output, directory, file));
 }
 copyFileSync(path.join(root, 'omp/mcp.json'), path.join(output, '.mcp.json'));
-for (const file of ['SKILL.md', 'references/audit.md', 'references/planning.md', 'references/planning-details.md', 'references/yolo.md']) {
+for (const file of ['SKILL.md', 'references/audit.md', 'references/planning.md', 'references/planning-details.md', 'references/yolo.md', 'references/search.md']) {
   const destination = path.join(output, 'skills/figlens', file);
   mkdirSync(path.dirname(destination), { recursive: true });
   copyFileSync(path.join(root, 'skills/figlens', file), destination);

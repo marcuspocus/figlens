@@ -54,7 +54,7 @@ try {
   assert.deepEqual(skills.diagnostics, []);
   assert.equal(skills.skills.length, 1);
   assert.equal(skills.skills[0].name, 'figlens');
-  for (const name of ['SKILL.md', 'references/audit.md', 'references/planning.md', 'references/planning-details.md', 'references/yolo.md']) {
+  for (const name of ['SKILL.md', 'references/audit.md', 'references/planning.md', 'references/planning-details.md', 'references/yolo.md', 'references/search.md']) {
     assert.ok((await readFile(path.join(packaged, 'skills/figlens', name), 'utf8')).length > 100);
   }
   // Stale context: no message without a target; a subscription this session made is checked with the packaged binary.

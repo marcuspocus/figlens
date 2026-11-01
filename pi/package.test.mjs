@@ -26,7 +26,7 @@ test('the existing CLI npm package includes the maintained Pi entry and its adja
   assert.ok(manifest.pi.video.endsWith('/assets/taskflow-demo.mp4'));
   const files = packed.files.map(file => file.path);
   assert.ok(files.includes('bin/figlens.js'));
-  for (const file of ['SKILL.md', 'references/audit.md', 'references/planning.md', 'references/planning-details.md', 'references/yolo.md']) {
+  for (const file of ['SKILL.md', 'references/audit.md', 'references/planning.md', 'references/planning-details.md', 'references/yolo.md', 'references/search.md']) {
     assert.ok(files.includes(`skills/figlens/${file}`));
     assert.equal(readFileSync(path.join(root, 'npm/skills/figlens', file), 'utf8'), readFileSync(path.join(root, 'skills/figlens', file), 'utf8'));
   }

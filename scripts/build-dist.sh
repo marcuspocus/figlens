@@ -12,6 +12,7 @@ test -f skills/figlens/references/audit.md
 test -f skills/figlens/references/planning.md
 test -f skills/figlens/references/planning-details.md
 test -f skills/figlens/references/yolo.md
+test -f skills/figlens/references/search.md
 mkdir -p "$output"
 set --
 for target in $targets; do

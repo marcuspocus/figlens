@@ -277,3 +277,8 @@ test('visual and per-source semantic coverage reasons remain visible', () => {
   const summary=semanticSummary({scope:'0:0',models:{profiles:[{name:'text',state:'ready',modality:'text'}]},index:{sources:[]}},'s',true);
   assert.equal(summary.enable,true); assert.match(summary.text,/No visual model/);
 });
+
+test('copied implementation prompt asks for a code review before pixels', () => {
+  const source = require('node:fs').readFileSync(require.resolve('../src/preview/viewer.js'), 'utf8');
+  assert.match(source, /Before comparing pixels, review the code/);
+});

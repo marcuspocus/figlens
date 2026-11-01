@@ -44,7 +44,7 @@ gh release view v<version> --json isDraft,assets --jq '.isDraft, (.assets[].name
 gh release download v<version> --dir samples/release-v<version> && (cd samples/release-v<version> && shasum -a 256 -c SHA256SUMS)
 ```
 
-Confirm the tag points to the exact tested merge SHA and its Cargo/npm versions agree. Expect five archives (macOS arm64/x86_64, Linux musl arm64/x86_64, Windows zip) plus `SHA256SUMS`. Check each archive contains its executable and the tag's complete `skills/figlens/` directory, including `SKILL.md`, `references/audit.md`, `references/planning.md`, `references/planning-details.md` and `references/yolo.md`. Unpack the archive for this machine and run `figlens --version` and `figlens tree <a sample .fig> --depth 1`; for a bug fix, exercise the reported behavior with the packaged binary. Private designs and outputs stay in ignored `samples/`.
+Confirm the tag points to the exact tested merge SHA and its Cargo/npm versions agree. Expect five archives (macOS arm64/x86_64, Linux musl arm64/x86_64, Windows zip) plus `SHA256SUMS`. Check each archive contains its executable and the tag's complete `skills/figlens/` directory, including `SKILL.md`, `references/audit.md`, `references/planning.md`, `references/planning-details.md`, `references/yolo.md` and `references/search.md`. Unpack the archive for this machine and run `figlens --version` and `figlens tree <a sample .fig> --depth 1`; for a bug fix, exercise the reported behavior with the packaged binary. Private designs and outputs stay in ignored `samples/`.
 
 ## 4. Write the release notes
 
