@@ -227,13 +227,17 @@ usage:
   figlens compare <file.fig> <nodes.json> <node>   diff a frame against a REST nodes.json export
   figlens compare <file.fig> --frames <list.txt>   same for every `node|nodes.json[|variables.json]` line
   figlens compare-image <file.fig> <node> <screenshot.png> [--scale N] [--limit N] [--out diff.png] [--full-page]
+                       [--ignore <id>[,<id>...]] [--threshold N]
                                              compare a PNG screenshot of the built screen with the node
                                              rendered over its layout box at the screenshot's scale (its
                                              width / the node's, or --scale); prints sizes, mismatch,
                                              nonTextMismatch and the largest differing regions (default
                                              10, 1-50) in node pixels from its top-left, each with the
-                                             deepest layers under it and text: true when all are TEXT
-                                             (often font fallback; review each); rows past the node's height are
+                                             deepest layers under it, text: true when all are TEXT
+                                             (often font fallback; review each) and image: true when only
+                                             image fills; --ignore leaves layers inside the node (content
+                                             from data) out of every count; --threshold (1-254, default 48)
+                                             lowered to 16 sees light borders; rows past the node's height are
                                              reported, not compared; a shorter one is refused unless
                                              --full-page states it is the whole page: then its rows are
                                              compared and the missing ones are a differing region;
@@ -699,17 +703,14 @@ fn run(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
             out.push_str(&command.execute(&tree, &path)?.text()?);
         }
         "compare-image" => {
-            let (node, shot, scale, limit, diff, full_page) =
-                command::compare_image_args(&args[2..])?;
+            let (node, shot, diff, opts) = command::compare_image_args(&args[2..])?;
             let report = command::compare_image(
                 &tree,
                 &path,
                 &node,
                 Path::new(&shot),
-                scale,
-                limit,
                 diff.as_deref().map(Path::new),
-                full_page,
+                opts,
             )?;
             writeln!(out, "{}", serde_json::to_string_pretty(&report)?)?;
         }

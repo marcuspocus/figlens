@@ -20,7 +20,7 @@ use crate::{ErrorKind, FigError, Tree};
 pub const MAX_BYTES: u64 = 64 * 1024 * 1024;
 /// Decoded pixels of the screenshot, and of the frame rendered at its scale (100 MB RGBA each).
 pub const MAX_PIXELS: u64 = 25_000_000;
-/// Per-channel difference (of 255) above which two pixels differ.
+/// Default per-channel difference (of 255) above which two pixels differ.
 pub const THRESHOLD: u8 = 48;
 /// Grid cell side in frame (CSS) pixels.
 const CELL: f64 = 8.0;
@@ -65,22 +65,48 @@ pub fn decode(bytes: &[u8]) -> Result<Pixmap, Box<dyn Error>> {
     Ok(shot)
 }
 
+/// How to compare a screenshot.
+#[derive(Debug)]
+pub struct Options {
+    /// Screenshot pixels per node pixel; `None` derives it from the width.
+    pub scale: Option<f64>,
+    /// Most regions listed.
+    pub limit: usize,
+    /// Also build the diff image.
+    pub diff: bool,
+    /// The screenshot is the whole page: a shorter one is compared over its height and the
+    /// frame rows it lacks count as one differing region.
+    pub full_page: bool,
+    /// Layers inside the node whose render boxes are left out, such as content from data.
+    pub ignore: Vec<String>,
+    /// Per-channel difference (of 255) above which two pixels differ.
+    pub threshold: u8,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            scale: None,
+            limit: 10,
+            diff: false,
+            full_page: false,
+            ignore: Vec::new(),
+            threshold: THRESHOLD,
+        }
+    }
+}
+
 /// Compares `shot` with node `id` rendered over its layout box at `scale`, or at the scale that
 /// fits the screenshot's width. Returns the report (regions in frame pixels from the frame's
-/// top-left) and, when `want_diff`, a diff image the size of the compared area. `full_page`
-/// states the screenshot is the whole page: a shorter one is compared over its height and the
-/// frame rows it lacks count as one differing region.
-#[allow(clippy::too_many_arguments)]
+/// top-left) and, with `diff`, a diff image the size of the compared area.
 pub fn compare(
     tree: &Tree,
     fig: &Path,
     id: &str,
     shot: &Pixmap,
-    scale: Option<f64>,
-    limit: usize,
-    want_diff: bool,
-    full_page: bool,
+    opts: &Options,
 ) -> Result<(Json, Option<Pixmap>), Box<dyn Error>> {
+    let (limit, full_page, threshold) = (opts.limit, opts.full_page, opts.threshold);
     let prepared = Prepared::new(tree, fig, id)?;
     let n = prepared.node();
     let unsupported = |reason: &str| -> Box<dyn Error> {
@@ -98,9 +124,26 @@ pub fn compare(
         .or_else(|| render::export_area(n))
         .ok_or_else(|| unsupported("it has no drawable bounds"))?;
     let (fw, fh) = (area[2] - area[0], area[3] - area[1]);
+    // Each ignored layer and its render box, checked before rendering. A layer without one
+    // draws nothing here; its layout box could cover content that does draw.
+    let mut ignored: Vec<(&Json, Rect)> = Vec::new();
+    for layer in &opts.ignore {
+        let found = (layer != id)
+            .then(|| render::find(n, layer))
+            .flatten()
+            .ok_or_else(|| invalid(format!("ignore {layer} is not a layer inside node {id}")))?;
+        let rect = render::render_bounds(found).ok_or_else(|| {
+            invalid(format!(
+                "ignore {layer} draws nothing in node {id} (hidden, a mask or clipped away)"
+            ))
+        })?;
+        if !ignored.iter().any(|(l, _)| l["id"] == found["id"]) {
+            ignored.push((found, rect));
+        }
+    }
     let (sw, sh) = (shot.width(), shot.height());
     let size = format!("{}x{}", num(fw), num(fh));
-    let scale = match scale {
+    let scale = match opts.scale {
         Some(s) if ((fw * s).round() - f64::from(sw)).abs() > 1.0 => {
             return Err(invalid(format!(
                 "screenshot is {sw} px wide but node {id} is {size} px, {} px at scale {s}; omit scale to derive it from the width, or capture the frame alone at that width",
@@ -141,8 +184,30 @@ pub fn compare(
     // One CSS pixel; capped so a tiny node in a large screenshot cannot make each pixel's
     // neighbourhood search huge.
     let radius = scale.ceil().clamp(1.0, 4.0) as u32;
-    let mut mask = differing(shot, &render, w, h, radius);
-    mask.resize((w * full) as usize, true);
+    // Ignored pixels neither differ nor count as compared.
+    let mut skip = Vec::new();
+    if !ignored.is_empty() {
+        skip = vec![false; (w * full) as usize];
+        let to_px =
+            |v: f64, origin: f64, max: u32| ((v - origin) * scale).clamp(0.0, f64::from(max));
+        for (_, r) in &ignored {
+            let (x0, x1) = (
+                to_px(r[0], area[0], w).floor() as u32,
+                to_px(r[2], area[0], w).ceil() as u32,
+            );
+            let (y0, y1) = (
+                to_px(r[1], area[1], full).floor() as u32,
+                to_px(r[3], area[1], full).ceil() as u32,
+            );
+            for y in y0..y1 {
+                skip[(y * w + x0) as usize..(y * w + x1) as usize].fill(true);
+            }
+        }
+    }
+    let skipped = skip.iter().filter(|&&s| s).count() as u64;
+    let mut mask = differing(shot, &render, w, h, radius, threshold, &skip);
+    // Missing rows all differ, unless ignored.
+    mask.extend((w * h..w * full).map(|i| skip.get(i as usize) != Some(&true)));
 
     // Group differing pixels by grid cell: count and tight bounds per cell. Missing rows start
     // their own cell rows, so they form a region of their own.
@@ -167,7 +232,7 @@ pub fn compare(
             }
         }
     }
-    let layers = layers(n, area);
+    let layers = layers(n, area, &opts.ignore);
     // A cell's tight bounds in page coordinates.
     let page = |c: &Cell| {
         [
@@ -187,7 +252,8 @@ pub fn compare(
         // Flood the 8-connected cells that hold differing pixels. Each cell is blamed on the
         // smallest of the deepest layers under its differing pixels: a ring around a frame is
         // not blamed on everything inside it, nor an icon on the background rectangle under it.
-        let (mut pixels, mut text, mut b) = (0u64, 0u64, (u32::MAX, u32::MAX, 0u32, 0u32));
+        let (mut pixels, mut text, mut image) = (0u64, 0u64, 0u64);
+        let mut b = (u32::MAX, u32::MAX, 0u32, 0u32);
         let mut weights: Vec<(usize, u64)> = Vec::new();
         let mut stack = vec![start];
         seen[start] = true;
@@ -199,6 +265,10 @@ pub fn compare(
             let missing = i as u32 / cols >= overlap_rows;
             if !missing && under.iter().any(|&k| layers[k].kind == "TEXT") {
                 text += c.0;
+            }
+            // Only image fills under it: content such as a banner, not layout.
+            if !missing && !under.is_empty() && under.iter().all(|&k| layers[k].image) {
+                image += c.0;
             }
             let area = |k: &usize| {
                 let r = layers[*k].rect;
@@ -239,18 +309,20 @@ pub fn compare(
         if pixels >= min_pixels || start as u32 / cols >= overlap_rows {
             weights.sort_by_key(|w| std::cmp::Reverse(w.1));
             weights.truncate(MAX_NODES);
-            regions.push((pixels, text, b, weights));
+            regions.push((pixels, text, image, b, weights));
         }
     }
     regions.sort_by_key(|r| std::cmp::Reverse(r.0));
-    let compared = u64::from(w) * u64::from(full);
+    let compared = (u64::from(w) * u64::from(full) - skipped).max(1);
     let ratio = |p: u64| (p as f64 / compared as f64 * 1e5).round() / 1e5;
-    let (mut text_pixels, mut other_regions) = (0u64, 0usize);
+    let (mut text_pixels, mut image_pixels, mut other_regions) = (0u64, 0u64, 0usize);
     let mut listed = Vec::new();
-    for (i, (pixels, text, (x0, y0, x1, y1), weights)) in regions.iter().enumerate() {
+    for (i, (pixels, text, image, (x0, y0, x1, y1), weights)) in regions.iter().enumerate() {
         text_pixels += text;
+        image_pixels += image;
         // Mostly over text: font fallback and line breaks, not layout.
         let over_text = text * 10 >= pixels * 9;
+        let over_image = image * 10 >= pixels * 9;
         other_regions += usize::from(!over_text);
         if i < limit {
             // Frame pixels, from the frame's top-left.
@@ -260,6 +332,7 @@ pub fn compare(
                 "width": num(f64::from(x1 + 1 - x0) / scale), "height": num(f64::from(y1 + 1 - y0) / scale),
                 "pixels": pixels,
                 "text": over_text,
+                "image": over_image,
                 "nodes": weights.iter().map(|&(k, _)| json!({
                     "id": layers[k].id, "name": layers[k].name, "type": layers[k].kind,
                 })).collect::<Vec<_>>(),
@@ -275,10 +348,12 @@ pub fn compare(
         "screenshot": {"width": sw, "height": sh},
         "scale": (scale * 1e4).round() / 1e4,
         "compared": {"width": w, "height": h},
-        "threshold": THRESHOLD,
+        "threshold": threshold,
         "mismatch": ratio(total),
         "nonTextMismatch": ratio(region_pixels - text_pixels),
         "textMismatch": ratio(text_pixels),
+        "nonImageMismatch": ratio(region_pixels - image_pixels),
+        "imageMismatch": ratio(image_pixels),
         "regionCount": regions.len(),
         "nonTextRegions": other_regions,
         "regions": listed,
@@ -290,7 +365,24 @@ pub fn compare(
     if full > h {
         report["uncompared"] = json!({"missing": full - h});
     }
-    let diff = want_diff.then(|| diff_image(shot, &mask, w, full, &report["regions"], scale));
+    if !ignored.is_empty() {
+        let nodes: Vec<Json> = ignored
+            .iter()
+            .map(|(l, _)| {
+                let name: String = l["name"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .chars()
+                    .take(80)
+                    .collect();
+                json!({"id": l["id"], "name": name, "type": l["type"]})
+            })
+            .collect();
+        report["ignored"] = json!({"nodes": nodes, "pixels": skipped});
+    }
+    let diff = opts
+        .diff
+        .then(|| diff_image(shot, &mask, &skip, w, full, &report["regions"], scale));
     Ok((report, diff))
 }
 
@@ -308,17 +400,22 @@ fn over_white(d: &[u8], i: usize) -> [u8; 3] {
     [d[i] + a, d[i + 1] + a, d[i + 2] + a]
 }
 
-fn close(a: [u8; 3], b: [u8; 3]) -> bool {
-    (0..3).all(|k| a[k].abs_diff(b[k]) <= THRESHOLD)
+fn close(a: [u8; 3], b: [u8; 3], threshold: u8) -> bool {
+    (0..3).all(|k| a[k].abs_diff(b[k]) <= threshold)
 }
 
 /// Whether `p` matches some pixel of `img` within `radius` of (x, y).
-fn near(img: &Pixmap, p: [u8; 3], x: u32, y: u32, radius: u32, w: u32, h: u32) -> bool {
+#[allow(clippy::too_many_arguments)]
+fn near(img: &Pixmap, p: [u8; 3], x: u32, y: u32, radius: u32, w: u32, h: u32, t: u8) -> bool {
     let d = img.data();
     let stride = img.width() as usize;
     for yy in y.saturating_sub(radius)..=(y + radius).min(h - 1) {
         for xx in x.saturating_sub(radius)..=(x + radius).min(w - 1) {
-            if close(p, over_white(d, (yy as usize * stride + xx as usize) * 4)) {
+            if close(
+                p,
+                over_white(d, (yy as usize * stride + xx as usize) * 4),
+                t,
+            ) {
                 return true;
             }
         }
@@ -326,16 +423,28 @@ fn near(img: &Pixmap, p: [u8; 3], x: u32, y: u32, radius: u32, w: u32, h: u32) -
     false
 }
 
-/// Differing pixels over the top-left `w`x`h` of both images, row-major.
-fn differing(a: &Pixmap, b: &Pixmap, w: u32, h: u32, radius: u32) -> Vec<bool> {
+/// Differing pixels over the top-left `w`x`h` of both images, row-major; pixels in `skip` are
+/// not compared.
+fn differing(
+    a: &Pixmap,
+    b: &Pixmap,
+    w: u32,
+    h: u32,
+    radius: u32,
+    t: u8,
+    skip: &[bool],
+) -> Vec<bool> {
     let mut mask = vec![false; (w * h) as usize];
     let (da, db) = (a.data(), b.data());
     for y in 0..h {
         for x in 0..w {
+            if skip.get((y * w + x) as usize) == Some(&true) {
+                continue;
+            }
             let pa = over_white(da, (y as usize * a.width() as usize + x as usize) * 4);
             let pb = over_white(db, (y as usize * b.width() as usize + x as usize) * 4);
-            mask[(y * w + x) as usize] = !close(pa, pb)
-                && (!near(b, pa, x, y, radius, w, h) || !near(a, pb, x, y, radius, w, h));
+            mask[(y * w + x) as usize] = !close(pa, pb, t)
+                && (!near(b, pa, x, y, radius, w, h, t) || !near(a, pb, x, y, radius, w, h, t));
         }
     }
     mask
@@ -346,15 +455,21 @@ struct Layer {
     id: String,
     name: String,
     kind: String,
+    /// Has a visible image fill.
+    image: bool,
     rect: Rect,
     parent: Option<usize>,
 }
 
-/// The visible layers of `n` in pre-order, within `clip`.
-fn layers(n: &Json, clip: Rect) -> Vec<Layer> {
+/// The visible layers of `n` in pre-order, within `clip`, without the `ignore` subtrees.
+fn layers(n: &Json, clip: Rect, ignore: &[String]) -> Vec<Layer> {
     // The tree passed `rest::build`'s depth check, so recursion is bounded.
-    fn walk(n: &Json, clip: Rect, parent: Option<usize>, out: &mut Vec<Layer>) {
-        if !render::visible(n) {
+    fn walk(n: &Json, clip: Rect, parent: Option<usize>, ignore: &[String], out: &mut Vec<Layer>) {
+        if !render::visible(n)
+            || n["id"]
+                .as_str()
+                .is_some_and(|id| ignore.iter().any(|i| i == id))
+        {
             return;
         }
         let clips = n["clipsContent"] == true;
@@ -362,7 +477,7 @@ fn layers(n: &Json, clip: Rect) -> Vec<Layer> {
             // Outside the clip, an unclipped parent's children may still be drawn inside it.
             if !clips {
                 for child in n["children"].as_array().into_iter().flatten() {
-                    walk(child, clip, parent, out);
+                    walk(child, clip, parent, ignore, out);
                 }
             }
             return;
@@ -378,16 +493,21 @@ fn layers(n: &Json, clip: Rect) -> Vec<Layer> {
                 .take(80)
                 .collect(),
             kind: n["type"].as_str().unwrap_or_default().to_owned(),
+            image: n["fills"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .any(|f| f["type"] == "IMAGE" && render::visible(f)),
             rect,
             parent,
         });
         let inner = if clips { rect } else { clip };
         for child in n["children"].as_array().into_iter().flatten() {
-            walk(child, inner, Some(index), out);
+            walk(child, inner, Some(index), ignore, out);
         }
     }
     let mut out = Vec::new();
-    walk(n, clip, None, &mut out);
+    walk(n, clip, None, ignore, &mut out);
     out
 }
 
@@ -409,9 +529,17 @@ fn attribute(layers: &[Layer], r: Rect) -> Vec<usize> {
     hits.into_iter().filter(|&k| !covered[k]).collect()
 }
 
-/// The screenshot washed out, differing pixels red, and each listed region outlined: red over
-/// layout, blue over text.
-fn diff_image(shot: &Pixmap, mask: &[bool], w: u32, h: u32, regions: &Json, scale: f64) -> Pixmap {
+/// The screenshot washed out, differing pixels red, ignored pixels flat gray, and each listed
+/// region outlined: red over layout, blue over text, purple over images.
+fn diff_image(
+    shot: &Pixmap,
+    mask: &[bool],
+    skip: &[bool],
+    w: u32,
+    h: u32,
+    regions: &Json,
+    scale: f64,
+) -> Pixmap {
     let mut out = Pixmap::new(w, h).expect("compared area is non-empty");
     let d = shot.data();
     let o = out.data_mut();
@@ -421,6 +549,8 @@ fn diff_image(shot: &Pixmap, mask: &[bool], w: u32, h: u32, regions: &Json, scal
             // Missing rows past the screenshot are all differing, so it is read only above them.
             let px = if mask[i] {
                 [230, 0, 0]
+            } else if skip.get(i) == Some(&true) {
+                [200, 200, 200]
             } else {
                 let p = over_white(d, (y as usize * shot.width() as usize + x as usize) * 4);
                 let l = (u32::from(p[0]) * 3 + u32::from(p[1]) * 6 + u32::from(p[2])) / 10;
@@ -433,6 +563,8 @@ fn diff_image(shot: &Pixmap, mask: &[bool], w: u32, h: u32, regions: &Json, scal
     for r in regions.as_array().into_iter().flatten() {
         let color = if r["text"] == true {
             [0, 90, 230]
+        } else if r["image"] == true {
+            [150, 0, 200]
         } else {
             [230, 0, 0]
         };
@@ -476,7 +608,18 @@ mod tests {
     }
 
     fn run(tree: &Tree, shot: &Pixmap, scale: Option<f64>) -> Result<Json, Box<dyn Error>> {
-        compare(tree, Path::new(FIG), "0:1", shot, scale, 10, false, false).map(|r| r.0)
+        let opts = Options {
+            scale,
+            ..Options::default()
+        };
+        compare(tree, Path::new(FIG), "0:1", shot, &opts).map(|r| r.0)
+    }
+
+    fn full_page() -> Options {
+        Options {
+            full_page: true,
+            ..Options::default()
+        }
     }
 
     fn ids(region: &Json) -> Vec<&str> {
@@ -496,7 +639,7 @@ mod tests {
         let mut outside = json!({"id": "1:2", "type": "FRAME", "absoluteBoundingBox": bounds(150.0, 40.0), "children": [child]});
         let frame = |inner: &Json| json!({"id": "1:1", "type": "FRAME", "absoluteBoundingBox": bounds(0.0, 100.0), "children": [inner]});
         let ids = |frame: &Json| -> Vec<String> {
-            layers(frame, [0.0, 0.0, 100.0, 50.0])
+            layers(frame, [0.0, 0.0, 100.0, 50.0], &[])
                 .into_iter()
                 .map(|l| l.id)
                 .collect()
@@ -543,6 +686,118 @@ mod tests {
         });
     }
 
+    fn run_with(tree: &Tree, shot: &Pixmap, opts: Options) -> Result<Json, Box<dyn Error>> {
+        compare(tree, Path::new(FIG), "0:1", shot, &opts).map(|r| r.0)
+    }
+
+    #[test]
+    fn an_ignored_layer_leaves_its_box_out_and_is_listed() {
+        with_render(1.0, |tree, mut shot| {
+            // Invert the triangle's box (248,116 24x24), as content from other data would differ.
+            let w = shot.width() as usize;
+            let d = shot.data_mut();
+            for y in 116..140 {
+                for x in 248..272 {
+                    let i = (y * w + x) * 4;
+                    let inverted = [255 - d[i], 255 - d[i + 1], 255 - d[i + 2]];
+                    d[i..i + 3].copy_from_slice(&inverted);
+                }
+            }
+            let ignore = vec!["0:6".to_owned()];
+            let report = run_with(
+                tree,
+                &shot,
+                Options {
+                    ignore,
+                    ..Options::default()
+                },
+            )
+            .unwrap();
+            assert_eq!(
+                [
+                    &report["mismatch"],
+                    &report["ignored"]["nodes"][0]["id"],
+                    &report["ignored"]["pixels"]
+                ],
+                [&json!(0.0), &json!("0:6"), &json!(576)],
+                "{report}"
+            );
+        });
+    }
+
+    #[test]
+    fn ignore_refuses_the_node_itself_and_layers_outside_it() {
+        with_render(1.0, |tree, shot| {
+            for id in ["0:1", "9:9"] {
+                let ignore = vec![id.to_owned()];
+                let error = run_with(
+                    tree,
+                    &shot,
+                    Options {
+                        ignore,
+                        ..Options::default()
+                    },
+                );
+                assert!(
+                    error
+                        .unwrap_err()
+                        .to_string()
+                        .contains("not a layer inside")
+                );
+            }
+        });
+    }
+
+    #[test]
+    fn a_changed_image_fill_is_marked_image() {
+        with_render(1.0, |tree, mut shot| {
+            // Invert the image tile (32,32 32x32), as a banner from other data would differ.
+            let w = shot.width() as usize;
+            let d = shot.data_mut();
+            for y in 32..64 {
+                for x in 32..64 {
+                    let i = (y * w + x) * 4;
+                    let inverted = [255 - d[i], 255 - d[i + 1], 255 - d[i + 2]];
+                    d[i..i + 3].copy_from_slice(&inverted);
+                }
+            }
+            let report = run(tree, &shot, None).unwrap();
+            assert_eq!(
+                [&report["regions"][0]["image"], &report["nonImageMismatch"]],
+                [&json!(true), &json!(0.0)],
+                "{report}"
+            );
+        });
+    }
+
+    #[test]
+    fn a_lower_threshold_sees_a_light_divider() {
+        with_render(1.0, |tree, mut shot| {
+            // A 1 px #e4edff divider across the white card, under the default threshold.
+            let w = shot.width() as usize;
+            let d = shot.data_mut();
+            for x in 100..220 {
+                let i = (150 * w + x) * 4;
+                d[i..i + 4].copy_from_slice(&[0xe4, 0xed, 0xff, 255]);
+            }
+            let default = run(tree, &shot, None).unwrap();
+            let low = run_with(
+                tree,
+                &shot,
+                Options {
+                    threshold: 16,
+                    ..Options::default()
+                },
+            )
+            .unwrap();
+            assert_eq!(
+                [&default["regionCount"], &low["regionCount"]],
+                [&json!(0), &json!(1)],
+                "{low}"
+            );
+        });
+    }
+
     #[test]
     fn a_changed_text_is_marked_text() {
         with_render(1.0, |tree, mut shot| {
@@ -585,8 +840,18 @@ mod tests {
             let mut short = Pixmap::new(320, 100).unwrap();
             let n = short.data().len();
             short.data_mut().copy_from_slice(&shot.data()[..n]);
-            let (report, diff) =
-                compare(tree, Path::new(FIG), "0:1", &short, None, 10, true, true).unwrap();
+            let (report, diff) = compare(
+                tree,
+                Path::new(FIG),
+                "0:1",
+                &short,
+                &Options {
+                    diff: true,
+                    full_page: true,
+                    ..Options::default()
+                },
+            )
+            .unwrap();
             assert_eq!(report["uncompared"]["missing"], 80);
             assert_eq!(report["mismatch"], 0.44444);
             assert_eq!(report["nonTextMismatch"], 0.44444);
@@ -613,7 +878,7 @@ mod tests {
         let mut short = Pixmap::new(full.width(), full.height() - 2).unwrap();
         let n = short.data().len();
         short.data_mut().copy_from_slice(&full.data()[..n]);
-        let report = compare(&tree, Path::new(FIG), "0:6", &short, None, 10, false, true)
+        let report = compare(&tree, Path::new(FIG), "0:6", &short, &full_page())
             .unwrap()
             .0;
         assert_eq!(report["regionCount"], 1, "{report}");
@@ -626,7 +891,7 @@ mod tests {
             let mut short = Pixmap::new(320, 178).unwrap();
             let n = short.data().len();
             short.data_mut().copy_from_slice(&shot.data()[..n]);
-            let report = compare(tree, Path::new(FIG), "0:1", &short, None, 10, false, true)
+            let report = compare(tree, Path::new(FIG), "0:1", &short, &full_page())
                 .unwrap()
                 .0;
             assert_eq!(report["uncompared"]["missing"], 2, "{report}");

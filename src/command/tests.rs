@@ -1512,5 +1512,35 @@ fn cli_export_batch_prints_a_manifest_and_rejects_a_repeated_out_before_writing(
 #[test]
 fn compare_image_args_read_full_page() {
     let args: Vec<String> = ["0:1", "shot.png", "--full-page"].map(String::from).into();
-    assert!(crate::command::compare_image_args(&args).unwrap().5);
+    assert!(
+        crate::command::compare_image_args(&args)
+            .unwrap()
+            .3
+            .full_page
+    );
+}
+
+#[test]
+fn compare_image_args_read_ignore_and_threshold() {
+    let args = "0:1 shot.png --ignore 0:3,0-6 --threshold 16"
+        .split(' ')
+        .map(String::from);
+    let opts = crate::command::compare_image_args(&args.collect::<Vec<_>>())
+        .unwrap()
+        .3;
+    assert_eq!(
+        (opts.ignore, opts.threshold),
+        (vec!["0:3".into(), "0:6".into()], 16)
+    );
+}
+
+#[test]
+fn compare_image_args_refuse_a_threshold_out_of_range() {
+    let args: Vec<String> = ["0:1", "shot.png", "--threshold", "300"]
+        .map(String::from)
+        .into();
+    let error = crate::command::compare_image_args(&args)
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("1-254"), "{error}");
 }

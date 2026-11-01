@@ -37,7 +37,7 @@ Keep delivered code/assets, existing plans and source designs. Keep figlens work
 Return the implemented scope, then the acceptance record in three groups:
 
 - **Proven by a tool:** results with their command or tool output, such as `figlens verify`, tests, builds, axe, a measured font load, or `compare-image` with its viewport, state, `mismatch` and `nonTextMismatch` once every remaining region, text regions included, is fixed or listed as a known difference with its cause.
-- **Checked by you:** what you compared or exercised yourself, such as interactions, states or viewports `compare-image` did not cover, and differences under its threshold, with the viewport and state.
+- **Checked by you:** what you compared or exercised yourself, such as interactions, states or viewports `compare-image` did not cover, layers it ran with in `--ignore` (their size and position checked with `inspect`), and differences under its threshold, with the viewport and state.
 - **Not verified:** checks you could not run and unresolved inputs.
 
 List known differences separately: each recorded design departure, accepted fallback with its remedy, and remaining renderer difference. Then give the actual cleanup outcome: plan, export files kept and removed, and processes stopped. Cleanup failure is a reported remaining task, not permission to claim it was done. A successful build alone does not establish visual acceptance.

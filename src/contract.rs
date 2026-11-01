@@ -516,7 +516,7 @@ pub const TOOLS: &[(&str, &str, &[Param])] = &[
     ),
     (
         "compare_image",
-        "Compare a PNG screenshot of the built screen with the node as figlens renders it, to check visual fidelity with a tool instead of by eye. The node is drawn over its layout box at the screenshot's scale (screenshot width / node width, or scale), composited over white; a pixel differs when no pixel within one CSS pixel in the other image is within 48/255 per channel, so anti-aliasing does not count, but differences under 48/255 (light borders, subtle tints) are not seen. Differing pixels are grouped into regions on an 8 px grid; regions under 12 px² are dropped. Returns sizes, scale, mismatch (differing pixels / compared pixels), nonTextMismatch and textMismatch, and the largest regions in node pixels from its top-left, each with the deepest layers under it (id, name, type) and text: true when nearly all of it lies over TEXT layers (often font fallback or line breaks, but also a wrong text color, size or copy: review each). A screenshot taller than the node is compared over the node's height and the rest reported as uncompared; a shorter one, or a width that does not match scale, is refused, unless fullPage states the shorter one is the whole page: then its rows are compared and the node rows it lacks (past 1 px rounding) are reported as uncompared.missing and counted as one differing region over the layers there. warnings name what figlens skipped or approximated in the node, where a difference may be figlens's. out writes a diff PNG: the screenshot washed out, differing pixels red, regions outlined red (layout) or blue (text). Capture the screenshot at the node's size with fonts loaded; a viewport capture of a taller page needs a full-page screenshot.",
+        "Compare a PNG screenshot of the built screen with the node as figlens renders it, to check visual fidelity with a tool instead of by eye. The node is drawn over its layout box at the screenshot's scale (screenshot width / node width, or scale), composited over white; a pixel differs when no pixel within one CSS pixel in the other image is within the threshold (48/255 per channel by default), so anti-aliasing does not count, but differences under it (light borders, subtle tints) are not seen. Differing pixels are grouped into regions on an 8 px grid; regions under 12 px² are dropped. Returns sizes, scale, mismatch (differing pixels / compared pixels), nonTextMismatch and textMismatch, nonImageMismatch and imageMismatch, and the largest regions in node pixels from its top-left, each with the deepest layers under it (id, name, type) and text: true when nearly all of it lies over TEXT layers (often font fallback or line breaks, but also a wrong text color, size or copy: review each) and image: true when nearly all of it lies only over image-filled layers (content such as banners or avatars, often from data). ignore leaves listed layers' render boxes out of every count and region, for content that differs by data rather than layout (their own size and position are then unmeasured); the reply lists them. threshold lowers the 48 default to see light borders and dividers, at the cost of more anti-aliasing noise. A screenshot taller than the node is compared over the node's height and the rest reported as uncompared; a shorter one, or a width that does not match scale, is refused, unless fullPage states the shorter one is the whole page: then its rows are compared and the node rows it lacks (past 1 px rounding) are reported as uncompared.missing and counted as one differing region over the layers there. warnings name what figlens skipped or approximated in the node, where a difference may be figlens's. out writes a diff PNG: the screenshot washed out, differing pixels red, ignored pixels gray, regions outlined red (layout), blue (text) or purple (image). Capture the screenshot at the node's size with fonts loaded; a viewport capture of a taller page needs a full-page screenshot.",
         &[
             FILE,
             NODE,
@@ -543,6 +543,18 @@ pub const TOOLS: &[(&str, &str, &[Param])] = &[
                 "string",
                 false,
                 "diff PNG path ending in .png, in .figlens/exports/ under the project root unless the user names one; create the parent directory first; never the screenshot or the design",
+            ),
+            (
+                "ignore",
+                "string",
+                false,
+                "comma-separated ids of layers inside node, such as data-driven images or user text, whose render boxes are left out of mismatch, its splits and regions; the reply lists them under ignored",
+            ),
+            (
+                "threshold",
+                "integer",
+                false,
+                "per-channel difference (of 255) above which pixels differ, 1-254, default 48; lower it (such as 16) to see a light border, divider or shadow the default misses",
             ),
             (
                 "fullPage",
@@ -986,12 +998,15 @@ pub fn output_schema(tool: &str) -> Option<serde_json::Value> {
                 "compared": { "type": "object", "description": "width and height of the compared area in screenshot pixels" },
                 "uncompared": { "type": "object", "description": "below: screenshot rows past the node's height, not compared; missing: with fullPage, node rows past the screenshot's bottom, counted as differing" },
                 "threshold": { "type": "integer", "description": "per-channel difference (of 255) above which pixels differ" },
-                "mismatch": { "type": "number", "description": "differing pixels / compared pixels, 0-1; with uncompared.missing, both include the missing rows as differing" },
+                "mismatch": { "type": "number", "description": "differing pixels / compared pixels, 0-1; with uncompared.missing, both include the missing rows as differing; ignored pixels are in neither" },
                 "nonTextMismatch": { "type": "number", "description": "differing pixels in regions' cells not over text layers / compared pixels" },
                 "textMismatch": { "type": "number", "description": "differing pixels in regions' cells over text layers / compared pixels" },
+                "nonImageMismatch": { "type": "number", "description": "differing pixels in regions' cells not only over image-filled layers / compared pixels" },
+                "imageMismatch": { "type": "number", "description": "differing pixels in regions' cells only over image-filled layers / compared pixels" },
+                "ignored": { "type": "object", "description": "with ignore: nodes {id, name, type} and pixels, the screenshot pixels left out of every count" },
                 "regionCount": { "type": "integer" },
                 "nonTextRegions": { "type": "integer", "description": "regions not marked text" },
-                "regions": { "type": "array", "items": { "type": "object" }, "description": "largest first, at most limit: x, y, width, height in node pixels from its top-left, pixels (differing screenshot pixels), text, and nodes: up to 3 deepest layers under it as {id, name, type}, most differing pixels first" },
+                "regions": { "type": "array", "items": { "type": "object" }, "description": "largest first, at most limit: x, y, width, height in node pixels from its top-left, pixels (differing screenshot pixels), text, image, and nodes: up to 3 deepest layers under it as {id, name, type}, most differing pixels first" },
                 "warnings": { "type": "array", "items": { "type": "string" }, "description": "known skipped or approximated rendering in the node, as export's" },
                 "path": { "type": "string", "description": "with out: the diff PNG written" },
             }),
@@ -1005,6 +1020,8 @@ pub fn output_schema(tool: &str) -> Option<serde_json::Value> {
                 "mismatch",
                 "nonTextMismatch",
                 "textMismatch",
+                "nonImageMismatch",
+                "imageMismatch",
                 "regionCount",
                 "nonTextRegions",
                 "regions",
@@ -1090,6 +1107,7 @@ fn default(tool: &str, key: &str) -> Option<Value> {
         ("inspect", "depth") | ("export", "scale") => Some(json!(1)),
         ("find" | "search", "limit") => Some(json!(20)),
         ("compare_image", "limit") => Some(json!(10)),
+        ("compare_image", "threshold") => Some(json!(figlens::compare_image::THRESHOLD)),
         ("compare_image", "fullPage") => Some(json!(false)),
         ("variables", "format") => Some(json!("rest")),
         ("usages", "scope") | ("diff", "node") => Some(json!("0:0")),
@@ -1117,6 +1135,7 @@ pub fn property(tool: &str, param: &Param) -> Value {
         ("tree", "depth") => Some((0, JSON_SAFE.min(usize::MAX as u64))),
         ("find" | "search" | "usages", "limit") => Some((1, 200)),
         ("compare_image", "limit") => Some((1, 50)),
+        ("compare_image", "threshold") => Some((1, 254)),
         ("diff" | "changes", "limit") => Some((1, 500)),
         ("export", "quality") => Some((1, 100)),
         ("export", "maxKb") => Some((0, JSON_SAFE.min((usize::MAX / 1024) as u64))),
@@ -1142,6 +1161,7 @@ pub fn property(tool: &str, param: &Param) -> Value {
             | "cursor"
             | "matchDir"
             | "hide"
+            | "ignore"
             | "fonts"
             | "collection"
             | "mode"
@@ -1397,6 +1417,11 @@ pub fn prepare(tool: &str, args: &Value) -> Result<PreparedCall, Failure> {
             .is_some_and(|out| !out.to_ascii_lowercase().ends_with(".png"))
     {
         return Err(Failure::argument("out must end in .png"));
+    }
+    if tool == "compare_image"
+        && let Some(ids) = checked["ignore"].as_str()
+    {
+        crate::command::id_list("ignore", ids).map_err(|e| Failure::argument(e.to_string()))?;
     }
     if tool == "export_batch" {
         crate::command::export_items(&checked["items"], 1600).map_err(Failure::argument)?;

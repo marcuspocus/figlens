@@ -464,7 +464,7 @@ impl Command {
                     )?,
                     hide: call
                         .string("hide")
-                        .map(hide_list)
+                        .map(|ids| id_list("hide", ids))
                         .transpose()?
                         .unwrap_or_default(),
                 }
@@ -831,7 +831,7 @@ pub fn export_items(items: &Value, default_max_size: u32) -> Result<Vec<ExportIt
             };
             let hide = match item.get("hide") {
                 None => Vec::new(),
-                Some(_) => hide_list(text("hide")?).map_err(|e| bad(&e.to_string()))?,
+                Some(_) => id_list("hide", text("hide")?).map_err(|e| bad(&e.to_string()))?,
             };
             let max_kb = number("maxKb", (1 << 53) - 1)?.map(|n| n as usize);
             let max_size =
@@ -852,14 +852,21 @@ pub fn export_items(items: &Value, default_max_size: u32) -> Result<Vec<ExportIt
         .collect()
 }
 
-/// CLI `compare-image` arguments after the file: node, screenshot, scale, limit, diff path and
-/// whether the screenshot is the whole page.
+/// CLI `compare-image` arguments after the file: node, screenshot, diff path and options.
 #[allow(clippy::type_complexity)]
 pub fn compare_image_args(
     args: &[String],
-) -> Result<(String, String, Option<f64>, usize, Option<String>, bool), Box<dyn Error>> {
-    let (mut positional, mut scale, mut limit, mut out) = (Vec::new(), None, 10, None);
-    let mut full_page = false;
+) -> Result<
+    (
+        String,
+        String,
+        Option<String>,
+        figlens::compare_image::Options,
+    ),
+    Box<dyn Error>,
+> {
+    let (mut positional, mut out) = (Vec::new(), None);
+    let mut opts = figlens::compare_image::Options::default();
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         let mut value = || rest.next().ok_or(format!("{arg} needs a value"));
@@ -869,14 +876,22 @@ pub fn compare_image_args(
                 if !s.is_finite() || s <= 0.0 {
                     return Err("--scale must be a positive number".into());
                 }
-                scale = Some(s);
+                opts.scale = Some(s);
             }
             "--limit" => {
-                limit = value()?.parse()?;
-                if !(1..=50).contains(&limit) {
+                opts.limit = value()?.parse()?;
+                if !(1..=50).contains(&opts.limit) {
                     return Err("--limit must be 1-50".into());
                 }
             }
+            "--threshold" => {
+                let t: u32 = value()?.parse()?;
+                if !(1..=254).contains(&t) {
+                    return Err("--threshold must be 1-254".into());
+                }
+                opts.threshold = t as u8;
+            }
+            "--ignore" => opts.ignore.extend(id_list("ignore", value()?)?),
             "--out" => {
                 let path = value()?.clone();
                 if !path.to_ascii_lowercase().ends_with(".png") {
@@ -884,27 +899,24 @@ pub fn compare_image_args(
                 }
                 out = Some(path);
             }
-            "--full-page" => full_page = true,
+            "--full-page" => opts.full_page = true,
             _ if !arg.starts_with("--") => positional.push(arg.clone()),
             _ => return Err(USAGE.into()),
         }
     }
     let [node, shot] = <[String; 2]>::try_from(positional).map_err(|_| USAGE)?;
-    Ok((node, shot, scale, limit, out, full_page))
+    Ok((node, shot, out, opts))
 }
 
 /// Compares a screenshot with a node for CLI and MCP; with `out`, also writes the diff PNG and
 /// names it as `path`.
-#[allow(clippy::too_many_arguments)]
 pub fn compare_image(
     tree: &Tree,
     fig: &Path,
     node: &str,
     shot: &Path,
-    scale: Option<f64>,
-    limit: usize,
     out: Option<&Path>,
-    full_page: bool,
+    mut opts: figlens::compare_image::Options,
 ) -> Result<Value, Box<dyn Error>> {
     let id = normalize_id(node);
     require_target_root(tree, &id)?;
@@ -918,16 +930,8 @@ pub fn compare_image(
         .into());
     }
     let shot = figlens::compare_image::decode(&figlens::compare_image::read(shot)?)?;
-    let (mut report, diff) = figlens::compare_image::compare(
-        tree,
-        fig,
-        &id,
-        &shot,
-        scale,
-        limit,
-        out.is_some(),
-        full_page,
-    )?;
+    opts.diff = out.is_some();
+    let (mut report, diff) = figlens::compare_image::compare(tree, fig, &id, &shot, &opts)?;
     if let (Some(out), Some(diff)) = (out, diff) {
         let bytes = figlens::render::encode_png(&diff)?;
         figlens::output::write(fig, out, |file| {
@@ -1021,7 +1025,7 @@ pub fn export_options(args: &[String]) -> Result<ExportOptions, Box<dyn Error>> 
             "--max-kb" => max_kb = Some(value()?.parse::<usize>()?),
             "--max-size" => max_size = Some(value()?.parse::<u32>()?),
             "--match-dir" => match_dir = Some(PathBuf::from(value()?)),
-            "--hide" => hide.extend(hide_list(value()?)?),
+            "--hide" => hide.extend(id_list("hide", value()?)?),
             _ => return Err(USAGE.into()),
         }
     }
@@ -1039,9 +1043,9 @@ type ExportOptions = (
     Vec<String>,
 );
 
-/// Comma-separated node ids, normalized as any node argument is. None is an error: an export
-/// that hides nothing would read as a layer that does not show.
-fn hide_list(ids: &str) -> Result<Vec<String>, Box<dyn Error>> {
+/// Comma-separated node ids for `what`, normalized as any node argument is. None is an error:
+/// an export that hides nothing, or a comparison that ignores nothing, would read as done.
+pub fn id_list(what: &str, ids: &str) -> Result<Vec<String>, Box<dyn Error>> {
     let ids: Vec<String> = ids
         .split(',')
         .map(str::trim)
@@ -1049,7 +1053,7 @@ fn hide_list(ids: &str) -> Result<Vec<String>, Box<dyn Error>> {
         .map(normalize_id)
         .collect();
     if ids.is_empty() {
-        return Err("hide takes one or more comma-separated node ids".into());
+        return Err(format!("{what} takes one or more comma-separated node ids").into());
     }
     Ok(ids)
 }

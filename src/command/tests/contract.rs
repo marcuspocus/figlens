@@ -37,6 +37,7 @@ fn schema_and_numeric_preflight_share_boundaries() {
         ("tree", "depth", 0, (1 << 53) - 1),
         ("export", "maxKb", 0, (1 << 53) - 1),
         ("compare_image", "limit", 1, 50),
+        ("compare_image", "threshold", 1, 254),
     ] {
         let schema = &tools.iter().find(|t| t["name"] == tool).unwrap()["inputSchema"];
         assert_eq!(schema["properties"][key]["minimum"], min);

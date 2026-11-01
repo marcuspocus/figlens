@@ -686,6 +686,25 @@ fn compare_image_full_page_admits_a_short_screenshot() {
 }
 
 #[test]
+fn compare_image_ignore_and_threshold_reach_the_comparison() {
+    let dir = TestDir::new();
+    let file = fixture(&dir, "design.fig");
+    let roots = [dir.join("").canonicalize().unwrap()];
+    let shot = dir.join("shot.png");
+    let args = json!({"file":file,"node":"0:1","out":shot,"bounds":"layout"});
+    let export = rooted_reply(&call(json!(1), "export", args), &roots)["result"].clone();
+    assert_eq!(export["isError"], false, "{export}");
+    let args = json!({"file":file,"node":"0:1","image":shot,"ignore":"0:3","threshold":16});
+    let reply = rooted_reply(&call(json!(2), "compare_image", args), &roots)["result"].clone();
+    let report = &reply["structuredContent"];
+    assert_eq!(
+        [&report["ignored"]["nodes"][0]["id"], &report["threshold"]],
+        [&json!("0:3"), &json!(16)],
+        "{reply}"
+    );
+}
+
+#[test]
 fn compare_image_reads_and_writes_only_inside_the_roots() {
     let inside = TestDir::new();
     let outside = TestDir::new();

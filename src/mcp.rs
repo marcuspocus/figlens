@@ -537,15 +537,26 @@ impl AdmittedCall {
             }
             let run = |tree: &Tree, path: &Path| {
                 if name == "compare_image" {
+                    let opts = figlens::compare_image::Options {
+                        scale: self.call.argument("scale").as_f64(),
+                        limit: self.call.argument("limit").as_u64().unwrap() as usize,
+                        full_page: self.call.argument("fullPage") == true,
+                        ignore: self
+                            .call
+                            .string("ignore")
+                            .map(|ids| command::id_list("ignore", ids))
+                            .transpose()?
+                            .unwrap_or_default(),
+                        threshold: self.call.argument("threshold").as_u64().unwrap() as u8,
+                        diff: false,
+                    };
                     let value = command::compare_image(
                         tree,
                         path,
                         self.call.string("node").unwrap(),
                         self.image.as_deref().unwrap(),
-                        self.call.argument("scale").as_f64(),
-                        self.call.argument("limit").as_u64().unwrap() as usize,
                         self.output.as_deref(),
-                        self.call.argument("fullPage") == true,
+                        opts,
                     )?;
                     return Ok(command::Output::Json {
                         value,
