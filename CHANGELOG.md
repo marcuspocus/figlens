@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.2](https://github.com/runkids/figlens/compare/v0.11.1...v0.11.2) (2026-11-01)
+
+
+### Bug Fixes
+
+* **workflow:** ask implementing agents for real frontend code ([#197](https://github.com/runkids/figlens/issues/197)) ([f3607b4](https://github.com/runkids/figlens/commit/f3607b4a092015efe0ff8daf2525e0aa184be0c4))
+
 ## [0.11.1](https://github.com/runkids/figlens/compare/v0.11.0...v0.11.1) (2026-11-01)
 
 
