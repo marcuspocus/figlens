@@ -23,7 +23,7 @@ gh pr list --label 'autorelease: pending' --state open
 
 The open Release PR holds the next version and its CHANGELOG entry. No PR: check the latest "Release Please" run (`gh run list --workflow release-please.yml --limit 3`) and the repository setting that lets Actions create pull requests. Dispatch the workflow only when the user authorizes it.
 
-Requested version: set `"release-as": "X.Y.Z"` on the `.` package in `.github/release-please-config.json` through a PR, confirm the Release PR moves to that version, and remove the setting in the first PR after the release. A `Release-As:` footer is lost, because squash merges here keep only the PR title.
+Requested version: with the user's authorization for a direct push, push an empty `chore(release): request X.Y.Z` commit with a `Release-As: X.Y.Z` footer to `main` (see the `release` topic), then confirm the Release PR moves to that version. The footer covers only that release; nothing is removed afterwards.
 
 ## 2. Review the Release PR
 
