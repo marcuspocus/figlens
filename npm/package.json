@@ -1,6 +1,6 @@
 {
   "name": "@runkids/figlens",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "description": "Your coding agent builds screens from a saved Figma .fig, offline: layout, text, variables, assets and a reference render. No Dev Mode seat, login or API quota. Pi, OpenCode, OMP, CLI and MCP.",
   "license": "MIT",
   "repository": {

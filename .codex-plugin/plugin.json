@@ -1,6 +1,6 @@
 {
   "name": "figlens",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "description": "Read local Figma .fig files offline: the figlens skill plus the figlens MCP server, with no Figma app, login or API limit.",
   "author": {
     "name": "runkids",

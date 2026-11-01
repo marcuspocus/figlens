@@ -4,7 +4,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@runkids/figlens@0.11.0",
+        "@runkids/figlens@0.11.1",
         "mcp"
       ]
     }

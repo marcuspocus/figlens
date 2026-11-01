@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.11.1](https://github.com/runkids/figlens/compare/v0.11.0...v0.11.1) (2026-11-01)
+
+
+### New Features
+
+* **compare-image:** compare a full-page capture shorter than the frame ([#191](https://github.com/runkids/figlens/issues/191)) ([dde88e6](https://github.com/runkids/figlens/commit/dde88e6eaef29e9c1fccdbb74414adfb0c5cf457))
+* **compare-image:** mask data-driven layers, tag image regions, opt-in threshold ([#193](https://github.com/runkids/figlens/issues/193)) ([da8fb1b](https://github.com/runkids/figlens/commit/da8fb1b2591e58e042a789004da150ea5f92c1a2))
+* **site:** add figlens.runkids.cc with docs generated from the repo ([ad4f4f3](https://github.com/runkids/figlens/commit/ad4f4f3d5fd823d302e6db476961c43087938bda))
+
 ## [0.11.0](https://github.com/runkids/figlens/compare/v0.10.1...v0.11.0) (2026-10-31)
 
 
