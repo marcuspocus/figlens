@@ -3267,3 +3267,49 @@ fn a_revision_with_an_unknown_impact_reason_does_not_read_back() {
     v["impact"]["reasons"]["not_a_reason"] = json!(1);
     assert!(Revision::from_json(&v).is_none());
 }
+
+/// A layer of frame 10 using a library text style, stored as local copy `local` of key `key`.
+fn library_styled(local: u32, key: &str) -> K<'static> {
+    let s = |v: &str| K::String(v.into());
+    let reference = obj(vec![
+        ("guid", guid(local)),
+        ("assetRef", obj(vec![("key", s(key)), ("version", s("v1"))])),
+    ]);
+    doc(vec![
+        node(
+            local,
+            Some(1),
+            "TEXT",
+            "Body",
+            vec![("fontSize", K::Float(12.0))],
+        ),
+        node(10, Some(1), "FRAME", "Home", vec![]),
+        node(
+            11,
+            Some(10),
+            "TEXT",
+            "Title",
+            vec![text("Hi"), ("styleIdForText", reference)],
+        ),
+    ])
+}
+
+#[test]
+fn a_reimported_library_style_with_a_new_local_id_is_no_change() {
+    let out = scoped(library_styled(20, "k"), library_styled(21, "k"), "0:10");
+    assert_eq!(nodes(&out), Vec::<(String, String)>::new(), "{out}");
+}
+
+#[test]
+fn a_layer_moved_to_another_library_style_is_a_bindings_change() {
+    let out = scoped(library_styled(20, "k"), library_styled(20, "other"), "0:10");
+    let facets = &out["frames"][0]["nodes"][0]["facets"];
+    assert_eq!(
+        (nodes(&out), facets),
+        (
+            vec![("0:11".into(), "changed".into())],
+            &json!(["bindings"])
+        ),
+        "{out}"
+    );
+}
