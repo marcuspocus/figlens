@@ -1,0 +1,62 @@
+name: Site Pages
+
+# Publish Release calls this after publication so figlens.runkids.cc matches the released version;
+# dispatch it by hand to redeploy a tag or ship a site-only fix.
+# Secrets: CLOUDFLARE_API_TOKEN (Account > Cloudflare Pages > Edit) and CLOUDFLARE_ACCOUNT_ID.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: true
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Tag or branch to deploy (e.g. v0.12.0 or main)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  deployments: write
+
+# Only the newest run matters: an older one still building would deploy a stale site over it.
+concurrency:
+  group: site-pages
+  cancel-in-progress: true
+
+env:
+  CLOUDFLARE_PROJECT_NAME: figlens
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Build the site
+        working-directory: site
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site/dist --project-name=${{ env.CLOUDFLARE_PROJECT_NAME }} --branch=main
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

@@ -1,6 +1,6 @@
 name: Publish Release
 
-# Makes a checked draft public, then ships it to Homebrew and npm.
+# Makes a checked draft public, then ships it to Homebrew, npm and the site.
 # Secrets: HOMEBREW_TAP_SSH_KEY (write deploy key on runkids/homebrew-tap). npm needs none: it trusts
 # this workflow through OIDC (Trusted Publisher on npmjs.com: runkids/figlens, publish-release.yml).
 on:
@@ -81,3 +81,15 @@ jobs:
       - name: npm publish
         working-directory: npm
         run: npm publish --access public
+
+  site:
+    needs: publish
+    uses: ./.github/workflows/site-pages.yml
+    permissions:
+      contents: read
+      deployments: write
+    secrets:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    with:
+      ref: refs/tags/${{ inputs.tag }}

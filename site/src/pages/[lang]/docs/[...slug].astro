@@ -1,0 +1,14 @@
+---
+import DocsPage from '../../../components/DocsPage.astro';
+import { loadDocs, type DocPage } from '../../../docs';
+import { LOCALES } from '../../../i18n';
+
+export function getStaticPaths() {
+  return LOCALES.filter((lang) => lang !== 'en').flatMap((lang) =>
+    loadDocs(lang).filter((page) => !page.englishOnly).map((page) => ({ params: { lang, slug: page.slug || undefined }, props: { page } })),
+  );
+}
+
+const { page } = Astro.props as { page: DocPage };
+---
+<DocsPage page={page} />

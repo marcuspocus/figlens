@@ -21,7 +21,7 @@ For every feature or optimization, check CLI, MCP and each host integration befo
 
 ### Command and feature surfaces
 
-When a change adds a feature or adds, renames or alters a command, flag, argument form or output, update every surface that describes it in the same change:
+When a change adds, removes or alters a feature, or adds, renames, removes or alters a command, flag, argument form or output, update every surface that describes it in the same change:
 
 | Surface | Where |
 |---|---|
@@ -30,6 +30,7 @@ When a change adds a feature or adds, renames or alters a command, flag, argumen
 | Agent guidance | `skills/figlens/SKILL.md`. `figlens workflow <topic>` and MCP `workflow` serve only the sections listed in `src/workflow.rs` (`build` serves `Building a frame`, not `Many frames`), so put at least a pointer in a served section and confirm it with `figlens workflow build` |
 | Wiki | the topic page that describes the behavior, such as `fig-format`, `bundle` or `mcp` |
 | MCP | `TOOLS` in `src/contract.rs` and `wiki/mcp.md`, when the tool surface changes |
+| Site | figlens.runkids.cc (`site/`). Docs pages are generated from the READMEs above and `USAGE` (see [release](release.md)), so those edits flow through; a new or removed doc section or integration README also needs its `PLAN` entry in `site/src/docs.ts` and every locale's label and description in `site/src/i18n.ts`. Update the landing page (`site/src/pages/index.astro`, `site/src/data.ts`) when hosts, install commands, claims or proof numbers change. Run `npm run build` in `site/` |
 | Tests | beside the changed code |
 
 Before committing, search these files for both the old and the new command forms.

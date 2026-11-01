@@ -1,0 +1,115 @@
+---
+import Base from '../layouts/Base.astro';
+import { loadDocs, alternatesOf, hrefOf, SITE, type DocPage } from '../docs';
+import { UI, LANG_NAMES } from '../i18n';
+
+interface Props { page: DocPage }
+const { page } = Astro.props;
+const ui = UI[page.lang];
+const pages = loadDocs(page.lang);
+// The pager walks the pages written in this language; English-only links stay in the menu.
+const own = pages.filter((p) => !p.englishOnly);
+const at = own.findIndex((p) => p.href === page.href);
+const prev = own[at - 1];
+const next = own[at + 1];
+const groups = [...new Set(pages.map((p) => p.group))].map((g) => ({ name: ui.groups[g as keyof typeof ui.groups] ?? g, pages: pages.filter((p) => p.group === g) }));
+const alternates = alternatesOf(page);
+// Every language in the menu: this page where it exists, else that language's docs home.
+const languages = (Object.keys(LANG_NAMES) as (keyof typeof LANG_NAMES)[]).map((lang) => ({ lang, name: LANG_NAMES[lang], href: alternates.find((a) => a.lang === lang)?.href ?? hrefOf(lang, '') }));
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'TechArticle',
+      headline: page.title,
+      description: page.description,
+      inLanguage: page.lang,
+      url: SITE + page.href,
+      image: `${SITE}/og.png`,
+      isPartOf: { '@type': 'WebSite', name: 'figlens', url: `${SITE}/` },
+    },
+    {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'figlens', item: `${SITE}/` },
+        { '@type': 'ListItem', position: 2, name: ui.docsSuffix, item: SITE + hrefOf(page.lang, '') },
+        ...(page.slug ? [{ '@type': 'ListItem', position: 3, name: page.label, item: SITE + page.href }] : []),
+      ],
+    },
+  ],
+};
+// Keep titles short enough not to be cut off in results: the heading alone when it already names
+// figlens, else a shorter suffix when the full one would run past about 60 characters.
+const full = `${page.title} · ${ui.docsSuffix}`;
+const title = page.title.includes('figlens') ? page.title : full.length > 60 ? `${page.title} · figlens` : full;
+---
+<Base title={title} description={page.description} path={page.href} jsonLd={jsonLd} active="docs" lang={page.lang} alternates={alternates} docsHref={hrefOf(page.lang, '')} skip={ui.skip}>
+  <div class="docs">
+    <details class="docs-menu">
+      <summary>{ui.docsMenu} <span>· {page.label}</span></summary>
+      <nav aria-label={ui.docsMenu}>
+        {groups.map((g) => (
+          <div class="docs-group">
+            <p class="docs-group-name">{g.name}</p>
+            {g.pages.map((p) => <a href={p.href} hreflang={p.englishOnly ? 'en' : undefined} aria-current={p.href === page.href ? 'page' : undefined}>{p.label}{p.englishOnly && <span class="docs-en">{ui.englishOnly}</span>}</a>)}
+          </div>
+        ))}
+      </nav>
+    </details>
+
+    <aside class="docs-side">
+      <details class="docs-lang">
+        <summary><span class="docs-lang-label">{ui.language}</span> {LANG_NAMES[page.lang]}</summary>
+        <ul>{languages.map((l) => <li><a href={l.href} hreflang={l.lang} lang={l.lang} aria-current={l.lang === page.lang ? 'true' : undefined}>{l.name}</a></li>)}</ul>
+      </details>
+      <nav aria-label="Docs">
+        {groups.map((g) => (
+          <div class="docs-group">
+            <p class="docs-group-name">{g.name}</p>
+            {g.pages.map((p) => (
+              <>
+                <a href={p.href} hreflang={p.englishOnly ? 'en' : undefined} aria-current={p.href === page.href ? 'page' : undefined}>{p.label}{p.englishOnly && <span class="docs-en">{ui.englishOnly}</span>}</a>
+                {p.href === page.href && p.toc.length > 1 && (
+                  <ul class="docs-toc">{p.toc.map((t) => <li><a href={`#${t.id}`}>{t.text}</a></li>)}</ul>
+                )}
+              </>
+            ))}
+          </div>
+        ))}
+      </nav>
+    </aside>
+
+    <article id="doc" class="doc" data-copy={ui.copy} data-copied={ui.copied} data-copy-failed={ui.copyFailed}>
+      <details class="docs-lang docs-lang-inline">
+        <summary><span class="docs-lang-label">{ui.language}</span> {LANG_NAMES[page.lang]}</summary>
+        <ul>{languages.map((l) => <li><a href={l.href} hreflang={l.lang} lang={l.lang} aria-current={l.lang === page.lang ? 'true' : undefined}>{l.name}</a></li>)}</ul>
+      </details>
+      <h1>{page.title}</h1>
+      <div class="prose" set:html={page.html} />
+      <nav class="doc-pager" aria-label="Pages">
+        {prev ? <a class="pager-prev" href={prev.href}><span>{ui.previous}</span>{prev.label}</a> : <span />}
+        {next && <a class="pager-next" href={next.href}><span>{ui.next}</span>{next.label}</a>}
+      </nav>
+      <p class="doc-source">{ui.sourceBefore}<a href={page.source}>{page.file}</a>{ui.sourceAfter}</p>
+    </article>
+  </div>
+
+  <script>
+    // Each code block gets a Copy button; failures tell the reader to copy by hand.
+    const doc = document.getElementById('doc')!;
+    const { copy = 'Copy', copied = 'Copied', copyFailed = 'Select and copy' } = doc.dataset;
+    document.querySelectorAll<HTMLPreElement>('.prose pre').forEach((pre) => {
+      const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'pre-copy', textContent: copy });
+      btn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(pre.querySelector('code')?.innerText ?? pre.innerText);
+          btn.textContent = copied;
+        } catch {
+          btn.textContent = copyFailed;
+        }
+        setTimeout(() => { btn.textContent = copy; }, 1800);
+      });
+      pre.append(btn);
+    });
+  </script>
+</Base>

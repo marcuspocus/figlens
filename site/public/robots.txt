@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://figlens.runkids.cc/sitemap.xml

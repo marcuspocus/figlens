@@ -1,0 +1,40 @@
+---
+interface Props { lines: string[]; label?: string }
+const { lines, label = 'Copy' } = Astro.props;
+---
+<div class="cmd">
+  <pre><code>{lines.join('\n')}</code></pre>
+  <button type="button" class="copy" data-copy={lines.join('\n')} aria-live="polite">{label}</button>
+</div>
+
+<style>
+  .cmd {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    border-radius: 8px;
+    padding: 0.7rem 0.7rem 0.7rem 1rem;
+  }
+  pre {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: 500 0.88rem/1.7 var(--mono);
+    scrollbar-color: rgba(233, 231, 239, 0.3) transparent;
+  }
+  .copy {
+    font: 500 0.82rem var(--sans);
+    background: transparent;
+    color: var(--code-ink);
+    border: 1px solid rgba(233, 231, 239, 0.28);
+    border-radius: 5px;
+    padding: 0.38rem 0.75rem;
+    cursor: pointer;
+    transition: border-color 160ms var(--ease), background 160ms var(--ease);
+  }
+  .copy:hover { border-color: rgba(233, 231, 239, 0.7); }
+  .copy[data-state='done'] { background: var(--code-ink); color: var(--code-bg); }
+</style>

@@ -1,0 +1,293 @@
+---
+import Base from '../layouts/Base.astro';
+import Command from '../components/Command.astro';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { layers, primaryHosts, cliOptions, moreHosts, REPO } from '../data';
+import { SITE } from '../docs';
+
+const title = 'figlens: your coding agent reads Figma .fig files offline';
+const description = 'Give your coding agent a saved .fig path: it reads layout, text, styles, variables, assets and a reference render offline. No Dev Mode seat, no API call cap.';
+// The released version, read from the tag the site is built from.
+const version = readFileSync(resolve(process.cwd(), '../Cargo.toml'), 'utf8').match(/^version = "(.+)"/m)?.[1];
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    { '@type': 'WebSite', name: 'figlens', url: `${SITE}/`, inLanguage: 'en' },
+    {
+      '@type': 'SoftwareApplication',
+      name: 'figlens',
+      description,
+      url: `${SITE}/`,
+      image: `${SITE}/og.png`,
+      applicationCategory: 'DeveloperApplication',
+      operatingSystem: 'macOS, Linux, Windows',
+      softwareVersion: version,
+      downloadUrl: `${REPO}/releases/latest`,
+      license: 'https://opensource.org/licenses/MIT',
+      codeRepository: REPO,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    },
+  ],
+};
+const stageLabel = 'An illustrative frame pulled apart into its layers: a white card with the figlens logo, the title Ship the screen, a line of body text, an Open build button and a check icon.';
+
+// What the agent reads, row by row, and the layer each row lights up in the stack.
+const reads = [
+  { layer: 'card', name: 'Layout', value: 'Card @16,16 288×168 r=14' },
+  { layer: 'title', name: 'Text', value: '"Ship the screen" 22/600 #16151a' },
+  { layer: 'button', name: 'Components', value: 'Button instance 84×28 r=7 fill #5b47b8' },
+  { layer: 'check', name: 'Icons', value: 'Check → check.svg' },
+  { layer: 'logo', name: 'Images', value: 'logo.webp, original bytes, shown 96×32' },
+  { layer: '', name: 'Variables', value: 'design tokens with their modes, exportable as DTCG' },
+  { layer: '', name: 'Reference render', value: 'references/screen.png, to compare the build against' },
+];
+
+const proof = [
+  { n: 771, of: 826, label: 'Frames with identical node structure, names, visibility, bounds and text' },
+  { n: 2608, of: 2608, label: 'Original image fills, byte-identical' },
+  { n: 5014, of: 5197, label: 'SVG assets within the pixel threshold' },
+  { n: 306, of: 306, label: 'Community frame bundles with no missing assets' },
+];
+const fmt = (n: number) => n.toLocaleString('en-US');
+---
+<Base title={title} description={description} path="/" jsonLd={jsonLd}>
+
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <h1 id="hero-title">One <span class="file">.fig</span> file is the whole handoff.</h1>
+      <p class="lede">No Dev Mode seat. No API call cap. No desktop app on the cloud box. Give your agent the path to a saved <code>design.fig</code> and it plans the slicing, builds the screen and exports the images on its own.</p>
+      <div class="actions">
+        <a class="button" href="#install">Install figlens <svg class="button-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.5 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="textlink" href="#how">How it works</a>
+      </div>
+      <p class="hosts-line">Plugins for Claude Code, Codex and Pi. Also Cursor, OpenCode, OMP and any MCP client.</p>
+    </div>
+
+    <figure class="hero-figure">
+      <div class="stage" data-stage="hero" role="img" aria-label={stageLabel}>
+        <svg class="leaders" data-leaders aria-hidden="true"></svg>
+        <div class="tags" aria-hidden="true">
+          {layers.map((l) => (
+            <span class="tag" data-tag={l.id}><span class="tag-type">{l.type}</span> {l.name} <span class="tag-values">{l.values}</span></span>
+          ))}
+        </div>
+      </div>
+      <figcaption>
+        <div class="toggle needs-3d" role="group" aria-label="View">
+          <button type="button" data-explode="false" aria-pressed="false">The screen</button>
+          <button type="button" data-explode="true" aria-pressed="true">What figlens reads</button>
+        </div>
+        <span class="caption">An illustrative frame. The tags show what figlens reports for each layer.</span>
+      </figcaption>
+    </figure>
+  </section>
+
+  <main>
+    <section id="who" class="band split">
+      <h2>Built for agents that Figma access keeps metering.</h2>
+      <dl class="ledger">
+        <div><dt>No Dev Mode seat</dt><dd>You have the design but no paid seat for Figma's MCP. figlens reads the saved file directly.</dd></div>
+        <div><dt>MCP limits</dt><dd>Call limits stop an agent before it finishes a whole design, even with the desktop app open. Reading a local file has no budget.</dd></div>
+        <div><dt>Agents in the cloud</dt><dd>A cloud host cannot run the desktop app, and the REST API caps calls per day. Hand the agent a <code>.fig</code> path and it slices, plans and exports by itself.</dd></div>
+        <div><dt>Designers</dt><dd>Your part ends at <strong>File &gt; Save local copy</strong>. One file next to the code is the whole handoff.</dd></div>
+      </dl>
+    </section>
+
+    <section id="what" class="band reads-band">
+      <div class="reads-stage">
+        <div class="stage" data-stage="reads" role="img" aria-label={stageLabel}>
+          <svg class="leaders" data-leaders aria-hidden="true"></svg>
+          <div class="tags" aria-hidden="true">
+            {layers.map((l) => (
+              <span class="tag" data-tag={l.id}><span class="tag-type">{l.type}</span> {l.name} <span class="tag-values">{l.values}</span></span>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div class="reads-copy">
+        <h2>Every layer comes back as values the agent can build from.</h2>
+        <p class="section-lede">Point at a row to find its layer. To see real output, run figlens on the public <a href={`${REPO}/tree/main/examples/first-success`}>first-success example</a>.</p>
+        <ul class="reads">
+          {reads.map((r) => (
+            <li data-layer={r.layer || undefined} tabindex={r.layer ? 0 : undefined}>
+              <span class="read-name">{r.name}</span>
+              <code class="read-value">{r.value}</code>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+
+    <section id="how" class="band split">
+      <h2>From Save local copy to a checked screen.</h2>
+      <ol class="steps">
+        <li>
+          <h3>The designer saves a local copy.</h3>
+          <p>In Figma, <strong>File &gt; Save local copy</strong>. Commit <code>design.fig</code>, or put it where your cloud agent can read it.</p>
+        </li>
+        <li>
+          <h3>The agent finds the frame.</h3>
+          <p>By name or by visible text. No node ids to copy from a browser.</p>
+          <Command lines={['figlens find design.fig "First success" --type FRAME']} />
+        </li>
+        <li>
+          <h3>One command lifts the bundle.</h3>
+          <p>Structure, text, assets, a reference render and a manifest, in one zip.</p>
+          <Command lines={['figlens bundle design.fig 0:1 frame.zip']} />
+        </li>
+        <li>
+          <h3>It builds, then checks its own work.</h3>
+          <p>A screenshot of the running page is compared with the frame. The largest differing regions come back with the layers under them.</p>
+          <Command lines={['figlens compare-image design.fig 0:1 screenshot.png']} />
+        </li>
+      </ol>
+    </section>
+
+    <section id="proof" class="band split">
+      <div>
+        <h2>Measured against Figma's own exports.</h2>
+        <p class="section-lede">826 production frames and five Community files, compared with Figma's JSON, PNG and SVG exports on 2026-10-22.</p>
+      </div>
+      <div>
+        <ul class="proof">
+          {proof.map((p) => (
+            <li>
+              <span class="proof-label">{p.label}</span>
+              <span class="proof-bar" aria-hidden="true"><span style={`--r: ${p.n / p.of}`}></span></span>
+              <span class="proof-n">{fmt(p.n)} of {fmt(p.of)}</span>
+            </li>
+          ))}
+        </ul>
+        <p class="aside">In a <a href={`${REPO}/blob/main/examples/task-list/README.md`}>task-list case study</a>, all six figlens-based attempts kept all 19 visible text occurrences as real DOM text and all four icons, with Docker networking disabled. <a href={`${REPO}/blob/main/docs/README.md#accuracy`}>Method and limits</a>.</p>
+      </div>
+    </section>
+
+    <section id="install" class="band split">
+      <div>
+        <h2>Install it where your agent lives.</h2>
+        <p class="section-lede">Each setup gives the agent the figlens tools and the same built-in guidance. Restart the host, then check the tools are listed.</p>
+      </div>
+      <div class="install">
+        <div class="tabs" data-tabs>
+          <div class="tablist" role="tablist" aria-label="Agent">
+            {primaryHosts.map((h, i) => (
+              <button type="button" role="tab" id={`tab-${h.id}`} aria-controls={`panel-${h.id}`} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1}>{h.label}</button>
+            ))}
+          </div>
+          {primaryHosts.map((h, i) => (
+            <div role="tabpanel" id={`panel-${h.id}`} aria-labelledby={`tab-${h.id}`} hidden={i !== 0}>
+              <Command lines={h.lines} />
+              {h.note && <p class="note">{h.note}</p>}
+            </div>
+          ))}
+        </div>
+
+        <h3 class="install-sub">Command line</h3>
+        <p class="note">Pick one. The binary is self-contained, with no Rust or Docker needed.</p>
+        <ul class="options">
+          {cliOptions.map((o) => (
+            <li><span class="option-label">{o.label}</span><Command lines={[o.line]} /></li>
+          ))}
+        </ul>
+
+        <details class="more">
+          <summary>More hosts: Cursor, OpenCode, OMP, Antigravity, Kimi Code, skillshare, any MCP client</summary>
+          <ul class="options">
+            {moreHosts.map((h) => (
+              <li><span class="option-label">{h.label}</span><Command lines={h.lines} />{h.note && <p class="note">{h.note}</p>}</li>
+            ))}
+          </ul>
+        </details>
+      </div>
+    </section>
+  </main>
+
+
+  <script>
+    import { layers } from '../data';
+
+    document.querySelectorAll<HTMLElement>('[data-tabs]').forEach((root) => {
+      const tabs = [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+      const select = (tab: HTMLButtonElement) => {
+        tabs.forEach((t) => {
+          const on = t === tab;
+          t.setAttribute('aria-selected', String(on));
+          t.tabIndex = on ? 0 : -1;
+          const panel = document.getElementById(t.getAttribute('aria-controls')!);
+          if (panel) panel.hidden = !on;
+        });
+      };
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => select(tab));
+        tab.addEventListener('keydown', (e) => {
+          const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+          if (!step) return;
+          e.preventDefault();
+          const next = tabs[(i + step + tabs.length) % tabs.length];
+          next.focus();
+          select(next);
+        });
+      });
+    });
+
+    // Copy buttons report success or tell the visitor how to copy by hand.
+    document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(btn.dataset.copy!);
+          btn.textContent = 'Copied';
+          btn.dataset.state = 'done';
+        } catch {
+          btn.textContent = 'Select and copy';
+        }
+        setTimeout(() => { btn.textContent = 'Copy'; delete btn.dataset.state; }, 1800);
+      });
+    });
+
+    // WebGL gets the exploded stack; without it the static render and the value list carry the page.
+    const hero = document.querySelector<HTMLElement>('[data-stage="hero"]');
+    const readsStage = document.querySelector<HTMLElement>('[data-stage="reads"]');
+    if (hero && readsStage && !document.createElement('canvas').getContext('webgl2')) {
+      import('../scripts/screen').then(async ({ prepare, paintComposite }) => {
+        await prepare();
+        for (const stage of [hero, readsStage]) {
+          const flat = await paintComposite(layers, 3);
+          flat.className = 'stage-fallback';
+          stage.prepend(flat);
+        }
+      });
+    } else if (hero && readsStage) {
+      const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      import('../scripts/stack3d').then(async ({ mount }) => {
+        const top = mount(hero, layers, { tags: 'all' });
+        await top.ready;
+        document.documentElement.classList.add('has-3d');
+        const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-explode]')];
+        const setView = (on: boolean, instant = false) => {
+          buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.explode === String(on))));
+          top.explode(on, instant);
+        };
+        buttons.forEach((b) => b.addEventListener('click', () => setView(b.dataset.explode === 'true')));
+        if (still) setView(true, true);
+        else setTimeout(() => setView(true), 450);
+
+        const below = mount(readsStage, layers, { tags: 'active' });
+        await below.ready;
+        below.explode(true, true);
+        // One row is always selected, so the stack never sits unexplained; hover, focus or tap moves it.
+        const rows = [...document.querySelectorAll<HTMLElement>('.reads [data-layer]')];
+        const select = (row: HTMLElement) => {
+          rows.forEach((r) => r.classList.toggle('is-active', r === row));
+          below.highlight(row.dataset.layer!);
+        };
+        rows.forEach((row) => {
+          row.addEventListener('pointerenter', () => select(row));
+          row.addEventListener('focus', () => select(row));
+          row.addEventListener('click', () => select(row));
+        });
+        if (rows[0]) select(rows[0]);
+      }).catch((e) => console.warn('3D view unavailable', e));
+    }
+  </script>
+</Base>
