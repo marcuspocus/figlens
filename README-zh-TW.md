@@ -50,15 +50,13 @@
 
 一次安裝就把 figlens skill 和 MCP server 加進 agent（需要 Node.js 18+）。Server 固定在 plugin 對應的版本（`npx -y @runkids/figlens@<version> mcp`）；要換新版本就更新 plugin。
 
-<!-- x-release-please-start-version -->
 | 宿主 | 安裝 |
 |---|---|
 | Claude Code | `claude plugin marketplace add runkids/figlens`, `claude plugin install figlens@figlens` |
 | Codex | `codex plugin marketplace add runkids/figlens`, `codex plugin add figlens@figlens` |
-| Antigravity | `agy plugin install https://github.com/runkids/figlens/tree/v0.11.0` |
-| Cursor | `git clone --depth 1 --branch v0.11.0 https://github.com/runkids/figlens ~/.cursor/plugins/local/figlens`，再重新載入視窗 |
-| Kimi Code | 在 session 中執行 `/plugins install https://github.com/runkids/figlens/tree/v0.11.0`，再執行 `/reload` |
-<!-- x-release-please-end -->
+| Antigravity | `agy plugin install https://github.com/runkids/figlens/tree/main` |
+| Cursor | `git clone --depth 1 https://github.com/runkids/figlens ~/.cursor/plugins/local/figlens`，再重新載入視窗 |
+| Kimi Code | 在 session 中執行 `/plugins install https://github.com/runkids/figlens/tree/main`，再執行 `/reload` |
 
 重新啟動宿主或開新的 session，確認 figlens tools 已列出。Plugin 安裝會複製 repository：約 7 MB，Codex 另外保留 Git 歷史（約 60 MB）。Antigravity 只載入 skill 的前 24 KB；完整指引由 server 的 `workflow` tool 提供。目前還不支援 Muse。[宿主對照表與驗證範圍](wiki/host-plugins.md)
 
@@ -68,34 +66,28 @@
 
 **Claude Code**（Node.js 18+、macOS/Linux）：
 
-<!-- x-release-please-start-version -->
 ```sh
-claude mcp add --transport stdio --scope local figlens -- npx -y @runkids/figlens@0.11.0 mcp
+claude mcp add --transport stdio --scope local figlens -- npx -y @runkids/figlens mcp
 ```
-<!-- x-release-please-end -->
 
 **Codex CLI**（Node.js 18+、macOS/Linux）：
 
-<!-- x-release-please-start-version -->
 ```sh
-codex mcp add figlens -- npx -y @runkids/figlens@0.11.0 mcp
+codex mcp add figlens -- npx -y @runkids/figlens mcp
 ```
-<!-- x-release-please-end -->
 
 **任何 MCP client：**
 
-<!-- x-release-please-start-version -->
 ```json
 {
   "mcpServers": {
     "figlens": {
       "command": "npx",
-      "args": ["-y", "@runkids/figlens@0.11.0", "mcp"]
+      "args": ["-y", "@runkids/figlens", "mcp"]
     }
   }
 }
 ```
-<!-- x-release-please-end -->
 
 沒有 Node.js 時，先安裝獨立執行檔（見 [CLI](#setup-cli)），再改用 `"command": "figlens", "args": ["mcp"]`。開啟新的 session，確認看得到 figlens 工具（Claude Code 用 `/mcp`）。不必另外安裝 skill。在 `mcp` 後面加上 `--root <dir>`，可以限制 figlens 能讀寫的資料夾。
 
@@ -114,14 +106,13 @@ codex mcp add figlens -- npx -y @runkids/figlens@0.11.0 mcp
 
 兩個設計／輸出範圍與兩個 storage 允許範圍的範例：
 
-<!-- x-release-please-start-version -->
 ```json
 {
   "mcpServers": {
     "figlens": {
       "command": "npx",
       "args": [
-        "-y", "@runkids/figlens@0.11.0", "mcp",
+        "-y", "@runkids/figlens", "mcp",
         "--root", "/absolute/designs",
         "--root", "/absolute/project",
         "--storage-root", "/absolute/storage-a",
@@ -131,7 +122,6 @@ codex mcp add figlens -- npx -y @runkids/figlens@0.11.0 mcp
   }
 }
 ```
-<!-- x-release-please-end -->
 
 沒有 `figlens mcp --storage` 這個選項。實際位置由 `index` tool 的 `storage` 參數指定（允許的 storage 範圍內的絕對路徑），或使用 CLI `figlens index prepare design.fig --storage /absolute/storage-a`。`prepare` 後會記住該 workspace 的位置，跨重啟、跨 host 重用，不必再傳 `storage` 或 `--storage-root`。未自訂位置時，使用每位使用者的預設目錄，不必設定 storage 旗標。
 
@@ -209,12 +199,10 @@ skillshare sync
 
 同一個工具也能幫這些 agent 設定 figlens 的 MCP 連線：
 
-<!-- x-release-please-start-version -->
 ```sh
-skillshare mcp add figlens --global --target claude --target codex --target cursor --no-tui -- npx -y @runkids/figlens@0.11.0 mcp
+skillshare mcp add figlens --global --target claude --target codex --target cursor --no-tui -- npx -y @runkids/figlens mcp
 skillshare sync mcp --global
 ```
-<!-- x-release-please-end -->
 
 其他安裝 skill 的方式：
 

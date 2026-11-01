@@ -148,13 +148,11 @@ npx skills add runkids/figlens --skill figlens
 
 **skillshare。** [skillshare](https://github.com/runkids/skillshare) を使うと、Claude Code、Codex、Cursor 全体の skill と MCP 接続を 1 か所で管理できます。
 
-<!-- x-release-please-start-version -->
 ```sh
 skillshare install github.com/runkids/figlens/skills/figlens
-skillshare mcp add figlens --global --target claude --target codex --target cursor --no-tui -- npx -y @runkids/figlens@0.11.0 mcp
+skillshare mcp add figlens --global --target claude --target codex --target cursor --no-tui -- npx -y @runkids/figlens mcp
 skillshare sync && skillshare sync mcp --global
 ```
-<!-- x-release-please-end -->
 
 **インストールの注意。** npm ランチャーは初回使用時に対応するネイティブバイナリをダウンロードし、リリースの SHA-256 チェックサムで検証してキャッシュします。スクリプトでインストールした場合は `figlens update`、Homebrew の場合は `brew upgrade figlens` で更新します。バイナリは macOS（Apple silicon、Intel）、Linux（arm64、x86_64、静的 musl）、Windows（x86_64）に対応しています。どのインストール方法でも、[任意のセマンティック検索](#semantic-search)のランタイム `figlens-embed` が `figlens` の隣に置かれます。モデルを設定するまでモデルは読み込みません。
 

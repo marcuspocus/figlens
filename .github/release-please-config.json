@@ -33,27 +33,7 @@
         { "type": "json", "path": ".kimi-plugin/plugin.json", "jsonpath": "$.version" },
         { "type": "json", "path": ".kimi-plugin/plugin.json", "jsonpath": "$.mcpServers.figlens.args[1]" },
         { "type": "json", "path": ".antigravity-plugin/plugin.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "mcp_config.json", "jsonpath": "$.mcpServers.figlens.args[1]" },
-        { "type": "generic", "path": "README.md" },
-        { "type": "generic", "path": "README-de.md" },
-        { "type": "generic", "path": "README-es.md" },
-        { "type": "generic", "path": "README-fr.md" },
-        { "type": "generic", "path": "README-ja.md" },
-        { "type": "generic", "path": "README-ko.md" },
-        { "type": "generic", "path": "README-pt-BR.md" },
-        { "type": "generic", "path": "README-zh-CN.md" },
-        { "type": "generic", "path": "README-zh-TW.md" },
-        { "type": "generic", "path": "docs/README.md" },
-        { "type": "generic", "path": "docs/README-de.md" },
-        { "type": "generic", "path": "docs/README-es.md" },
-        { "type": "generic", "path": "docs/README-fr.md" },
-        { "type": "generic", "path": "docs/README-ja.md" },
-        { "type": "generic", "path": "docs/README-ko.md" },
-        { "type": "generic", "path": "docs/README-pt-BR.md" },
-        { "type": "generic", "path": "docs/README-zh-CN.md" },
-        { "type": "generic", "path": "docs/README-zh-TW.md" },
-        { "type": "generic", "path": "npm/README.md" },
-        { "type": "generic", "path": "wiki/mcp.md" }
+        { "type": "json", "path": "mcp_config.json", "jsonpath": "$.mcpServers.figlens.args[1]" }
       ]
     }
   }

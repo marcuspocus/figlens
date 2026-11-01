@@ -55,27 +55,21 @@ The integrations share the CLI launcher, skill and component mapping file. Resta
 
 Connect the local MCP server to your client:
 
-<!-- x-release-please-start-version -->
 ```json
-{ "mcpServers": { "figlens": { "command": "npx", "args": ["-y", "@runkids/figlens@0.11.0", "mcp"] } } }
+{ "mcpServers": { "figlens": { "command": "npx", "args": ["-y", "@runkids/figlens", "mcp"] } } }
 ```
-<!-- x-release-please-end -->
 
 For Claude Code on macOS/Linux:
 
-<!-- x-release-please-start-version -->
 ```sh
-claude mcp add --transport stdio --scope local figlens -- npx -y @runkids/figlens@0.11.0 mcp
+claude mcp add --transport stdio --scope local figlens -- npx -y @runkids/figlens mcp
 ```
-<!-- x-release-please-end -->
 
 For Codex CLI on macOS/Linux:
 
-<!-- x-release-please-start-version -->
 ```sh
-codex mcp add figlens -- npx -y @runkids/figlens@0.11.0 mcp
+codex mcp add figlens -- npx -y @runkids/figlens mcp
 ```
-<!-- x-release-please-end -->
 
 Start a new session and check `/mcp`. The MCP `workflow` tool includes on-demand guidance for design reading, project reuse, existing-UI audits, image preparation, scoped planning and explicitly requested autonomous implementation. It shares the [portable skill's](https://github.com/runkids/figlens#mcp-and-skill) sources; no separate skill install is required for MCP use. The agent carries out the task with its own project/browser tools and host permissions; reading a guide does not execute the workflow.
 

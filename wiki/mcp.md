@@ -10,7 +10,6 @@ Client `args` pass `--root DIR` and `--storage-root DIR` after `mcp`; these are 
 
 A config committed to Git cannot hold one machine's absolute paths, and a relative `--root` resolves against the client's start directory. When git-ignored designs live only in the main checkout, a relative `figma` root does not exist inside a linked worktree. Point the client at a script in the repository that resolves the roots with Git, then starts figlens:
 
-<!-- x-release-please-start-version -->
 ```sh
 #!/bin/sh
 # figlens MCP with absolute roots that also work in linked worktrees (Git >= 2.31)
@@ -21,9 +20,8 @@ main=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
 mkdir -p "$top/.figlens" # figlens refuses a missing root
 set -- --root "$top/.figlens"
 if [ -d "$main/figma" ]; then set -- "$@" --root "$main/figma"; fi
-exec npx -y @runkids/figlens@0.11.0 mcp "$@"
+exec npx -y @runkids/figlens mcp "$@"
 ```
-<!-- x-release-please-end -->
 
 ```json
 { "mcpServers": { "figlens": { "command": "scripts/figlens-mcp.sh" } } }

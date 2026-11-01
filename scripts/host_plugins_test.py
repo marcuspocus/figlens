@@ -67,24 +67,13 @@ class HostPluginsTest(unittest.TestCase):
         for path in ('.claude-plugin/marketplace.json', '.agents/plugins/marketplace.json'):
             self.assertEqual(load(path)['plugins'][0]['source'], './', path)
 
-    def test_docs_pin_the_release_inside_release_markers(self):
-        generic = {e['path'] for e in self.extra if e['type'] == 'generic'}
-        pinned = re.compile(r'@runkids/figlens@(\d[^\s"`]*)|figlens/tree/v(\d[^\s`]*)|--branch v(\d\S*)')
-        unpinned = re.compile(r'@runkids/figlens(" *, *"mcp"| mcp\b)|github\.com/runkids/figlens`'
-                              r'|git clone https://github\.com/runkids/figlens')
+    def test_docs_do_not_pin_a_version(self):
+        # A release edits no doc: install commands follow the latest package and default branch.
+        pinned = re.compile(r'@runkids/figlens@\d|figlens/tree/v\d|--branch v\d|x-release-please')
         for path in DOC_FILES:
-            inside = False
             for number, line in enumerate((ROOT / path).read_text().split('\n'), 1):
-                inside = inside and 'x-release-please-end' not in line
-                self.assertIsNone(unpinned.search(line), f'{path}:{number} unpinned install or npx command')
-                if inside:  # release-please rewrites the first version on every marked line
-                    self.assertEqual(set(re.findall(r'\d+\.\d+\.\d+', line)) - {self.version}, set(), f'{path}:{number}')
-                for match in pinned.finditer(line):
-                    self.assertEqual(next(filter(None, match.groups())), self.version, f'{path}:{number}')
-                    self.assertTrue(inside, f'{path}:{number} outside release-please markers')
-                    self.assertIn(path, generic, path)
-                # release-please does not bump the start-marker line itself
-                inside = inside or 'x-release-please-start-version' in line
+                self.assertIsNone(pinned.search(line), f'{path}:{number} pins a version')
+        self.assertFalse([e for e in self.extra if e['type'] == 'generic'])
 
 
 if __name__ == '__main__':

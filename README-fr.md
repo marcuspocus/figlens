@@ -50,15 +50,13 @@ Placez `design.fig` dans votre projet, puis choisissez **une** configuration. Ch
 
 Une seule installation ajoute le skill figlens et le serveur MCP à votre agent (Node.js 18+). Le serveur est figé sur la version du plugin (`npx -y @runkids/figlens@<version> mcp`). Mettez le plugin à jour pour passer à une nouvelle version.
 
-<!-- x-release-please-start-version -->
 | Hôte | Installation |
 |---|---|
 | Claude Code | `claude plugin marketplace add runkids/figlens`, `claude plugin install figlens@figlens` |
 | Codex | `codex plugin marketplace add runkids/figlens`, `codex plugin add figlens@figlens` |
-| Antigravity | `agy plugin install https://github.com/runkids/figlens/tree/v0.11.0` |
-| Cursor | `git clone --depth 1 --branch v0.11.0 https://github.com/runkids/figlens ~/.cursor/plugins/local/figlens`, puis rechargez la fenêtre |
-| Kimi Code | `/plugins install https://github.com/runkids/figlens/tree/v0.11.0` dans une session, puis `/reload` |
-<!-- x-release-please-end -->
+| Antigravity | `agy plugin install https://github.com/runkids/figlens/tree/main` |
+| Cursor | `git clone --depth 1 https://github.com/runkids/figlens ~/.cursor/plugins/local/figlens`, puis rechargez la fenêtre |
+| Kimi Code | `/plugins install https://github.com/runkids/figlens/tree/main` dans une session, puis `/reload` |
 
 Redémarrez l'hôte ou ouvrez une nouvelle session, puis vérifiez que les outils figlens sont listés. L'installation d'un plugin copie le dépôt : environ 7 Mo, plus l'historique Git (environ 60 Mo) dans Codex. Antigravity ne charge que les 24 premiers Ko du skill ; l'outil `workflow` du serveur fournit le guide complet. Muse n'est pas encore pris en charge. [Tableau des hôtes et ce qui a été vérifié](wiki/host-plugins.md)
 
@@ -68,34 +66,28 @@ Redémarrez l'hôte ou ouvrez une nouvelle session, puis vérifiez que les outil
 
 **Claude Code** (Node.js 18+, macOS/Linux) :
 
-<!-- x-release-please-start-version -->
 ```sh
-claude mcp add --transport stdio --scope local figlens -- npx -y @runkids/figlens@0.11.0 mcp
+claude mcp add --transport stdio --scope local figlens -- npx -y @runkids/figlens mcp
 ```
-<!-- x-release-please-end -->
 
 **Codex CLI** (Node.js 18+, macOS/Linux) :
 
-<!-- x-release-please-start-version -->
 ```sh
-codex mcp add figlens -- npx -y @runkids/figlens@0.11.0 mcp
+codex mcp add figlens -- npx -y @runkids/figlens mcp
 ```
-<!-- x-release-please-end -->
 
 **Tout client MCP :**
 
-<!-- x-release-please-start-version -->
 ```json
 {
   "mcpServers": {
     "figlens": {
       "command": "npx",
-      "args": ["-y", "@runkids/figlens@0.11.0", "mcp"]
+      "args": ["-y", "@runkids/figlens", "mcp"]
     }
   }
 }
 ```
-<!-- x-release-please-end -->
 
 Sans Node.js, installez le binaire autonome ([CLI](#setup-cli)) et utilisez `"command": "figlens", "args": ["mcp"]`. Ouvrez une nouvelle session et vérifiez que les outils figlens apparaissent (`/mcp` dans Claude Code). Aucune installation séparée du skill n'est nécessaire. Ajoutez `--root <dir>` après `mcp` pour limiter les dossiers que figlens peut lire et écrire.
 
@@ -114,14 +106,13 @@ Utilisez des chemins absolus vers des répertoires existants. Chaque option et c
 
 Exemple avec deux racines de design/sortie et deux racines de stockage autorisées :
 
-<!-- x-release-please-start-version -->
 ```json
 {
   "mcpServers": {
     "figlens": {
       "command": "npx",
       "args": [
-        "-y", "@runkids/figlens@0.11.0", "mcp",
+        "-y", "@runkids/figlens", "mcp",
         "--root", "/absolute/designs",
         "--root", "/absolute/project",
         "--storage-root", "/absolute/storage-a",
@@ -131,7 +122,6 @@ Exemple avec deux racines de design/sortie et deux racines de stockage autorisé
   }
 }
 ```
-<!-- x-release-please-end -->
 
 `figlens mcp --storage` n’existe pas. Choisissez l’emplacement réel avec l’argument `storage` de l’outil `index` (chemin absolu sous une racine autorisée), ou via CLI : `figlens index prepare design.fig --storage /absolute/storage-a`. Après `prepare`, figlens mémorise l’emplacement du workspace et le réutilise entre redémarrages et hôtes sans répéter `storage` ni `--storage-root`. Sans emplacement personnalisé, les répertoires par défaut de l’utilisateur s’appliquent, sans option de stockage.
 
@@ -209,12 +199,10 @@ skillshare sync
 
 Le même outil peut aussi configurer la connexion MCP de figlens pour ces agents :
 
-<!-- x-release-please-start-version -->
 ```sh
-skillshare mcp add figlens --global --target claude --target codex --target cursor --no-tui -- npx -y @runkids/figlens@0.11.0 mcp
+skillshare mcp add figlens --global --target claude --target codex --target cursor --no-tui -- npx -y @runkids/figlens mcp
 skillshare sync mcp --global
 ```
-<!-- x-release-please-end -->
 
 Autres façons d'installer le skill :
 
