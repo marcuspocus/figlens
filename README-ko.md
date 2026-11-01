@@ -48,7 +48,7 @@
 
 ### 플러그인
 
-한 번 설치하면 figlens skill과 MCP 서버가 에이전트에 추가됩니다(Node.js 18+). 서버는 플러그인 릴리스에 고정되므로(`npx -y @runkids/figlens@<version> mcp`) skill과 바이너리 버전이 항상 일치합니다. 새 버전으로 바꾸려면 플러그인을 업데이트하세요.
+한 번 설치하면 figlens skill과 MCP 서버가 에이전트에 추가됩니다(Node.js 18+). 서버는 플러그인 릴리스에 고정됩니다(`npx -y @runkids/figlens@<version> mcp`). 새 버전으로 바꾸려면 플러그인을 업데이트하세요.
 
 <!-- x-release-please-start-version -->
 | 호스트 | 설치 |
@@ -60,7 +60,7 @@
 | Kimi Code | 세션에서 `/plugins install https://github.com/runkids/figlens/tree/v0.11.0` 실행 후 `/reload` |
 <!-- x-release-please-end -->
 
-호스트를 다시 시작하거나 새 세션을 열고 figlens 도구가 표시되는지 확인하세요. 플러그인 설치는 릴리스 태그 시점의 저장소를 복사합니다(약 7 MB, Codex는 Git 기록도 보관해 약 60 MB). Antigravity는 skill의 처음 24 KB만 로드하며, 전체 지침은 서버의 `workflow` 도구가 제공합니다. Muse는 아직 지원하지 않습니다. [호스트 표와 검증 범위](wiki/host-plugins.md)
+호스트를 다시 시작하거나 새 세션을 열고 figlens 도구가 표시되는지 확인하세요. 플러그인 설치는 저장소를 복사합니다(약 7 MB, Codex는 Git 기록도 보관해 약 60 MB). Antigravity는 skill의 처음 24 KB만 로드하며, 전체 지침은 서버의 `workflow` 도구가 제공합니다. Muse는 아직 지원하지 않습니다. [호스트 표와 검증 범위](wiki/host-plugins.md)
 
 <a id="setup-mcp"></a>
 

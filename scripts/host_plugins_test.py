@@ -1,4 +1,4 @@
-"""Host plugin manifests and install docs stay in lockstep with the npm package and its release tag."""
+"""Host plugin manifests and install docs stay in lockstep with the npm package."""
 import json
 import re
 import subprocess
@@ -50,7 +50,7 @@ class HostPluginsTest(unittest.TestCase):
         for path in HOST_FILES:
             data = load(path)
             pinned = [s for s in strings(data) if s.startswith('@runkids/figlens')]
-            versions = ['version' in data, *(('version' in p) + ('ref' in p['source']) for p in data.get('plugins', []))]
+            versions = ['version' in data, *('version' in p for p in data.get('plugins', []))]
             paths = {jp for p, jp in bumped if p == path}
             self.assertEqual(len(paths), len(pinned) + sum(versions), f'{path}: an unbumped version or package')
 
@@ -62,14 +62,10 @@ class HostPluginsTest(unittest.TestCase):
                     self.assertTrue((ROOT / data[key]).exists(), f'{path} {key}')
         self.assertTrue((ROOT / 'skills/figlens/SKILL.md').is_file())
 
-    def test_marketplaces_install_the_skill_from_the_release_tag(self):
-        # A source without the tag would pair the dev-tree skill with the pinned server.
+    def test_marketplaces_install_from_the_repository_root(self):
+        # The relative form is what other plugin repositories and tools such as Skillshare read.
         for path in ('.claude-plugin/marketplace.json', '.agents/plugins/marketplace.json'):
-            source = load(path)['plugins'][0]['source']
-            self.assertIsInstance(source, dict, path)
-            self.assertIn('runkids/figlens', source.get('repo', source.get('url', '')), path)
-            self.assertEqual(source.get('ref'), f'v{self.version}', path)
-            self.assertIn({'type': 'json', 'path': path, 'jsonpath': '$.plugins[0].source.ref'}, self.extra, path)
+            self.assertEqual(load(path)['plugins'][0]['source'], './', path)
 
     def test_docs_pin_the_release_inside_release_markers(self):
         generic = {e['path'] for e in self.extra if e['type'] == 'generic'}

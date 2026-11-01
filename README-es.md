@@ -48,7 +48,7 @@ Pon `design.fig` en tu proyecto y elige **una** configuración. Cada una le da a
 
 ### Plugin
 
-Una sola instalación añade el skill de figlens y el servidor MCP a tu agente (Node.js 18+). El servidor queda fijado a la versión del plugin (`npx -y @runkids/figlens@<version> mcp`), así que el skill y el binario siempre coinciden; actualiza el plugin para pasar a una versión nueva.
+Una sola instalación añade el skill de figlens y el servidor MCP a tu agente (Node.js 18+). El servidor queda fijado a la versión del plugin (`npx -y @runkids/figlens@<version> mcp`); actualiza el plugin para pasar a una versión nueva.
 
 <!-- x-release-please-start-version -->
 | Host | Instalación |
@@ -60,7 +60,7 @@ Una sola instalación añade el skill de figlens y el servidor MCP a tu agente (
 | Kimi Code | `/plugins install https://github.com/runkids/figlens/tree/v0.11.0` en una sesión y luego `/reload` |
 <!-- x-release-please-end -->
 
-Reinicia el host o abre una sesión nueva y comprueba que aparecen las herramientas de figlens. La instalación de un plugin copia el repositorio en la etiqueta de la versión: unos 7 MB, más el historial de Git (unos 60 MB) en Codex. Antigravity carga solo los primeros 24 KB del skill; la herramienta `workflow` del servidor ofrece la guía completa. Muse aún no está soportado. [Tabla de hosts y qué se verificó](wiki/host-plugins.md)
+Reinicia el host o abre una sesión nueva y comprueba que aparecen las herramientas de figlens. La instalación de un plugin copia el repositorio: unos 7 MB, más el historial de Git (unos 60 MB) en Codex. Antigravity carga solo los primeros 24 KB del skill; la herramienta `workflow` del servidor ofrece la guía completa. Muse aún no está soportado. [Tabla de hosts y qué se verificó](wiki/host-plugins.md)
 
 <a id="setup-mcp"></a>
 

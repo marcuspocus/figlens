@@ -16,22 +16,18 @@ The repository root is the plugin root for every host: one `skills/` tree, plus 
 
 No root `.mcp.json`: Claude Code would offer it to everyone who opens this repository. No hooks or session-start injection: the skill is invoked per task and the server serves its own instructions.
 
-## Release-matched skill
+## Install source
 
-A skill from the development tree can prescribe tools the pinned binary lacks, so every install path takes the skill from the `v<version>` tag:
-- Claude Code: the marketplace entry's `source` is `github` with `ref`, plus `strict: false` and its own `mcpServers`, so it works even at a tag without `.claude-plugin/`.
-- Codex: the marketplace entry's `source` is `url` with `ref`. Codex reads `.codex-plugin/` from the tag, so a tag older than the manifests installs the skill without the server.
-- Antigravity and Kimi Code (`/tree/v<version>`) and Cursor (`git clone --branch v<version>`): the documented commands pin the tag.
+Claude Code's and Codex's marketplace entries use `"source": "./"`, the form single-plugin repositories use and tools such as Skillshare read. Both install from the default branch, so between a feature merge and the next release the skill can name a tool or flag the pinned server lacks, and the server answers with an error; frequent releases keep that window short. Pinning the tag with a `github` or `url` source and `ref` would keep the skill at the release, but Skillshare rejects such an entry as an external source. Antigravity and Kimi Code (`/tree/v<version>`) and Cursor (`git clone --branch v<version>`) pin the tag in their documented commands.
 
-Tags up to `v0.10.1` predate these manifests: from them only Claude Code gets the server, which is why its marketplace entry carries `strict: false` and its own `mcpServers`.
 Between merging the Release Please PR and Publish Release, the bumped refs and pins name an npm version that is not published yet, so publish promptly.
 
 ## Verification
 
 | Host | Evidence | Not verified |
 |---|---|---|
-| Claude Code 2.1.316 | `claude plugin validate .`; install with an isolated `CLAUDE_CONFIG_DIR` fetched `v0.10.1` (cached `SKILL.md` identical to the tag's); `plugin details` lists skill and MCP `figlens`; `claude mcp list` reports it connected | a model session |
-| Codex 0.165.0 | isolated `CODEX_HOME`. Local `url` source: `plugin/read` lists skill `figlens:figlens` and server `figlens`; `mcpServerStatus/list` lists 17 tools. With `ref: v0.10.1` it cloned the tag (`SKILL.md` identical), which has no `.codex-plugin/`, so no server | a model session; the server from a tag that carries the manifests |
+| Claude Code 2.1.316 | `claude plugin validate .`; with an isolated `CLAUDE_CONFIG_DIR`, a local marketplace with `"./"` installs it; `plugin details` lists skill and MCP `figlens`; `claude mcp list` reports it connected | a model session |
+| Codex 0.166.0 | isolated `CODEX_HOME`: a local marketplace with `"./"` installs it, and `codex mcp list` shows server `figlens` | a model session |
 | Antigravity 1.4.2 | `agy plugin validate`: 1 skill, 1 MCP server | install (it writes the real home); a session |
 | Cursor, Kimi Code | fields from the hosts' plugin docs and published plugins that ship MCP | no host run |
 
@@ -47,11 +43,11 @@ Demo media is not in the tree; docs link it at the `v0.10.1` tag (keep that tag)
 
 ## Versions
 
-Release Please bumps every manifest `version`, marketplace `ref` and pinned `@runkids/figlens@<version>` through `extra-files` in `.github/release-please-config.json`. In the READMEs, `docs/` READMEs, `npm/README.md` and `wiki/mcp.md`, pinned commands sit between `x-release-please-start-version` and `x-release-please-end` comments, which the `generic` entries bump; keep other versions out of those blocks. `scripts/host_plugins_test.py` checks every tracked Markdown file and manifest: no unpinned install or `npx … mcp` command, every pin equal to `npm/package.json` and bumped by `extra-files`, marketplace sources at the release tag, and manifest paths that exist.
+Release Please bumps every manifest `version` and pinned `@runkids/figlens@<version>` through `extra-files` in `.github/release-please-config.json`. In the READMEs, `docs/` READMEs, `npm/README.md` and `wiki/mcp.md`, pinned commands sit between `x-release-please-start-version` and `x-release-please-end` comments, which the `generic` entries bump; keep other versions out of those blocks. `scripts/host_plugins_test.py` checks every tracked Markdown file and manifest: no unpinned install or `npx … mcp` command, every pin equal to `npm/package.json` and bumped by `extra-files`, marketplace sources at the repository root, and manifest paths that exist.
 
 ## Adding a host
 
 1. Read the host's plugin docs or installed CLI for its skill and MCP fields. Do not copy another host's fields.
 2. Add its manifest directory, list it in `HOST_FILES`, and add each version field to `extra-files`.
-3. Pin its install path to the release tag, then install it with an isolated config directory. Confirm the skill and the server's tools, and record the result in the table above.
+3. Pin a documented clone or URL install to the release tag, then install it with an isolated config directory. Confirm the skill and the server's tools, and record the result in the table above.
 4. Update the Plugin setup in `README.md` and every locale.

@@ -48,7 +48,7 @@
 
 ### Plugin
 
-一次安装就把 figlens skill 和 MCP server 加入 agent（需要 Node.js 18+）。Server 固定在 plugin 对应的版本（`npx -y @runkids/figlens@<version> mcp`），所以 skill 和可执行文件版本始终一致；要换新版本就更新 plugin。
+一次安装就把 figlens skill 和 MCP server 加入 agent（需要 Node.js 18+）。Server 固定在 plugin 对应的版本（`npx -y @runkids/figlens@<version> mcp`）；要换新版本就更新 plugin。
 
 <!-- x-release-please-start-version -->
 | 宿主 | 安装 |
@@ -60,7 +60,7 @@
 | Kimi Code | 在会话中运行 `/plugins install https://github.com/runkids/figlens/tree/v0.11.0`，然后运行 `/reload` |
 <!-- x-release-please-end -->
 
-重启宿主或开启新会话，确认已列出 figlens tools。Plugin 安装会复制该 release tag 的仓库：约 7 MB，Codex 另外保留 Git 历史（约 60 MB）。Antigravity 只加载 skill 的前 24 KB；完整指引由 server 的 `workflow` tool 提供。暂不支持 Muse。[宿主对照表与验证范围](wiki/host-plugins.md)
+重启宿主或开启新会话，确认已列出 figlens tools。Plugin 安装会复制仓库：约 7 MB，Codex 另外保留 Git 历史（约 60 MB）。Antigravity 只加载 skill 的前 24 KB；完整指引由 server 的 `workflow` tool 提供。暂不支持 Muse。[宿主对照表与验证范围](wiki/host-plugins.md)
 
 <a id="setup-mcp"></a>
 

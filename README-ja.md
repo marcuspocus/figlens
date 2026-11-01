@@ -48,7 +48,7 @@
 
 ### プラグイン
 
-1 回のインストールで figlens の skill と MCP サーバーをエージェントに追加します（Node.js 18+）。サーバーはプラグインのリリースに固定される（`npx -y @runkids/figlens@<version> mcp`）ため、skill とバイナリのバージョンは常に一致します。新しいバージョンにするにはプラグインを更新してください。
+1 回のインストールで figlens の skill と MCP サーバーをエージェントに追加します（Node.js 18+）。サーバーはプラグインのリリースに固定されます（`npx -y @runkids/figlens@<version> mcp`）。新しいバージョンにするにはプラグインを更新してください。
 
 <!-- x-release-please-start-version -->
 | ホスト | インストール |
@@ -60,7 +60,7 @@
 | Kimi Code | セッション内で `/plugins install https://github.com/runkids/figlens/tree/v0.11.0`、その後 `/reload` |
 <!-- x-release-please-end -->
 
-ホストを再起動するか新しいセッションを開始し、figlens のツールが表示されることを確認してください。プラグインはリリースタグ時点のリポジトリをコピーします（約 7 MB。Codex は Git 履歴も保持し約 60 MB）。Antigravity は skill の先頭 24 KB しか読み込みません。完全なガイダンスはサーバーの `workflow` ツールが提供します。Muse はまだサポートしていません。[ホスト対応表と検証範囲](wiki/host-plugins.md)
+ホストを再起動するか新しいセッションを開始し、figlens のツールが表示されることを確認してください。プラグインはリポジトリをコピーします（約 7 MB。Codex は Git 履歴も保持し約 60 MB）。Antigravity は skill の先頭 24 KB しか読み込みません。完全なガイダンスはサーバーの `workflow` ツールが提供します。Muse はまだサポートしていません。[ホスト対応表と検証範囲](wiki/host-plugins.md)
 
 <a id="setup-mcp"></a>
 

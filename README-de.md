@@ -48,7 +48,7 @@ Lege `design.fig` in dein Projekt und wähle dann **ein** Setup. Jedes gibt dein
 
 ### Plugin
 
-Eine Installation fügt deinem Agenten den figlens-Skill und den MCP-Server hinzu (Node.js 18+). Der Server ist auf das Release des Plugins festgelegt (`npx -y @runkids/figlens@<version> mcp`), daher passen Skill und Binary immer zusammen; für eine neue Version aktualisierst du das Plugin.
+Eine Installation fügt deinem Agenten den figlens-Skill und den MCP-Server hinzu (Node.js 18+). Der Server ist auf das Release des Plugins festgelegt (`npx -y @runkids/figlens@<version> mcp`); für eine neue Version aktualisierst du das Plugin.
 
 <!-- x-release-please-start-version -->
 | Host | Installation |
@@ -60,7 +60,7 @@ Eine Installation fügt deinem Agenten den figlens-Skill und den MCP-Server hinz
 | Kimi Code | `/plugins install https://github.com/runkids/figlens/tree/v0.11.0` in einer Sitzung, dann `/reload` |
 <!-- x-release-please-end -->
 
-Starte den Host neu oder öffne eine neue Sitzung und prüfe, ob die figlens-Tools aufgelistet sind. Eine Plugin-Installation kopiert das Repository am Release-Tag: etwa 7 MB, in Codex zusätzlich die Git-Historie (etwa 60 MB). Antigravity lädt nur die ersten 24 KB des Skills; die vollständige Anleitung liefert das `workflow`-Tool des Servers. Muse wird noch nicht unterstützt. [Host-Übersicht und was geprüft wurde](wiki/host-plugins.md)
+Starte den Host neu oder öffne eine neue Sitzung und prüfe, ob die figlens-Tools aufgelistet sind. Eine Plugin-Installation kopiert das Repository: etwa 7 MB, in Codex zusätzlich die Git-Historie (etwa 60 MB). Antigravity lädt nur die ersten 24 KB des Skills; die vollständige Anleitung liefert das `workflow`-Tool des Servers. Muse wird noch nicht unterstützt. [Host-Übersicht und was geprüft wurde](wiki/host-plugins.md)
 
 <a id="setup-mcp"></a>
 
