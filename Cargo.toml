@@ -7,7 +7,7 @@ license = "MIT"
 # Shipped as release binaries, Homebrew and npm; not on crates.io.
 publish = false
 repository = "https://github.com/runkids/figlens"
-homepage = "https://github.com/runkids/figlens"
+homepage = "https://figlens.runkids.cc"
 readme = "README.md"
 keywords = ["figma", "fig", "design", "design-to-code", "cli"]
 categories = ["command-line-utilities", "parser-implementations", "multimedia::images"]

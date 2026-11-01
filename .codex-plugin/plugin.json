@@ -6,7 +6,7 @@
     "name": "runkids",
     "url": "https://github.com/runkids"
   },
-  "homepage": "https://github.com/runkids/figlens",
+  "homepage": "https://figlens.runkids.cc",
   "repository": "https://github.com/runkids/figlens",
   "license": "MIT",
   "keywords": [
@@ -26,6 +26,6 @@
       "Read",
       "Write"
     ],
-    "websiteURL": "https://github.com/runkids/figlens"
+    "websiteURL": "https://figlens.runkids.cc"
   }
 }

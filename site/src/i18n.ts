@@ -1,4 +1,5 @@
-export const LOCALES = ['en', 'zh-TW', 'zh-CN', 'ja', 'ko', 'de', 'fr', 'es', 'pt-BR'] as const;
+// The README language switcher's order.
+export const LOCALES = ['en', 'de', 'es', 'fr', 'ja', 'ko', 'pt-BR', 'zh-CN', 'zh-TW'] as const;
 export type Locale = (typeof LOCALES)[number];
 
 export const LANG_NAMES: Record<Locale, string> = {

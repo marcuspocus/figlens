@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://figlens.runkids.cc/"><img src="https://img.shields.io/badge/website-figlens.runkids.cc-8b78c8" alt="figlens website"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8b78c8" alt="MIT license"></a>
   <a href="https://github.com/runkids/figlens/releases"><img src="https://img.shields.io/github/downloads/runkids/figlens/total?label=GitHub%20downloads&amp;color=79b9a5" alt="Total GitHub release asset downloads"></a>
   <a href="https://pi.dev/packages/@runkids/figlens"><img src="https://img.shields.io/badge/Pi-package-8b78c8" alt="Pi package"></a>
@@ -18,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="#start">시작</a> · <a href="#demo">데모</a> · <a href="#why">이유</a> · <a href="#bundle">에이전트가 받는 것</a> · <a href="#pi">Pi</a> · <a href="#limitations">제한 사항</a>
+  <a href="#start">시작</a> · <a href="#demo">데모</a> · <a href="#why">이유</a> · <a href="#bundle">에이전트가 받는 것</a> · <a href="#pi">Pi</a> · <a href="#limitations">제한 사항</a> · <a href="https://figlens.runkids.cc/ko/docs/"><b>문서</b></a>
 </p>
 
 **문제.** 화면을 구현하려면 에이전트에 레이아웃 값, 텍스트, 에셋이 필요합니다. 원격 호스트나 CI에서는 실행 중인 데스크톱 앱에 의존하지 않고 코드와 함께 디자인 정보에 접근할 수 있어야 합니다.

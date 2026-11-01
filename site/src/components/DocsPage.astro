@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import { loadDocs, alternatesOf, hrefOf, SITE, type DocPage } from '../docs';
-import { UI, LANG_NAMES } from '../i18n';
+import { UI, LANG_NAMES, LOCALES } from '../i18n';
 
 interface Props { page: DocPage }
 const { page } = Astro.props;
@@ -15,7 +15,7 @@ const next = own[at + 1];
 const groups = [...new Set(pages.map((p) => p.group))].map((g) => ({ name: ui.groups[g as keyof typeof ui.groups] ?? g, pages: pages.filter((p) => p.group === g) }));
 const alternates = alternatesOf(page);
 // Every language in the menu: this page where it exists, else that language's docs home.
-const languages = (Object.keys(LANG_NAMES) as (keyof typeof LANG_NAMES)[]).map((lang) => ({ lang, name: LANG_NAMES[lang], href: alternates.find((a) => a.lang === lang)?.href ?? hrefOf(lang, '') }));
+const languages = LOCALES.map((lang) => ({ lang, name: LANG_NAMES[lang], href: alternates.find((a) => a.lang === lang)?.href ?? hrefOf(lang, '') }));
 const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [

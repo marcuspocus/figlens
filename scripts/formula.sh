@@ -19,7 +19,7 @@ asset() {
 cat <<EOF
 class Figlens < Formula
   desc "Figma screens for coding agents, with no Figma app, login or API limit"
-  homepage "https://github.com/runkids/figlens"
+  homepage "https://figlens.runkids.cc"
   version "$version"
   license "MIT"
 

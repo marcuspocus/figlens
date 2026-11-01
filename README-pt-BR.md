@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://figlens.runkids.cc/"><img src="https://img.shields.io/badge/website-figlens.runkids.cc-8b78c8" alt="figlens website"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8b78c8" alt="MIT license"></a>
   <a href="https://github.com/runkids/figlens/releases"><img src="https://img.shields.io/github/downloads/runkids/figlens/total?label=GitHub%20downloads&amp;color=79b9a5" alt="Total GitHub release asset downloads"></a>
   <a href="https://pi.dev/packages/@runkids/figlens"><img src="https://img.shields.io/badge/Pi-package-8b78c8" alt="Pi package"></a>
@@ -18,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="#start">Começar</a> · <a href="#demo">Demo</a> · <a href="#why">Por quê</a> · <a href="#bundle">O que o agente recebe</a> · <a href="#pi">Pi</a> · <a href="#limitations">Limitações</a>
+  <a href="#start">Começar</a> · <a href="#demo">Demo</a> · <a href="#why">Por quê</a> · <a href="#bundle">O que o agente recebe</a> · <a href="#pi">Pi</a> · <a href="#limitations">Limitações</a> · <a href="https://figlens.runkids.cc/pt-BR/docs/"><b>Documentação</b></a>
 </p>
 
 **O problema.** Seu agente precisa de valores de layout, texto e recursos para implementar uma tela. Em um servidor remoto ou no CI, esse contexto deve estar disponível ao lado do código, sem depender de um aplicativo desktop em execução.

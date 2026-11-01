@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://figlens.runkids.cc/"><img src="https://img.shields.io/badge/website-figlens.runkids.cc-8b78c8" alt="figlens website"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8b78c8" alt="MIT license"></a>
   <a href="https://github.com/runkids/figlens/releases"><img src="https://img.shields.io/github/downloads/runkids/figlens/total?label=GitHub%20downloads&amp;color=79b9a5" alt="Total GitHub release asset downloads"></a>
   <a href="https://pi.dev/packages/@runkids/figlens"><img src="https://img.shields.io/badge/Pi-package-8b78c8" alt="Pi package"></a>
@@ -18,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="#start">はじめに</a> · <a href="#demo">デモ</a> · <a href="#why">理由</a> · <a href="#bundle">エージェントが受け取るもの</a> · <a href="#pi">Pi</a> · <a href="#limitations">制限</a>
+  <a href="#start">はじめに</a> · <a href="#demo">デモ</a> · <a href="#why">理由</a> · <a href="#bundle">エージェントが受け取るもの</a> · <a href="#pi">Pi</a> · <a href="#limitations">制限</a> · <a href="https://figlens.runkids.cc/ja/docs/"><b>ドキュメント</b></a>
 </p>
 
 **課題。** 画面の実装にはレイアウト値、テキスト、素材が必要です。リモートホストや CI では、実行中のデスクトップアプリに依存せず、コードと一緒にデザイン情報へアクセスできる必要があります。

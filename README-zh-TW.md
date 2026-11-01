@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://figlens.runkids.cc/"><img src="https://img.shields.io/badge/website-figlens.runkids.cc-8b78c8" alt="figlens website"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8b78c8" alt="MIT license"></a>
   <a href="https://github.com/runkids/figlens/releases"><img src="https://img.shields.io/github/downloads/runkids/figlens/total?label=GitHub%20downloads&amp;color=79b9a5" alt="Total GitHub release asset downloads"></a>
   <a href="https://pi.dev/packages/@runkids/figlens"><img src="https://img.shields.io/badge/Pi-package-8b78c8" alt="Pi package"></a>
@@ -18,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="#start">開始使用</a> · <a href="#demo">示範</a> · <a href="#why">為什麼選 figlens</a> · <a href="#bundle">Agent 拿到什麼</a> · <a href="#pi">Pi</a> · <a href="#limitations">限制</a>
+  <a href="#start">開始使用</a> · <a href="#demo">示範</a> · <a href="#why">為什麼選 figlens</a> · <a href="#bundle">Agent 拿到什麼</a> · <a href="#pi">Pi</a> · <a href="#limitations">限制</a> · <a href="https://figlens.runkids.cc/zh-TW/docs/"><b>文件</b></a>
 </p>
 
 **問題。** Agent 需要排版數值、文字與素材才能實作畫面。在遠端主機或 CI，這些設計上下文需要和程式碼放在一起，讓 agent 不必依賴執行中的桌面 App。
