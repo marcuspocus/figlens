@@ -2,6 +2,28 @@
 use super::*;
 use std::collections::BTreeMap;
 
+/// Node fields Figma Motion stores (2026 schema). `easingType` is left out, as prototype
+/// transitions use it too, and so are boolean switches, which a false value can carry.
+const MOTION_FIELDS: &[&str] = &[
+    "timelinePosition",
+    "timelinePositionType",
+    "timelineDuration",
+    "timelineOffset",
+    "timelineKeyframeSnappingFps",
+    "timelineDefinitions",
+    "timelineAssignments",
+    "keyframeValue",
+    "keyframeValueRef",
+    "keyframeOperation",
+    "easingData",
+    "motionTransform",
+    "motionPathBezierHandles",
+    "animationPresets",
+    "backingAnimationPresetId",
+    "styleIdsForAnimation",
+    "styleAnimations",
+];
+
 pub(super) fn fields(k: &Obj, kind: &str, parent: Option<&Obj>, out: &mut Obj) {
     let mut diagnostics = Vec::new();
     let mut add = |feature, sources: Vec<&str>, reason| {
@@ -78,6 +100,41 @@ pub(super) fn fields(k: &Obj, kind: &str, parent: Option<&Obj>, out: &mut Obj) {
             "Stored grid anchors can disagree with the saved layout, so no cell index is emitted; read the cell from the child's order and saved position.",
         );
     }
+    // Figma Motion (2026 schema): keyframe/track/preset nodes, or Motion fields on any node.
+    let mut motion = Vec::new();
+    if matches!(
+        kind,
+        "KEYFRAME" | "KEYFRAME_TRACK" | "ANIMATION_PRESET_INSTANCE"
+    ) {
+        motion.push("type");
+    }
+    motion.extend(MOTION_FIELDS.iter().filter(|f| k.contains_key(**f)));
+    add(
+        "motion",
+        motion,
+        "Saved Motion keyframes, timelines and easing are not emitted; the output is the static frame.",
+    );
+    let mut code = Vec::new();
+    if matches!(
+        kind,
+        "CODE_LAYER"
+            | "CODE_COMPONENT"
+            | "CODE_INSTANCE"
+            | "CODE_FILE"
+            | "CODE_LIBRARY"
+            | "CODE_EMBED"
+            | "NATIVE_CODE_LAYER_INSTANCE"
+    ) {
+        code.push("type");
+    }
+    if at(k, "isEmbedCodeLayer") == true {
+        code.push("isEmbedCodeLayer");
+    }
+    add(
+        "codeLayers",
+        code,
+        "Saved code layers are not emitted; their source and rendered result are not read.",
+    );
     if at(k, "layoutGrids")
         .as_array()
         .is_some_and(|v| !v.is_empty())
@@ -238,6 +295,49 @@ mod tests {
         assert!(
             scoped.get("_figlens").is_none(),
             "a sibling's gaps cannot leak into the selected scope"
+        );
+    }
+
+    #[test]
+    fn motion_and_code_layers_are_reported_and_ordinary_nodes_are_not() {
+        let gaps = |input: Json, kind: &str| -> Vec<(Json, Json)> {
+            let mut out = Obj::new();
+            fields(&object(input), kind, None, &mut out);
+            out.get("_figlens")
+                .and_then(|f| f["unrepresented"].as_array().cloned())
+                .unwrap_or_default()
+                .into_iter()
+                .map(|d| (d["feature"].clone(), d["sourceFields"].clone()))
+                .collect()
+        };
+        assert_eq!(
+            gaps(json!({}), "KEYFRAME_TRACK"),
+            [(json!("motion"), json!(["type"]))]
+        );
+        assert_eq!(
+            gaps(json!({"easingData":{},"timelineDefinitions":{}}), "FRAME"),
+            [(
+                json!("motion"),
+                json!(["timelineDefinitions", "easingData"])
+            )]
+        );
+        assert_eq!(
+            gaps(json!({}), "CODE_LAYER"),
+            [(json!("codeLayers"), json!(["type"]))]
+        );
+        assert_eq!(
+            gaps(json!({"isEmbedCodeLayer":true}), "FRAME"),
+            [(json!("codeLayers"), json!(["isEmbedCodeLayer"]))]
+        );
+        // Prototype transitions also store easingType; it is not Motion evidence, and neither
+        // is a stored false switch.
+        assert!(gaps(json!({"easingType":"EASE_IN"}), "FRAME").is_empty());
+        assert!(
+            gaps(
+                json!({"isEmbedCodeLayer":false,"timelineDisabled":false}),
+                "FRAME"
+            )
+            .is_empty()
         );
     }
 }
