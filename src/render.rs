@@ -338,8 +338,10 @@ pub(crate) fn diagnostics(tree: &Tree, n: &Json) -> Vec<Json> {
     let mut out = Vec::new();
     let mut drawn_strokes = None;
     let mut report = |feature: &str, field: String, state: &str, reason: &str| {
-        // Decode stroke outlines only when a paint would otherwise produce a warning.
+        // Decode stroke outlines only when a paint would otherwise produce a warning. An
+        // undrawn paint type draws nothing with or without outlines, so it is always reported.
         if field.starts_with("strokePaints[")
+            && feature != "paint"
             && !*drawn_strokes.get_or_insert_with(|| !stroke_shapes(tree, n).is_empty())
         {
             return;
@@ -444,7 +446,18 @@ pub(crate) fn diagnostics(tree: &Tree, n: &Json) -> Vec<Json> {
                         "Angular and diamond gradients are rendered as radial gradients",
                     );
                 }
-                _ => {}
+                // Drawn as `paint_path` draws them.
+                Some("SOLID") | None => {}
+                Some(kind) if kind.starts_with("GRADIENT_") => {}
+                // shortcut: CUSTOM (shader), NOISE, PATTERN, VIDEO and EMOJI paints draw nothing; no sample uses them yet.
+                Some(_) => {
+                    report(
+                        "paint",
+                        format!("{field}.type"),
+                        "skipped",
+                        "This paint type is not rendered",
+                    );
+                }
             }
         }
     }
