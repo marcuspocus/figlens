@@ -3,11 +3,11 @@ import Base from '../layouts/Base.astro';
 import Command from '../components/Command.astro';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { layers, primaryHosts, cliOptions, moreHosts, REPO } from '../data';
+import { layers, outcomes, primaryHosts, cliOptions, moreHosts, REPO } from '../data';
 import { SITE } from '../docs';
 
-const title = 'figlens: your coding agent reads Figma .fig files offline';
-const description = 'Give your coding agent a saved .fig path: it reads layout, text, styles, variables, assets and a reference render offline. No Dev Mode seat, no API call cap.';
+const title = 'figlens: design details to build, compare and follow changes';
+const description = 'Give your coding agent layout, text, SVG assets and handoff checks from saved Figma files. Compare UI screenshots with figlens renders and track saved revisions, offline.';
 // The released version, read from the tag the site is built from.
 const version = readFileSync(resolve(process.cwd(), '../Cargo.toml'), 'utf8').match(/^version = "(.+)"/m)?.[1];
 const jsonLd = {
@@ -55,8 +55,8 @@ const fmt = (n: number) => n.toLocaleString('en-US');
 
   <section class="hero" aria-labelledby="hero-title">
     <div class="hero-copy">
-      <h1 id="hero-title">One <span class="file">.fig</span> file is the whole handoff.</h1>
-      <p class="lede">No Dev Mode seat. No API call cap. No desktop app on the cloud box. Give your agent the path to a saved <code>design.fig</code> and it plans the slicing, builds the screen and exports the images on its own.</p>
+      <h1 id="hero-title">Build from the design.<br />Compare the result.<br />Follow changes.</h1>
+      <p class="lede">Give your coding agent layout, text, vector assets and handoff checks from a saved <code>.fig</code>. Compare the running UI with figlens’s render and follow changes between saved revisions.</p>
       <div class="actions">
         <a class="button" href="#install">Install figlens <svg class="button-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.5 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
         <a class="textlink" href="#how">How it works</a>
@@ -85,12 +85,14 @@ const fmt = (n: number) => n.toLocaleString('en-US');
 
   <main>
     <section id="who" class="band split">
-      <h2>Built for agents that Figma access keeps metering.</h2>
+      <div>
+        <h2>More than a file reader. Design context the agent can act on.</h2>
+        <p class="section-lede">Offline is the foundation: save a local copy from Figma and put it next to the code. One native binary reads it without a running Figma app, login or network calls to Figma.</p>
+      </div>
       <dl class="ledger">
-        <div><dt>No Dev Mode seat</dt><dd>You have the design but no paid seat for Figma's MCP. figlens reads the saved file directly.</dd></div>
-        <div><dt>MCP limits</dt><dd>Call limits stop an agent before it finishes a whole design, even with the desktop app open. Reading a local file has no budget.</dd></div>
-        <div><dt>Agents in the cloud</dt><dd>A cloud host cannot run the desktop app, and the REST API caps calls per day. Hand the agent a <code>.fig</code> path and it slices, plans and exports by itself.</dd></div>
-        <div><dt>Designers</dt><dd>Your part ends at <strong>File &gt; Save local copy</strong>. One file next to the code is the whole handoff.</dd></div>
+        {outcomes.map((outcome) => (
+          <div><dt>{outcome.title}</dt><dd>{outcome.description}</dd></div>
+        ))}
       </dl>
     </section>
 
@@ -133,12 +135,12 @@ const fmt = (n: number) => n.toLocaleString('en-US');
         </li>
         <li>
           <h3>One command lifts the bundle.</h3>
-          <p>Structure, text, assets, a reference render and a manifest, in one zip.</p>
-          <Command lines={['figlens bundle design.fig 0:1 frame.zip']} />
+          <p>Structure, text, assets, a reference render and a manifest, in one zip. Verify its files and review the font checks and handoff limitations before building.</p>
+          <Command lines={['figlens bundle design.fig 0:1 frame.zip', 'figlens verify frame.zip']} />
         </li>
         <li>
           <h3>It builds, then checks its own work.</h3>
-          <p>A screenshot of the running page is compared with the frame. The largest differing regions come back with the layers under them.</p>
+          <p>Compare a screenshot of the running page with figlens’s reference render. The largest differing regions come back with the layers under them; review rendering warnings too.</p>
           <Command lines={['figlens compare-image design.fig 0:1 screenshot.png']} />
         </li>
       </ol>

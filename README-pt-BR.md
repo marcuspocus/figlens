@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/runkids/figlens/v0.10.1/assets/logo.png" alt="figlens" width="220">
 </p>
 
-<h1 align="center">Seu coding agent lê arquivos do Figma.<br>Sem app do Figma. Sem login. Sem cota de API.</h1>
+<h1 align="center">Detalhes de design para seu coding agent:<br>implementar, comparar e acompanhar mudanças.</h1>
 
 <p align="center">
   <a href="README.md">English</a> · <a href="README-de.md">Deutsch</a> · <a href="README-es.md">Español</a> · <a href="README-fr.md">Français</a> · <a href="README-ja.md">日本語</a> · <a href="README-ko.md">한국어</a> · <a href="README-pt-BR.md">Português</a> · <a href="README-zh-CN.md">简体中文</a> · <a href="README-zh-TW.md">繁體中文</a>
@@ -22,9 +22,13 @@
   <a href="#start">Começar</a> · <a href="#demo">Demo</a> · <a href="#why">Por quê</a> · <a href="#bundle">O que o agente recebe</a> · <a href="#pi">Pi</a> · <a href="#limitations">Limitações</a> · <a href="https://figlens.runkids.cc/pt-BR/docs/"><b>Documentação</b></a>
 </p>
 
-**O problema.** Seu agente precisa de valores de layout, texto e recursos para implementar uma tela. Em um servidor remoto ou no CI, esse contexto deve estar disponível ao lado do código, sem depender de um aplicativo desktop em execução.
+O figlens transforma arquivos salvos do Figma em contexto de design que seu coding agent pode usar, não apenas uma captura de tela para interpretar.
 
-**A solução.** No Figma, **File > Save local copy**. Coloque `design.fig` ao lado do seu código. O figlens o interpreta localmente e entrega ao seu agent layout, texto, estilos, variáveis, ícones, imagens e uma renderização de referência de qualquer frame. Um binário nativo, zero chamadas de rede ao Figma.
+- **Implementar com os detalhes de origem.** Leia layout, texto, estilos e variáveis; exporte ícones vetoriais como SVG e imagens como recursos. `bundle` reúne os dados, recursos e renderização de referência de um frame; `verify` informa arquivos ausentes, verificações de fontes e limitações do handoff.
+- **Comparar a UI em execução.** `compare-image` compara sua captura com a renderização do figlens e identifica as camadas sob as regiões diferentes. Revise essas diferenças e os avisos de renderização; não é uma garantia de fidelidade pixel a pixel.
+- **Acompanhar mudanças no design.** `diff` compara revisões salvas; `changes` e `watch` informam atualizações em escopos locais monitorados. Salve um novo `.fig` no Figma para incorporar alterações; não é sincronização em tempo real com o Figma.
+
+**Offline como base.** No Figma, **File > Save local copy**. Coloque `design.fig` ao lado do seu código. Um binário nativo o lê localmente, sem app do Figma em execução, login ou chamadas de rede ao Figma.
 
 <a id="start"></a>
 

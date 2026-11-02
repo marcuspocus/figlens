@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/runkids/figlens/v0.10.1/assets/logo.png" alt="figlens" width="220">
 </p>
 
-<h1 align="center">讓 coding agent 直接讀 Figma 檔案。<br>不用開 Figma、不用登入、沒有 API 額度限制。</h1>
+<h1 align="center">給 coding agent 設計細節，<br>用於實作、比對與追蹤變更。</h1>
 
 <p align="center">
   <a href="README.md">English</a> · <a href="README-de.md">Deutsch</a> · <a href="README-es.md">Español</a> · <a href="README-fr.md">Français</a> · <a href="README-ja.md">日本語</a> · <a href="README-ko.md">한국어</a> · <a href="README-pt-BR.md">Português</a> · <a href="README-zh-CN.md">简体中文</a> · <a href="README-zh-TW.md">繁體中文</a>
@@ -22,9 +22,13 @@
   <a href="#start">開始使用</a> · <a href="#demo">示範</a> · <a href="#why">為什麼選 figlens</a> · <a href="#bundle">Agent 拿到什麼</a> · <a href="#pi">Pi</a> · <a href="#limitations">限制</a> · <a href="https://figlens.runkids.cc/zh-TW/docs/"><b>文件</b></a>
 </p>
 
-**問題。** Agent 需要排版數值、文字與素材才能實作畫面。在遠端主機或 CI，這些設計上下文需要和程式碼放在一起，讓 agent 不必依賴執行中的桌面 App。
+figlens 把儲存的 Figma 檔案轉成 coding agent 可用的設計上下文，而不只是一張需要猜測的截圖。
 
-**解法。** 在 Figma 選擇 **File > Save local copy**，把 `design.fig` 放在程式碼旁邊。figlens 在本機解析，給你的 agent 排版、文字、樣式、variables、圖示、圖片，以及任一 frame 的參考渲染圖。一個原生執行檔，完全不對 Figma 發出網路呼叫。
+- **依據原始細節實作。** 讀取排版、文字、樣式與 variables，匯出 SVG 向量圖示和圖片素材。`bundle` 彙集 frame 的資料、素材和參考渲染圖；`verify` 報告缺漏檔案、字型檢查事項與交接限制。
+- **比對執行中的 UI。** `compare-image` 將截圖與 figlens 的渲染結果比對，並指出差異區域下方的圖層。仍需檢查差異與渲染警告，不保證像素級一致。
+- **追蹤設計變更。** `diff` 比較儲存的版本；`changes` 與 `watch` 報告已追蹤本機範圍的更新。設計改動後需從 Figma 儲存新的 `.fig`，並非與 Figma 即時同步。
+
+**離線是基礎。** 在 Figma 選擇 **File > Save local copy**，把 `design.fig` 放在程式碼旁邊。一個原生執行檔在本機讀取，不必執行 Figma App、登入或對 Figma 發出網路呼叫。
 
 <a id="start"></a>
 

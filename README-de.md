@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/runkids/figlens/v0.10.1/assets/logo.png" alt="figlens" width="220">
 </p>
 
-<h1 align="center">Dein Coding-Agent liest Figma-Dateien.<br>Keine Figma-App. Kein Login. Kein API-Kontingent.</h1>
+<h1 align="center">Designdetails für deinen Coding-Agent<br>zum Umsetzen, Vergleichen und Verfolgen von Änderungen.</h1>
 
 <p align="center">
   <a href="README.md">English</a> · <a href="README-de.md">Deutsch</a> · <a href="README-es.md">Español</a> · <a href="README-fr.md">Français</a> · <a href="README-ja.md">日本語</a> · <a href="README-ko.md">한국어</a> · <a href="README-pt-BR.md">Português</a> · <a href="README-zh-CN.md">简体中文</a> · <a href="README-zh-TW.md">繁體中文</a>
@@ -22,9 +22,13 @@
   <a href="#start">Start</a> · <a href="#demo">Demo</a> · <a href="#why">Warum</a> · <a href="#bundle">Was der Agent bekommt</a> · <a href="#pi">Pi</a> · <a href="#limitations">Einschränkungen</a> · <a href="https://figlens.runkids.cc/de/docs/"><b>Doku</b></a>
 </p>
 
-**Das Problem.** Dein Agent braucht Layoutwerte, Text und Assets, um einen Bildschirm umzusetzen. Auf einem Remote-Host oder in CI muss dieser Designkontext neben dem Code verfügbar sein, ohne eine laufende Desktop-App vorauszusetzen.
+figlens macht aus gespeicherten Figma-Dateien Designkontext, mit dem dein Coding-Agent arbeiten kann—nicht nur einen Screenshot zum Interpretieren.
 
-**Die Lösung.** Wähle in Figma **File > Save local copy**. Lege `design.fig` neben deinen Code. figlens parst die Datei lokal und gibt deinem Agent Layout, Text, Stile, Variablen, Icons, Bilder und ein Referenz-Rendering jedes Frames. Ein natives Binary, keine Netzwerkaufrufe an Figma.
+- **Mit den Quelldetails umsetzen.** Layout, Text, Stile und Variablen lesen; Vektor-Icons als SVG und Bilder als Assets exportieren. `bundle` sammelt Daten, Assets und Referenz-Rendering eines Frames; `verify` meldet fehlende Dateien, Schriftprüfungen und Einschränkungen der Übergabe.
+- **Die laufende UI vergleichen.** `compare-image` vergleicht deinen Screenshot mit dem Rendering von figlens und nennt die Ebenen unter abweichenden Bereichen. Prüfe diese Unterschiede und Rendering-Warnungen; das ist keine Garantie für Pixelgenauigkeit.
+- **Designänderungen verfolgen.** `diff` vergleicht gespeicherte Versionen; `changes` und `watch` melden Aktualisierungen verfolgter lokaler Bereiche. Speichere eine neue `.fig` aus Figma, um Designänderungen zu übernehmen—keine Live-Synchronisierung mit Figma.
+
+**Offline als Grundlage.** Wähle in Figma **File > Save local copy**. Lege `design.fig` neben deinen Code. Ein natives Binary liest die Datei lokal, ohne laufende Figma-App, Login oder Netzwerkaufrufe an Figma.
 
 <a id="start"></a>
 

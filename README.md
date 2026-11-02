@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/runkids/figlens/v0.10.1/assets/logo.png" alt="figlens" width="220">
 </p>
 
-<h1 align="center">Your coding agent reads Figma files.<br>No Figma app. No login. No API quota.</h1>
+<h1 align="center">Give your coding agent the design details<br>to build, compare and follow changes.</h1>
 
 <p align="center">
   <a href="README.md">English</a> · <a href="README-de.md">Deutsch</a> · <a href="README-es.md">Español</a> · <a href="README-fr.md">Français</a> · <a href="README-ja.md">日本語</a> · <a href="README-ko.md">한국어</a> · <a href="README-pt-BR.md">Português</a> · <a href="README-zh-CN.md">简体中文</a> · <a href="README-zh-TW.md">繁體中文</a>
@@ -22,9 +22,13 @@
   <a href="#start">Start</a> · <a href="#demo">Demo</a> · <a href="#why">Why</a> · <a href="#bundle">What the agent gets</a> · <a href="#pi">Pi</a> · <a href="#limitations">Limitations</a> · <a href="https://figlens.runkids.cc/docs/"><b>Docs</b></a>
 </p>
 
-**The problem.** Your agent needs layout values, text and assets to build a screen. On a remote host or in CI, that design context needs to be available alongside the code, without relying on a running desktop app.
+figlens turns saved Figma files into design context your coding agent can act on—not just a screenshot to interpret.
 
-**The fix.** In Figma, **File > Save local copy**. Drop `design.fig` next to your code. figlens parses it locally and gives your agent layout, text, styles, variables, icons, images and a reference render of any frame. One native binary, zero network calls to Figma.
+- **Build from the source details.** Read layout, text, styles and variables; export vector icons as SVG and images as assets. `bundle` collects a frame's data, assets and reference render; `verify` reports missing files, font checks and handoff limitations.
+- **Compare the running UI.** `compare-image` compares your screenshot with figlens's render and names the layers under differing regions. Review those differences and rendering warnings; it is not a pixel-perfect guarantee.
+- **Follow design changes.** `diff` compares saved revisions; `changes` and `watch` report updates to tracked local scopes. Save a new `.fig` from Figma to pick up design edits—this is not live Figma sync.
+
+**Offline at the foundation.** In Figma, **File > Save local copy**. Put `design.fig` next to your code. One native binary reads it locally, without a running Figma app, login or network calls to Figma.
 
 <a id="start"></a>
 

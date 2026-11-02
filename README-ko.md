@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/runkids/figlens/v0.10.1/assets/logo.png" alt="figlens" width="220">
 </p>
 
-<h1 align="center">코딩 에이전트가 Figma 파일을 읽습니다.<br>Figma 앱도, 로그인도, API 할당량도 필요 없습니다.</h1>
+<h1 align="center">코딩 에이전트에 디자인 세부 정보를.<br>구현하고, 비교하고, 변경 사항을 추적하세요.</h1>
 
 <p align="center">
   <a href="README.md">English</a> · <a href="README-de.md">Deutsch</a> · <a href="README-es.md">Español</a> · <a href="README-fr.md">Français</a> · <a href="README-ja.md">日本語</a> · <a href="README-ko.md">한국어</a> · <a href="README-pt-BR.md">Português</a> · <a href="README-zh-CN.md">简体中文</a> · <a href="README-zh-TW.md">繁體中文</a>
@@ -22,9 +22,13 @@
   <a href="#start">시작</a> · <a href="#demo">데모</a> · <a href="#why">이유</a> · <a href="#bundle">에이전트가 받는 것</a> · <a href="#pi">Pi</a> · <a href="#limitations">제한 사항</a> · <a href="https://figlens.runkids.cc/ko/docs/"><b>문서</b></a>
 </p>
 
-**문제.** 화면을 구현하려면 에이전트에 레이아웃 값, 텍스트, 에셋이 필요합니다. 원격 호스트나 CI에서는 실행 중인 데스크톱 앱에 의존하지 않고 코드와 함께 디자인 정보에 접근할 수 있어야 합니다.
+figlens는 저장한 Figma 파일을 코딩 에이전트가 활용할 수 있는 디자인 정보로 바꿉니다. 해석해야 할 스크린샷만 제공하는 것이 아닙니다.
 
-**해결.** Figma에서 **File > Save local copy**를 선택하세요. `design.fig`를 코드 옆에 두면 됩니다. figlens가 로컬에서 파싱해 레이아웃, 텍스트, 스타일, 변수, 아이콘, 이미지와 모든 frame의 참조 렌더링을 에이전트에게 제공합니다. 네이티브 바이너리 하나로 Figma에 대한 네트워크 호출은 없습니다.
+- **원본 세부 정보로 구현.** 레이아웃, 텍스트, 스타일, 변수를 읽고 벡터 아이콘은 SVG로, 이미지는 에셋으로 내보냅니다. `bundle`은 frame의 데이터, 에셋, 참조 렌더링을 모으고, `verify`는 누락 파일, 폰트 확인 사항, 핸드오프의 한계를 보고합니다.
+- **실행 중인 UI 비교.** `compare-image`는 스크린샷을 figlens의 렌더링과 비교하고 차이가 있는 영역 아래의 레이어 이름을 알려줍니다. 차이와 렌더링 경고를 검토하세요. 픽셀 단위의 일치를 보장하지는 않습니다.
+- **디자인 변경 추적.** `diff`는 저장된 리비전을 비교하고, `changes`와 `watch`는 추적 중인 로컬 범위의 업데이트를 보고합니다. 디자인 변경을 반영하려면 Figma에서 새 `.fig`를 저장하세요. Figma와의 실시간 동기화가 아닙니다.
+
+**기반은 오프라인.** Figma에서 **File > Save local copy**를 선택하고 `design.fig`를 코드 옆에 두세요. 네이티브 바이너리 하나로 로컬에서 읽으며, 실행 중인 Figma 앱이나 로그인, Figma에 대한 네트워크 호출이 필요 없습니다.
 
 <a id="start"></a>
 
