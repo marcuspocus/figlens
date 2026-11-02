@@ -1,6 +1,6 @@
 # Partial semantic fields
 
-`nodes` and bundle `design/nodes.json` add the fields below from the effective expanded node. Existing sizing fields and property assignments are unchanged. These mappings are **not compared with same-version Figma exports**; every `_figlens.semantics` object carries `verification: "not-compared-with-figma"`. This is not a claim of REST API parity.
+`nodes` and bundle `design/nodes.json` add the fields below from the effective expanded node. Existing sizing fields and property assignments are unchanged. These mappings are **not compared with same-version Figma exports**; the response states this once as top-level `_figlens.semantics.verification: "not-compared-with-figma"` (also in `inspect`), not on every node. This is not a claim of REST API parity.
 
 ## Layout
 
@@ -13,7 +13,7 @@
 
 Missing axes stay absent, so `constraints` can contain only one axis. Swaps retain the original child constraints, grow, align and positioning (including absence) for these new fields; explicit overrides take precedence. Legacy sizing remains unchanged. Unknown enums and growth values are not coerced. Absolute-positioned, grid and non-auto-layout children do not receive grow/align; their recorded but unsupported values are identified in metadata. Existing `layoutSizingHorizontal`/`layoutSizingVertical` HUG/FILL/FIXED rules remain unchanged. A directly selected stored node still uses its actual parent for the new fields.
 
-Each field's metadata contains `source` and `state`: `recorded` means a supported stored value, `absent` means no source field, and `unsupported` means a present value/context not emitted. Recorded does not mean calibrated against Figma. Expanded nodes additionally identify `instanceContext.instanceId` and `sourceNodeId` with `state: "effective"`; this describes the expansion used, not an override history.
+Each field's metadata contains `source` and `state`: `recorded` means a supported stored value and `unsupported` means a present value/context not emitted. A field whose source is not stored has no entry, and a node with no entries has no `_figlens.semantics`; through 0.11.3 such fields were listed with `state: "absent"`. On 61 screens from four community kits (2026-11-02), those entries plus per-node `verification` were 17–25% of `nodes` output; dropping them, with the wrappers they left empty, made it 18–26% smaller. Recorded does not mean calibrated against Figma. Expanded nodes additionally identify `instanceContext.instanceId` and `sourceNodeId` with `state: "effective"`; this describes the expansion used, not an override history.
 
 ## Component definitions
 

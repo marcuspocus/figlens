@@ -201,8 +201,10 @@ fn build(
         "styles": styles,
         "schemaVersion": 0,
     });
+    // Stated once here rather than on every node's `_figlens.semantics`.
+    result["_figlens"] = json!({"semantics":{"verification":"not-compared-with-figma"}});
     if let Some(summary) = handoff.finish() {
-        result["_figlens"] = json!({"handoffDiagnostics":summary});
+        result["_figlens"]["handoffDiagnostics"] = summary;
     }
     Ok(result)
 }
@@ -226,7 +228,7 @@ fn component_meta(tree: &Tree, id: &str) -> Json {
     {
         meta["componentSetId"] = json!(set);
     }
-    let mut evidence = json!({"verification":"not-compared-with-figma"});
+    let mut evidence = json!({});
     semantics::definitions(
         tree,
         id,
@@ -234,7 +236,9 @@ fn component_meta(tree: &Tree, id: &str) -> Json {
         meta.as_object_mut().unwrap(),
         &mut evidence,
     );
-    meta["_figlens"] = json!({"semantics":evidence});
+    if evidence.as_object().is_some_and(|e| !e.is_empty()) {
+        meta["_figlens"] = json!({"semantics":evidence});
+    }
     meta
 }
 
@@ -573,7 +577,9 @@ impl Builder<'_, '_> {
             if matches!(kind.as_str(), "COMPONENT" | "COMPONENT_SET") {
                 semantics::definitions(self.tree, id, &kiwi, &mut out, &mut evidence);
             }
-            out.insert("_figlens".into(), json!({"semantics":evidence}));
+            if evidence.as_object().is_some_and(|e| !e.is_empty()) {
+                out.insert("_figlens".into(), json!({"semantics":evidence}));
+            }
         }
         handoff::fields(&kiwi, &kind, parent.or(root_parent.as_ref()), &mut out);
         if let Some(prototype) = crate::prototype::node(self.tree, id, self.ex.nodes.get(id), &kind)

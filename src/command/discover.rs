@@ -184,6 +184,9 @@ pub fn inspect(
     };
     let detail = Detail::new(tree, &doc["document"], full_text, colors);
     let mut result = inspect_document(&doc["document"], depth, &detail);
+    if let Some(semantics) = doc["_figlens"].get("semantics") {
+        result["_figlens"] = json!({"semantics":semantics});
+    }
     if let Some(diagnostics) = doc["_figlens"].get("handoffDiagnostics") {
         result["handoffDiagnostics"] = diagnostics.clone();
     }
@@ -663,7 +666,7 @@ mod tests {
                 )
             })
             .collect();
-        let node = json!({"id":"1:1","individualStrokeWeights":{"top":0,"right":0,"bottom":3,"left":0},"componentPropertyDefinitions":definitions,"_figlens":{"semantics":{"verification":"not-compared-with-figma","componentPropertyDefinitions":{"source":"componentPropDefs","state":"recorded","entries":vec![json!({"state":"recorded"});21]}},"renderDiagnostics":[{"state":"skipped"}]}});
+        let node = json!({"id":"1:1","individualStrokeWeights":{"top":0,"right":0,"bottom":3,"left":0},"componentPropertyDefinitions":definitions,"_figlens":{"semantics":{"componentPropertyDefinitions":{"source":"componentPropDefs","state":"recorded","entries":vec![json!({"state":"recorded"});21]}},"renderDiagnostics":[{"state":"skipped"}]}});
         let result = inspect_document(&node, 0, &Detail::default());
         let summary = &result["node"];
         assert_eq!(result["truncated"], true);

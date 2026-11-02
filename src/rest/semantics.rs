@@ -1,15 +1,26 @@
 //! Additive snapshot semantics. Mappings are not yet compared with same-version Figma exports.
 use super::*;
 
-fn status(source: &str, present: bool, supported: bool) -> Json {
-    json!({ "source": source, "state": if !present { "absent" } else if supported { "recorded" } else { "unsupported" } })
+/// Provenance of one mapped field; `None` when the snapshot does not store its source,
+/// so an omitted entry means "absent" without repeating it on every node.
+fn status(source: &str, present: bool, supported: bool) -> Option<Json> {
+    present.then(
+        || json!({ "source": source, "state": if supported { "recorded" } else { "unsupported" } }),
+    )
+}
+
+fn put(evidence: &mut Json, key: &str, entry: Option<Json>) {
+    if let Some(entry) = entry {
+        evidence[key] = entry;
+    }
 }
 
 pub(super) fn layout(k: &Obj, parent: Option<&Obj>, out: &mut Obj) -> Json {
-    let mut evidence = json!({ "verification": "not-compared-with-figma" });
+    let mut evidence = json!({});
     let mut constraints = Obj::new();
-    for (axis, field, min, max, stretch) in [
+    for (key, axis, field, min, max, stretch) in [
         (
+            "constraints.horizontal",
             "horizontal",
             "horizontalConstraint",
             "LEFT",
@@ -17,6 +28,7 @@ pub(super) fn layout(k: &Obj, parent: Option<&Obj>, out: &mut Obj) -> Json {
             "LEFT_RIGHT",
         ),
         (
+            "constraints.vertical",
             "vertical",
             "verticalConstraint",
             "TOP",
@@ -32,8 +44,11 @@ pub(super) fn layout(k: &Obj, parent: Option<&Obj>, out: &mut Obj) -> Json {
             Some("STRETCH") => Some(stretch),
             _ => None,
         };
-        evidence[format!("constraints.{axis}")] =
-            status(field, k.contains_key(field), mapped.is_some());
+        put(
+            &mut evidence,
+            key,
+            status(field, k.contains_key(field), mapped.is_some()),
+        );
         if let Some(value) = mapped {
             constraints.insert(axis.into(), json!(value));
         }
@@ -51,15 +66,23 @@ pub(super) fn layout(k: &Obj, parent: Option<&Obj>, out: &mut Obj) -> Json {
     let align = at(k, "stackChildAlignSelf")
         .as_str()
         .filter(|v| flow && matches!(*v, "INHERIT" | "STRETCH" | "MIN" | "CENTER" | "MAX"));
-    evidence["layoutGrow"] = status(
-        "stackChildPrimaryGrow",
-        k.contains_key("stackChildPrimaryGrow"),
-        grow.is_some(),
+    put(
+        &mut evidence,
+        "layoutGrow",
+        status(
+            "stackChildPrimaryGrow",
+            k.contains_key("stackChildPrimaryGrow"),
+            grow.is_some(),
+        ),
     );
-    evidence["layoutAlign"] = status(
-        "stackChildAlignSelf",
-        k.contains_key("stackChildAlignSelf"),
-        align.is_some(),
+    put(
+        &mut evidence,
+        "layoutAlign",
+        status(
+            "stackChildAlignSelf",
+            k.contains_key("stackChildAlignSelf"),
+            align.is_some(),
+        ),
     );
     if let Some(value) = grow {
         out.insert("layoutGrow".into(), json!(value));
@@ -122,7 +145,8 @@ pub(super) fn definitions(tree: &Tree, id: &str, k: &Obj, out: &mut Obj, evidenc
             "componentPropDefs",
             true,
             supported && kind != Some("VARIANT"),
-        );
+        )
+        .unwrap();
         entry["index"] = json!(index);
         entry["id"] = json!(own_id);
         entry["definitionId"] = json!(def_id);
@@ -159,13 +183,14 @@ pub(super) fn definitions(tree: &Tree, id: &str, k: &Obj, out: &mut Obj, evidenc
             let source = value
                 .as_ref()
                 .map_or("varValue.value|value|initialValue", |(_, source)| *source);
-            entry["defaultValue"] = status(
+            let default = status(
                 source,
                 ["varValue", "value", "initialValue"]
                     .iter()
                     .any(|f| def.get(*f).is_some()),
                 usable,
             );
+            put(&mut entry, "defaultValue", default);
             if usable {
                 declaration["defaultValue"] = value.unwrap().0;
             }
@@ -177,11 +202,12 @@ pub(super) fn definitions(tree: &Tree, id: &str, k: &Obj, out: &mut Obj, evidenc
                             && v["key"].as_str().is_some_and(|k| !k.is_empty())
                     })
                 });
-                entry["preferredValues"] = status(
+                let preferred_state = status(
                     "preferredValues.instanceSwapValues",
                     def["preferredValues"].get("instanceSwapValues").is_some(),
                     usable,
                 );
+                put(&mut entry, "preferredValues", preferred_state);
                 if usable {
                     declaration["preferredValues"] = preferred
                         .unwrap()
@@ -192,7 +218,7 @@ pub(super) fn definitions(tree: &Tree, id: &str, k: &Obj, out: &mut Obj, evidenc
             }
             if kind == "VARIANT" {
                 // shortcut: stored variant defaults/options are not established; add them after independent capture validation.
-                entry["defaultValue"]["state"] = json!("unsupported");
+                entry["defaultValue"] = json!({"source": source, "state": "unsupported"});
                 entry["variantOptions"] = json!({"state":"unsupported", "source":"componentPropDefs", "reason":"complete variant options are not established"});
             }
             let key = if kind == "VARIANT" {
@@ -204,15 +230,16 @@ pub(super) fn definitions(tree: &Tree, id: &str, k: &Obj, out: &mut Obj, evidenc
         }
         entries.push(entry);
     }
-    let mut state = status(
+    if let Some(mut state) = status(
         "componentPropDefs",
         k.contains_key("componentPropDefs"),
         list.is_some(),
-    );
-    if !entries.is_empty() {
-        state["entries"] = entries.into();
+    ) {
+        if !entries.is_empty() {
+            state["entries"] = entries.into();
+        }
+        evidence["componentPropertyDefinitions"] = state;
     }
-    evidence["componentPropertyDefinitions"] = state;
     if !declarations.is_empty() {
         out.insert("componentPropertyDefinitions".into(), declarations.into());
     }

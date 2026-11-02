@@ -1,28 +1,12 @@
 {
+ "_figlens": {
+  "semantics": {
+   "verification": "not-compared-with-figma"
+  }
+ },
  "componentSets": {},
  "components": {},
  "document": {
-  "_figlens": {
-   "semantics": {
-    "constraints.horizontal": {
-     "source": "horizontalConstraint",
-     "state": "absent"
-    },
-    "constraints.vertical": {
-     "source": "verticalConstraint",
-     "state": "absent"
-    },
-    "layoutAlign": {
-     "source": "stackChildAlignSelf",
-     "state": "absent"
-    },
-    "layoutGrow": {
-     "source": "stackChildPrimaryGrow",
-     "state": "absent"
-    },
-    "verification": "not-compared-with-figma"
-   }
-  },
   "absoluteBoundingBox": {
    "height": 120.0,
    "width": 240.0,
@@ -38,27 +22,6 @@
   "blendMode": "PASS_THROUGH",
   "children": [
    {
-    "_figlens": {
-     "semantics": {
-      "constraints.horizontal": {
-       "source": "horizontalConstraint",
-       "state": "absent"
-      },
-      "constraints.vertical": {
-       "source": "verticalConstraint",
-       "state": "absent"
-      },
-      "layoutAlign": {
-       "source": "stackChildAlignSelf",
-       "state": "absent"
-      },
-      "layoutGrow": {
-       "source": "stackChildPrimaryGrow",
-       "state": "absent"
-      },
-      "verification": "not-compared-with-figma"
-     }
-    },
     "absoluteBoundingBox": {
      "height": 88.0,
      "width": 120.0,
@@ -138,27 +101,6 @@
     "type": "RECTANGLE"
    },
    {
-    "_figlens": {
-     "semantics": {
-      "constraints.horizontal": {
-       "source": "horizontalConstraint",
-       "state": "absent"
-      },
-      "constraints.vertical": {
-       "source": "verticalConstraint",
-       "state": "absent"
-      },
-      "layoutAlign": {
-       "source": "stackChildAlignSelf",
-       "state": "absent"
-      },
-      "layoutGrow": {
-       "source": "stackChildPrimaryGrow",
-       "state": "absent"
-      },
-      "verification": "not-compared-with-figma"
-     }
-    },
     "absoluteBoundingBox": {
      "height": 88.0,
      "width": 72.0,

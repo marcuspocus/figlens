@@ -131,7 +131,7 @@ usage:
                                              `… N more` mark omissions
   figlens nodes <file.fig> <node>              print a frame as the per-node object of a Figma REST
                                              nodes response: {document, components, componentSets,
-                                             styles, schemaVersion}; instances expanded,
+                                             styles, schemaVersion, _figlens}; instances expanded,
                                              fills/text/auto-layout included
   figlens nodes <file.fig> --frames <list|-> | --ids <node>...
                                              one decode, many nodes: <list> has one node id per line

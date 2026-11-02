@@ -364,7 +364,7 @@ pub const TOOLS: &[(&str, &str, &[Param])] = &[
     ),
     (
         "nodes",
-        "A node or exact instance sublayer as the per-node object of a Figma REST nodes response ({document, components, componentSets, styles, schemaVersion}): instances expanded, fills, strokes, effects, full text, auto-layout, masks and component data. Use it when inspect's compact summary lacks paints, masks or full text. A whole screen can be hundreds of KB; replies over the MCP reply budget fail with response_budget_exceeded instead of being truncated, so scope to a smaller node, use inspect, or write a bundle.",
+        "A node or exact instance sublayer as the per-node object of a Figma REST nodes response ({document, components, componentSets, styles, schemaVersion, _figlens}; _figlens.semantics.verification covers every node's _figlens.semantics): instances expanded, fills, strokes, effects, full text, auto-layout, masks and component data. Use it when inspect's compact summary lacks paints, masks or full text. A whole screen can be hundreds of KB; replies over the MCP reply budget fail with response_budget_exceeded instead of being truncated, so scope to a smaller node, use inspect, or write a bundle.",
         &[FILE, NODE],
     ),
     (
@@ -961,12 +961,13 @@ pub fn output_schema(tool: &str) -> Option<serde_json::Value> {
         "inspect" => (
             serde_json::json!({
                 "flat": {"type": "string", "description": "the one-line-per-node text when flat=true, instead of node"},
-                "node": {"type": "object", "description": "Compact node with partial layout semantics and type-only property definitions; childSpacing \"derived\" marks a parent without auto-layout; _figlens.semantics records source/verification. Definitions, definition evidence and _figlens.renderDiagnostics each have at most 20 entries per node; truncated includes omitted nodes or entries; with colors=true, nodes with visible SOLID fills carry solidFills [{hex, opacity?, variableId?, variableName?}]"},
+                "node": {"type": "object", "description": "Compact node with partial layout semantics and type-only property definitions; childSpacing \"derived\" marks a parent without auto-layout; _figlens.semantics records source and state (a missing entry means the field is not stored); the top-level _figlens.semantics.verification applies to all nodes. Definitions, definition evidence and _figlens.renderDiagnostics each have at most 20 entries per node; truncated includes omitted nodes or entries; with colors=true, nodes with visible SOLID fills carry solidFills [{hex, opacity?, variableId?, variableName?}]"},
                 "truncated": {"type": "boolean"},
                 "images": {"type": "object", "description": "optional source image evidence when images=true"},
                 "states": {"type": "object", "description": "optional variants and prototype field evidence when states=true; independent truncation, source file, node/override provenance and unknown markers; no inferred business logic"},
                 "variantComparison": {"type":"object", "description":"optional same-set definition comparison when compareVariant is supplied; raw fields, paired children, descendant value multisets, unpaired nodes, unknowns and independent truncation; not a pixel comparison"},
                 "comparison": {"type":"object", "description":"optional any-two-nodes definition comparison when compare is supplied; same shape as variantComparison without componentSetId, plus rootDelta and a reason on each unpaired node (ambiguous-name, name-truncated, no-counterpart); not a pixel comparison"},
+                "_figlens": {"type":"object", "description":"semantics.verification: whether every node's _figlens.semantics was compared with Figma exports (not-compared-with-figma)"},
                 "handoffDiagnostics": {"type":"object", "description":"optional known stored semantics not emitted by the projection; counts cover the selected expanded subtree independently of summary depth, with at most five example IDs per feature and explicit coverage limits"},
             }),
             ["truncated"].as_slice(),

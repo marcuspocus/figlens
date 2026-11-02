@@ -1,28 +1,12 @@
 {
+ "_figlens": {
+  "semantics": {
+   "verification": "not-compared-with-figma"
+  }
+ },
  "componentSets": {},
  "components": {},
  "document": {
-  "_figlens": {
-   "semantics": {
-    "constraints.horizontal": {
-     "source": "horizontalConstraint",
-     "state": "absent"
-    },
-    "constraints.vertical": {
-     "source": "verticalConstraint",
-     "state": "absent"
-    },
-    "layoutAlign": {
-     "source": "stackChildAlignSelf",
-     "state": "absent"
-    },
-    "layoutGrow": {
-     "source": "stackChildPrimaryGrow",
-     "state": "absent"
-    },
-    "verification": "not-compared-with-figma"
-   }
-  },
   "absoluteBoundingBox": {
    "height": 180.0,
    "width": 320.0,
@@ -38,27 +22,6 @@
   "blendMode": "PASS_THROUGH",
   "children": [
    {
-    "_figlens": {
-     "semantics": {
-      "constraints.horizontal": {
-       "source": "horizontalConstraint",
-       "state": "absent"
-      },
-      "constraints.vertical": {
-       "source": "verticalConstraint",
-       "state": "absent"
-      },
-      "layoutAlign": {
-       "source": "stackChildAlignSelf",
-       "state": "absent"
-      },
-      "layoutGrow": {
-       "source": "stackChildPrimaryGrow",
-       "state": "absent"
-      },
-      "verification": "not-compared-with-figma"
-     }
-    },
     "absoluteBoundingBox": {
      "height": 148.0,
      "width": 288.0,
@@ -74,27 +37,6 @@
     "blendMode": "PASS_THROUGH",
     "children": [
      {
-      "_figlens": {
-       "semantics": {
-        "constraints.horizontal": {
-         "source": "horizontalConstraint",
-         "state": "absent"
-        },
-        "constraints.vertical": {
-         "source": "verticalConstraint",
-         "state": "absent"
-        },
-        "layoutAlign": {
-         "source": "stackChildAlignSelf",
-         "state": "absent"
-        },
-        "layoutGrow": {
-         "source": "stackChildPrimaryGrow",
-         "state": "absent"
-        },
-        "verification": "not-compared-with-figma"
-       }
-      },
       "absoluteBoundingBox": {
        "height": 32.0,
        "width": 32.0,
@@ -123,27 +65,6 @@
       "type": "RECTANGLE"
      },
      {
-      "_figlens": {
-       "semantics": {
-        "constraints.horizontal": {
-         "source": "horizontalConstraint",
-         "state": "absent"
-        },
-        "constraints.vertical": {
-         "source": "verticalConstraint",
-         "state": "absent"
-        },
-        "layoutAlign": {
-         "source": "stackChildAlignSelf",
-         "state": "absent"
-        },
-        "layoutGrow": {
-         "source": "stackChildPrimaryGrow",
-         "state": "absent"
-        },
-        "verification": "not-compared-with-figma"
-       }
-      },
       "absoluteBoundingBox": {
        "height": 28.0,
        "width": 120.0,
@@ -191,27 +112,6 @@
       "type": "TEXT"
      },
      {
-      "_figlens": {
-       "semantics": {
-        "constraints.horizontal": {
-         "source": "horizontalConstraint",
-         "state": "absent"
-        },
-        "constraints.vertical": {
-         "source": "verticalConstraint",
-         "state": "absent"
-        },
-        "layoutAlign": {
-         "source": "stackChildAlignSelf",
-         "state": "absent"
-        },
-        "layoutGrow": {
-         "source": "stackChildPrimaryGrow",
-         "state": "absent"
-        },
-        "verification": "not-compared-with-figma"
-       }
-      },
       "absoluteBoundingBox": {
        "height": 14.0,
        "width": 60.0,
@@ -259,27 +159,6 @@
       "type": "TEXT"
      },
      {
-      "_figlens": {
-       "semantics": {
-        "constraints.horizontal": {
-         "source": "horizontalConstraint",
-         "state": "absent"
-        },
-        "constraints.vertical": {
-         "source": "verticalConstraint",
-         "state": "absent"
-        },
-        "layoutAlign": {
-         "source": "stackChildAlignSelf",
-         "state": "absent"
-        },
-        "layoutGrow": {
-         "source": "stackChildPrimaryGrow",
-         "state": "absent"
-        },
-        "verification": "not-compared-with-figma"
-       }
-      },
       "absoluteBoundingBox": {
        "height": 24.0,
        "width": 24.0,

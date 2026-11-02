@@ -64,14 +64,15 @@ fn layout_records_only_present_supported_values_in_flow() {
                 assert_eq!(out.contains_key("layoutAlign"), flow);
                 assert!(!out.contains_key("constraints"));
                 assert_eq!(evidence["constraints.horizontal"]["state"], "unsupported");
-                assert_eq!(evidence["constraints.vertical"]["state"], "absent");
+                assert!(evidence.get("constraints.vertical").is_none());
             }
         }
     }
     let mut out = Obj::new();
     let evidence = layout(&Obj::new(), None, &mut out);
     assert!(out.is_empty());
-    assert_eq!(evidence["layoutGrow"]["state"], "absent");
+    // Nothing stored, nothing to say: absence is the omitted entry.
+    assert_eq!(evidence, json!({}));
     for align in ["INHERIT", "MIN", "CENTER", "MAX", "STRETCH", "NEW"] {
         let mut out = Obj::new();
         layout(
@@ -105,21 +106,20 @@ fn definitions_preserve_missing_empty_and_malformed_metadata() {
         blobs: Vec::new(),
     };
     for (input, state) in [
-        (json!({}), "absent"),
-        (json!({"componentPropDefs":[]}), "recorded"),
-        (json!({"componentPropDefs":null}), "unsupported"),
-        (json!({"componentPropDefs":{}}), "unsupported"),
+        (json!({}), None),
+        (json!({"componentPropDefs":[]}), Some("recorded")),
+        (json!({"componentPropDefs":null}), Some("unsupported")),
+        (json!({"componentPropDefs":{}}), Some("unsupported")),
     ] {
         let mut out = object(json!({"name":"Child"}));
-        let mut evidence = json!({"verification":"not-compared-with-figma"});
+        let mut evidence = json!({});
         definitions(&tree, "1:1", &object(input), &mut out, &mut evidence);
         assert_eq!(out, object(json!({"name":"Child"})));
         assert_eq!(
             evidence,
-            json!({
-                "verification":"not-compared-with-figma",
+            state.map_or(json!({}), |state| json!({
                 "componentPropertyDefinitions":{"source":"componentPropDefs","state":state}
-            })
+            }))
         );
     }
 }
@@ -285,8 +285,13 @@ fn swapped_layout_does_not_inherit_target_placement() {
     assert!(child.get("layoutGrow").is_none());
     assert!(child.get("layoutAlign").is_none());
     for field in ["layoutGrow", "layoutAlign"] {
-        assert_eq!(child["_figlens"]["semantics"][field]["state"], "absent");
+        assert!(child["_figlens"]["semantics"].get(field).is_none());
     }
+    assert!(child["_figlens"]["semantics"].get("verification").is_none());
+    assert_eq!(
+        doc["_figlens"]["semantics"],
+        json!({"verification":"not-compared-with-figma"})
+    );
     // The existing sizing path is deliberately unchanged by additive semantics.
     assert_eq!(child["layoutSizingHorizontal"], "FILL");
     assert_eq!(
@@ -337,10 +342,15 @@ fn swapped_constraints_preserve_placement_and_absence() {
                 .unwrap_or(Json::Null)
         );
         assert!(child["constraints"].get("vertical").is_none());
-        assert_eq!(
-            child["_figlens"]["semantics"]["constraints.vertical"]["state"],
-            "absent"
+        assert!(
+            child["_figlens"]["semantics"]
+                .get("constraints.vertical")
+                .is_none()
         );
+        // Main components without property definitions carry no empty semantics.
+        let components = doc["components"].as_object().unwrap();
+        assert!(!components.is_empty());
+        assert!(components.values().all(|c| c.get("_figlens").is_none()));
     }
 }
 

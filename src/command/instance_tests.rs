@@ -711,6 +711,13 @@ fn inspect_states_cli_and_mcp_preserve_effective_overrides_and_optional_outputs(
     let mut with_states = read(&["0:1", "--depth", "4", "--states"]);
     let reply = f.tool("inspect", json!({"node":"0:1","depth":4,"states":true}));
     assert_eq!(reply["isError"], false, "{reply}");
+    // Verification is stated once for the whole reply, not per node.
+    for top in [&ordinary, &reply["structuredContent"]] {
+        assert_eq!(
+            top["_figlens"]["semantics"],
+            json!({"verification":"not-compared-with-figma"})
+        );
+    }
     assert_eq!(reply["structuredContent"]["states"], with_states["states"]);
     assert_eq!(reply["structuredContent"]["node"], with_states["node"]);
     assert_eq!(

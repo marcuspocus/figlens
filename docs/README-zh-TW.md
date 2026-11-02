@@ -269,4 +269,4 @@ Pi、OpenCode 和 OMP 透過各自的 opt-in 入口使用同一個索引，works
 
 node 引數可接受 `12:345`、`12-345`，或帶有 `?node-id=` 的 Figma URL。`<file>` 也可以是 `gs://bucket/object`，會用你的 `gcloud` 登入下載並快取。固定 object 交接、所需存取權限與更新限制，請參閱 [GCS 快照操作說明](../wiki/gcs.md)。每次 CLI 呼叫都會解碼檔案；MCP 只重用最後讀取且未變更的本機檔案，遠端輸入仍會重新解析。執行 `figlens --help` 或 `figlens inspect --help`（也可用 `-h`）查看完整 CLI 用法。`index add gs://bucket/object` 會登錄該 generation 的固定副本並回報 `remote {uri, generation}`；只有 add 會執行 gcloud。
 
-`inspect` 包含已記錄的文字尺寸調整、截斷、最大行數與裝飾。沒有 auto-layout 的父層會帶 `childSpacing: "derived"`：子層之間的間距是座標差，不是 auto-layout 規則；`constraints` 仍可能固定它們。`handoffDiagnostics` 會列出已儲存但尚未輸出的語意、數量、範例及[涵蓋限制](../wiki/semantics.md#known-handoff-gaps)。輸出會保護來源，完整寫入後才替換目標。MCP 請求行上限為 1 MiB，完整回應上限為 8 MiB，超限會明確回報錯誤；CLI 仍可輸出完整 JSON。
+`inspect` 包含已記錄的文字尺寸調整、截斷、最大行數與裝飾。沒有 auto-layout 的父層會帶 `childSpacing: "derived"`：子層之間的間距是座標差，不是 auto-layout 規則；`constraints` 仍可能固定它們。`handoffDiagnostics` 會列出已儲存但尚未輸出的語意、數量、範例及[涵蓋限制](../wiki/semantics.md#known-handoff-gaps)。`_figlens.semantics` 只列出來源已儲存的欄位（缺少條目即表示未儲存）；這些對應未與 Figma 比對，每個回應會在最上層的 `_figlens.semantics.verification` 說明一次。輸出會保護來源，完整寫入後才替換目標。MCP 請求行上限為 1 MiB，完整回應上限為 8 MiB，超限會明確回報錯誤；CLI 仍可輸出完整 JSON。

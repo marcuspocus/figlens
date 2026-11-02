@@ -1,16 +1,12 @@
 {
+ "_figlens": {
+  "semantics": {
+   "verification": "not-compared-with-figma"
+  }
+ },
  "componentSets": {},
  "components": {
   "0:50": {
-   "_figlens": {
-    "semantics": {
-     "componentPropertyDefinitions": {
-      "source": "componentPropDefs",
-      "state": "absent"
-     },
-     "verification": "not-compared-with-figma"
-    }
-   },
    "description": "",
    "documentationLinks": [],
    "key": null,
@@ -19,27 +15,6 @@
   }
  },
  "document": {
-  "_figlens": {
-   "semantics": {
-    "constraints.horizontal": {
-     "source": "horizontalConstraint",
-     "state": "absent"
-    },
-    "constraints.vertical": {
-     "source": "verticalConstraint",
-     "state": "absent"
-    },
-    "layoutAlign": {
-     "source": "stackChildAlignSelf",
-     "state": "absent"
-    },
-    "layoutGrow": {
-     "source": "stackChildPrimaryGrow",
-     "state": "absent"
-    },
-    "verification": "not-compared-with-figma"
-   }
-  },
   "absoluteBoundingBox": {
    "height": 80.0,
    "width": 240.0,
@@ -55,27 +30,6 @@
   "blendMode": "PASS_THROUGH",
   "children": [
    {
-    "_figlens": {
-     "semantics": {
-      "constraints.horizontal": {
-       "source": "horizontalConstraint",
-       "state": "absent"
-      },
-      "constraints.vertical": {
-       "source": "verticalConstraint",
-       "state": "absent"
-      },
-      "layoutAlign": {
-       "source": "stackChildAlignSelf",
-       "state": "absent"
-      },
-      "layoutGrow": {
-       "source": "stackChildPrimaryGrow",
-       "state": "absent"
-      },
-      "verification": "not-compared-with-figma"
-     }
-    },
     "absoluteBoundingBox": {
      "height": 40.0,
      "width": 96.0,
@@ -93,28 +47,11 @@
      {
       "_figlens": {
        "semantics": {
-        "constraints.horizontal": {
-         "source": "horizontalConstraint",
-         "state": "absent"
-        },
-        "constraints.vertical": {
-         "source": "verticalConstraint",
-         "state": "absent"
-        },
         "instanceContext": {
          "instanceId": "0:41",
          "sourceNodeId": "0:51",
          "state": "effective"
-        },
-        "layoutAlign": {
-         "source": "stackChildAlignSelf",
-         "state": "absent"
-        },
-        "layoutGrow": {
-         "source": "stackChildPrimaryGrow",
-         "state": "absent"
-        },
-        "verification": "not-compared-with-figma"
+        }
        }
       },
       "absoluteBoundingBox": {
@@ -171,27 +108,6 @@
     "type": "INSTANCE"
    },
    {
-    "_figlens": {
-     "semantics": {
-      "constraints.horizontal": {
-       "source": "horizontalConstraint",
-       "state": "absent"
-      },
-      "constraints.vertical": {
-       "source": "verticalConstraint",
-       "state": "absent"
-      },
-      "layoutAlign": {
-       "source": "stackChildAlignSelf",
-       "state": "absent"
-      },
-      "layoutGrow": {
-       "source": "stackChildPrimaryGrow",
-       "state": "absent"
-      },
-      "verification": "not-compared-with-figma"
-     }
-    },
     "absoluteBoundingBox": {
      "height": 40.0,
      "width": 96.0,
@@ -209,28 +125,11 @@
      {
       "_figlens": {
        "semantics": {
-        "constraints.horizontal": {
-         "source": "horizontalConstraint",
-         "state": "absent"
-        },
-        "constraints.vertical": {
-         "source": "verticalConstraint",
-         "state": "absent"
-        },
         "instanceContext": {
          "instanceId": "0:42",
          "sourceNodeId": "0:51",
          "state": "effective"
-        },
-        "layoutAlign": {
-         "source": "stackChildAlignSelf",
-         "state": "absent"
-        },
-        "layoutGrow": {
-         "source": "stackChildPrimaryGrow",
-         "state": "absent"
-        },
-        "verification": "not-compared-with-figma"
+        }
        }
       },
       "absoluteBoundingBox": {
