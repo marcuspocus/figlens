@@ -728,7 +728,7 @@ dependencies = [
 
 [[package]]
 name = "figlens"
-version = "0.11.3"
+version = "0.11.4"
 dependencies = [
  "candle-core",
  "candle-nn",

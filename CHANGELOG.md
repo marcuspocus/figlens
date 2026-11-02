@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.11.4](https://github.com/runkids/figlens/compare/v0.11.3...v0.11.4) (2026-11-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* **nodes:** omit absent semantics and state verification once ([#202](https://github.com/runkids/figlens/issues/202))
+
+* **release:** request 0.11.4 ([0f6013d](https://github.com/runkids/figlens/commit/0f6013d30fb54176352161541010c15da7cb2cd2))
+* **release:** request 0.12.0 ([47676c8](https://github.com/runkids/figlens/commit/47676c84a7dcf4f02b7be0559c563907e3fdff71))
+
+
+### New Features
+
+* **nodes:** add opt-in compact style and subtree sharing ([#211](https://github.com/runkids/figlens/issues/211)) ([217e8c0](https://github.com/runkids/figlens/commit/217e8c015fbb0a1c6fb9a845178eb9637384679b))
+* **nodes:** emit grid auto layout counts, gaps and track sizes ([#209](https://github.com/runkids/figlens/issues/209)) ([159500a](https://github.com/runkids/figlens/commit/159500ae90afa2c012dad01c0eac01f0f728bf99))
+* **nodes:** report stored Motion and code-layer content as handoff gaps ([#210](https://github.com/runkids/figlens/issues/210)) ([c6251bf](https://github.com/runkids/figlens/commit/c6251bfe156d7224b9520486c3603c7479232ace))
+
+
+### Bug Fixes
+
+* **render:** report paint types the renderer does not draw ([#201](https://github.com/runkids/figlens/issues/201)) ([21ba340](https://github.com/runkids/figlens/commit/21ba340f496d8b63c2e9a868506f6825cc671909))
+
+
+### Performance
+
+* **nodes:** omit absent semantics and state verification once ([#202](https://github.com/runkids/figlens/issues/202)) ([32c48da](https://github.com/runkids/figlens/commit/32c48dac17a66425b9b1dc97d78219e35eff70a8))
+
 ## [0.11.3](https://github.com/runkids/figlens/compare/v0.11.2...v0.11.3) (2026-11-02)
 
 
