@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.11.3](https://github.com/runkids/figlens/compare/v0.11.2...v0.11.3) (2026-11-02)
+
+
+* **release:** request 0.11.3 ([240b1bb](https://github.com/runkids/figlens/commit/240b1bb3afc5e5668e2a77497ba15174fde41fe9))
+
+
+### New Features
+
+* **bundle:** record the source .fig's sha256 with --hash-source ([#199](https://github.com/runkids/figlens/issues/199)) ([275fc03](https://github.com/runkids/figlens/commit/275fc037f2e17fd05da12cd5fcf1471494bb7a2d))
+
 ## [0.11.2](https://github.com/runkids/figlens/compare/v0.11.1...v0.11.2) (2026-11-01)
 
 

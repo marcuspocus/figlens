@@ -1,6 +1,6 @@
 {
   "name": "figlens",
-  "version": "0.11.2",
+  "version": "0.11.3",
   "description": "Read local Figma .fig files offline: the figlens skill plus the figlens MCP server, with no Figma app, login or API limit.",
   "author": {
     "name": "runkids"
@@ -19,7 +19,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@runkids/figlens@0.11.2",
+        "@runkids/figlens@0.11.3",
         "mcp"
       ]
     }
