@@ -67,6 +67,10 @@ pub enum Command {
         file_key: Option<String>,
         name: Option<String>,
         states: bool,
+        /// Record the source's sha256 in the manifest (`--hash-source`).
+        hash_source: bool,
+        /// The source's stamp read before the tree was decoded; see `bundle::write`.
+        decoded: Option<figlens::search::Stamp>,
     },
     Export {
         node: String,
@@ -345,7 +349,8 @@ impl Command {
                 let node = node()?;
                 let out = args.get(1).cloned().ok_or(USAGE)?;
                 require_target_root(tree, &normalize_id(&node))?;
-                let (mut file_key, mut name, mut states) = (None, None, false);
+                let (mut file_key, mut name, mut states, mut hash_source) =
+                    (None, None, false, false);
                 let mut rest = args[2..].iter();
                 while let Some(arg) = rest.next() {
                     let mut value = || rest.next().cloned().ok_or(format!("{arg} needs a value"));
@@ -353,6 +358,7 @@ impl Command {
                         "--file-key" => file_key = Some(value()?),
                         "--name" => name = Some(value()?),
                         "--states" => states = true,
+                        "--hash-source" => hash_source = true,
                         _ => return Err(USAGE.into()),
                     }
                 }
@@ -362,6 +368,8 @@ impl Command {
                     file_key,
                     name,
                     states,
+                    hash_source,
+                    decoded: None,
                 }
             }
             "export" => {
@@ -440,6 +448,8 @@ impl Command {
                     file_key: string("fileKey"),
                     name: string("name"),
                     states: call.argument("states") == true,
+                    hash_source: call.argument("hashSource") == true,
+                    decoded: None,
                 }
             }
             "export" => {
@@ -471,6 +481,14 @@ impl Command {
             }
             _ => return Err(USAGE.into()),
         })
+    }
+
+    /// Sets a bundle's `decoded` stamp; other commands ignore it.
+    pub fn decoded(mut self, stamp: Option<figlens::search::Stamp>) -> Self {
+        if let Self::Bundle { decoded, .. } = &mut self {
+            *decoded = stamp;
+        }
+        self
     }
 
     pub fn execute(self, tree: &Tree, fig: &Path) -> Result<Output, Box<dyn Error>> {
@@ -676,6 +694,8 @@ impl Command {
                 file_key,
                 name,
                 states,
+                hash_source,
+                decoded,
             } => {
                 let id = normalize_id(&node);
                 require_target_root(tree, &id)?;
@@ -688,6 +708,7 @@ impl Command {
                 let warnings = figlens::bundle::write_with_states(
                     tree,
                     fig,
+                    decoded.filter(|_| hash_source),
                     key,
                     name.as_deref(),
                     &id,

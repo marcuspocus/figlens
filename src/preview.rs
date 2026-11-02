@@ -230,7 +230,7 @@ pub fn snapshot(file: &Path, id: &str, out: &Path) -> Result<()> {
     let tree = Tree::new(&message);
     let workspace = Workspace::new()?;
     let zip = workspace.0.join("scope.zip");
-    let warnings = crate::bundle::write(&tree, file, None, None, id, &zip)?;
+    let warnings = crate::bundle::write(&tree, file, None, None, None, id, &zip)?;
     let mut payload = data(&tree, file, id, true)?;
     payload["bundle"] = json!(render::base64(&fs::read(zip)?));
     payload["coverage"] =
@@ -909,7 +909,7 @@ impl Revision<'_> {
                 // Each request writes its own archive: workers run side by side.
                 let n = self.bundles.fetch_add(1, Ordering::Relaxed);
                 let zip = self.workspace.join(format!("scope-{n}.zip"));
-                crate::bundle::write(tree, file, None, None, id, &zip)?;
+                crate::bundle::write(tree, file, None, None, None, id, &zip)?;
                 let bytes = fs::read(&zip)?;
                 fs::remove_file(&zip)?;
                 ("application/zip", bytes)

@@ -61,7 +61,7 @@ frame.zip
 ├── assets.json               將設計中的參照對應到素材檔案
 ├── references/screen.png     供比對的 frame 渲染圖
 ├── missing-assets.json       所有無法產生的項目
-└── manifest.json             檔案角色、媒體類型、大小與 SHA-256 雜湊
+└── manifest.json             檔案角色、媒體類型、大小與 SHA-256 雜湊；加上 --hash-source 時含來源 .fig 的雜湊
 ```
 
 只需要其中一項？CLI 可以直接做到：
@@ -235,8 +235,8 @@ Pi、OpenCode 和 OMP 透過各自的 opt-in 入口使用同一個索引，works
 | `nodes <file> <node>` | REST nodes 回應中單一節點的物件（`document`、`components`、`componentSets`、`styles`）：展開後的 instance 與 override、auto-layout、文字樣式、填色、效果、綁定的 variables、元件屬性、渲染邊界 |
 | `nodes <file> --frames <list>`, `--frames -` (stdin), `--ids <node>...` | 一次解碼讀取多個節點：清單中每個 id 一行 JSON（帶 `nodeId` 的 `nodes` 輸出，或 `{nodeId, error}`） |
 | `variables <file> [node]`<br>`variables <file.fig> --format dtcg --collection ID --mode ID --out FILE` | 預設的 REST 格式綁定變數／本機變數輸出維持不變。DTCG 2025.10 匯出須指定精確的 collection 與 mode ID，不可指定 node；僅支援顏色與無單位數值。請先建立輸出目錄；任何診斷都會使整次匯出失敗，輸出檔案維持不變。library collection 會從檔案中快取的副本匯出（`libraryCopy: true`）。指向其他 collection 的 alias 會匯出該 collection 的值並記錄在 `aliasOf`；該 collection 有多個 mode 時，用 `--alias-mode COLLECTION=MODE` 指定。 |
-| `bundle <file> <node> <out.zip> [--states]` | 單一 frame 的設計 bundle；輸出 `{nodeId, path, warnings}` |
-| `bundle <file> --frames <list> --out-dir <dir> [--jobs N] [--states]`, `--frames -` (stdin) | 一次解碼，平行產生多個 bundle |
+| `bundle <file> <node> <out.zip> [--states] [--hash-source]` | 單一 frame 的設計 bundle；輸出 `{nodeId, path, warnings}` |
+| `bundle <file> --frames <list> --out-dir <dir> [--jobs N] [--states] [--hash-source]`, `--frames -` (stdin) | 一次解碼，平行產生多個 bundle |
 | `verify <bundle> [--fonts <dir>]` | 依 manifest 檢查 bundle（`.zip` 或解開後的目錄）：已驗證、缺少與被改動的檔案、缺少的素材，需在專案中確認的字型，以及 `findings`：每項缺少、不支援或未驗證的 handoff 輸入，附節點、證據與下一步；在本機或 `--fonts <dir>`（專案資料夾，同時產生 `@font-face`）找到字型檔的字型為 `local_file`，不代表瀏覽器能載入 |
 | `export <file> <node> <out> [--bounds layout] [--scale N] [--quality 1-100] [--max-kb N] [--max-size N] [--match-dir DIR] [--hide ID[,ID]]` | SVG、PNG、JPG、WebP 或 AVIF；不超過 4,194,304 像素的 PNG 自動進行無損最佳化，解碼後的 RGBA 不變，若未變小則保留原始編碼位元組，更大的 PNG 使用一般編碼；`--max-kb` 會降低有損品質直到符合大小（PNG 若仍超限則失敗，不會退回有損編碼）；`--bounds layout` 以 layout box 而非 render bounds 匯出；`--match-dir DIR`（僅 SVG，含子資料夾）列出繪製相同輪廓的 SVG（`matches`），以及最多 10 個附分數的相似形狀（`similar`）；`--hide ID[,ID]` 把 node 內的這些圖層當作隱藏、在相同範圍內繪製，與正常匯出比對即可看出 figlens 畫出的這個圖層改變了結果的哪些地方（沒有差異不代表未渲染的調整沒有影響） |
 | `export <file> --frames <list> --out-dir <dir> [--format F] [--scale N] ...`, `--frames -` (stdin) | 一次解碼匯出多個節點（預設 `png`）：寫入 `<dir>/<nodeId>.<format>`，每個 id 一行 JSON（帶 `nodeId` 的 `export` 輸出，或 `{nodeId, error}`） |

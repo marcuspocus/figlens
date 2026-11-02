@@ -151,13 +151,16 @@ usage:
                                              no node, workspace or index needed;
                                              any diagnostic fails without publishing partial tokens;
                                              prints {path,collectionId,modeId,tokenCount,diagnostics}
-  figlens bundle <file.fig> <node> <out.zip> [--states]
+  figlens bundle <file.fig> <node> <out.zip> [--states] [--hash-source]
                                              write a design bundle for a frame: nodes, variables,
                                              image/SVG assets, reference render and context.md, in one zip;
                                              prints {nodeId,path,warnings}
   figlens bundle ... --file-key KEY --name N   set the manifest's file key and frame name;
-                                             --states adds related variants and evidence gaps to the bundle
+                                             --states adds related variants and evidence gaps to the bundle;
+                                             --hash-source records the .fig's sha256 as manifest
+                                             source.sha256 (one extra full read of the file)
   figlens bundle <file.fig> --frames <list|-> --out-dir <dir> [--file-key KEY] [--jobs N] [--states]
+                                             [--hash-source]
                                             one decode, many bundles: <list> has one node id per line
                                              (- reads stdin);
                                              writes <dir>/<nodeId>.zip (`:` as `-`), prints one JSON line
@@ -669,12 +672,14 @@ fn run(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
             &signals::INTERRUPTED,
         );
     }
+    // Read before decoding, so a bundle's `source.sha256` names the bytes this tree came from.
+    let decoded = figlens::search::stamp(&path).ok();
     let mut doc = Document::open(&path).map_err(|e| contract::source(file, e))?;
     let message = doc.take_message()?;
     let tree = Tree::new(&message);
     match command {
         "bundle" if args.get(2).map(String::as_str) == Some("--frames") => {
-            batch(&tree, &path, &args[2..])?;
+            batch(&tree, &path, decoded, &args[2..])?;
         }
         "nodes" if matches!(args.get(2).map(String::as_str), Some("--frames" | "--ids")) => {
             nodes_batch(
@@ -699,7 +704,7 @@ fn run(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
             export_batch(&tree, &path, &args[2..], &mut std::io::stdout().lock())?;
         }
         "tree" | "find" | "inspect" | "node" | "nodes" | "variables" | "bundle" | "export" => {
-            let command = command::Command::from_cli(command, &args[2..], &tree)?;
+            let command = command::Command::from_cli(command, &args[2..], &tree)?.decoded(decoded);
             out.push_str(&command.execute(&tree, &path)?.text()?);
         }
         "compare-image" => {
@@ -807,8 +812,14 @@ fn run(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
 
 /// `bundle --frames <list|-> --out-dir <dir> [--file-key K] [--jobs N]`: one decode, the frames
 /// written in parallel, one JSON line per frame as each finishes. A frame's failure is its own line.
-fn batch(tree: &Tree, fig: &Path, args: &[String]) -> Result<(), Box<dyn Error>> {
+fn batch(
+    tree: &Tree,
+    fig: &Path,
+    decoded: Option<figlens::search::Stamp>,
+    args: &[String],
+) -> Result<(), Box<dyn Error>> {
     let (mut list, mut dir, mut file_key, mut jobs, mut states) = (None, None, None, None, false);
+    let mut hash_source = false;
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         let mut value = || rest.next().cloned().ok_or(format!("{arg} needs a value"));
@@ -818,10 +829,12 @@ fn batch(tree: &Tree, fig: &Path, args: &[String]) -> Result<(), Box<dyn Error>>
             "--file-key" => file_key = Some(value()?),
             "--jobs" => jobs = Some(value()?.parse::<usize>()?),
             "--states" => states = true,
+            "--hash-source" => hash_source = true,
             _ => return Err(USAGE.into()),
         }
     }
     let (list, dir) = (list.ok_or(USAGE)?, dir.ok_or("--frames needs --out-dir")?);
+    let decoded = decoded.filter(|_| hash_source);
     std::fs::create_dir_all(&dir)?;
     let frames = node_list(&["--frames".to_owned(), list])?;
     let jobs = jobs
@@ -832,7 +845,7 @@ fn batch(tree: &Tree, fig: &Path, args: &[String]) -> Result<(), Box<dyn Error>>
         let path = Path::new(&dir).join(format!("{}.zip", id.replace(':', "-")));
         let one = || -> Result<Vec<String>, String> {
             let key = file_key.as_deref();
-            figlens::bundle::write_with_states(tree, fig, key, None, id, &path, states)
+            figlens::bundle::write_with_states(tree, fig, decoded, key, None, id, &path, states)
                 .map_err(|e| e.to_string())
         };
         // A panic in one frame must not take the others down.

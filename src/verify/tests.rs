@@ -7,7 +7,16 @@ fn fixture_bundle(dir: &TestDir) -> PathBuf {
     let mut doc = crate::Document::open(fig).unwrap();
     let message = doc.take_message().unwrap();
     let out = dir.join("bundle.zip");
-    crate::bundle::write(&crate::Tree::new(&message), fig, None, None, "0:1", &out).unwrap();
+    crate::bundle::write(
+        &crate::Tree::new(&message),
+        fig,
+        None,
+        None,
+        None,
+        "0:1",
+        &out,
+    )
+    .unwrap();
     out
 }
 

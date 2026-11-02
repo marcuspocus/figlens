@@ -61,7 +61,7 @@ frame.zip
 ├── assets.json               Maps design references to asset files
 ├── references/screen.png     A render of the frame to compare against
 ├── missing-assets.json       Anything that could not be produced
-└── manifest.json             File roles, media types, sizes and SHA-256 hashes
+└── manifest.json             File roles, media types, sizes and SHA-256 hashes; the source .fig hash with --hash-source
 ```
 
 只需要其中一部分？CLI 可以直接完成：
@@ -235,8 +235,8 @@ Pi、OpenCode 和 OMP 通过各自的 opt-in 入口使用同一个索引，works
 | `nodes <file> <node>` | REST nodes 响应中单个节点的对象（`document`、`components`、`componentSets`、`styles`）：展开的 instance 与覆写、auto-layout、文字样式、填充、效果、绑定变量、组件属性、渲染边界 |
 | `nodes <file> --frames <list>`, `--frames -` (stdin), `--ids <node>...` | 一次解码读取多个节点：列表中每个 id 一行 JSON（带 `nodeId` 的 `nodes` 输出，或 `{nodeId, error}`） |
 | `variables <file> [node]`<br>`variables <file.fig> --format dtcg --collection ID --mode ID --out FILE` | 默认的 REST 格式绑定变量／本地变量输出保持不变。DTCG 2025.10 导出须指定准确的 collection 和 mode ID，不可指定 node；仅支持颜色和无单位数值。请先创建输出目录；任何诊断都会使整个导出失败，输出文件保持不变。library collection 会从文件中缓存的副本导出（`libraryCopy: true`）。指向其他 collection 的 alias 会导出该 collection 的值并记录在 `aliasOf`；该 collection 有多个 mode 时，用 `--alias-mode COLLECTION=MODE` 指定。 |
-| `bundle <file> <node> <out.zip> [--states]` | 单个 frame 的设计 bundle；输出 `{nodeId, path, warnings}` |
-| `bundle <file> --frames <list> --out-dir <dir> [--jobs N] [--states]`, `--frames -` (stdin) | 一次解码，并行生成多个 bundle |
+| `bundle <file> <node> <out.zip> [--states] [--hash-source]` | 单个 frame 的设计 bundle；输出 `{nodeId, path, warnings}` |
+| `bundle <file> --frames <list> --out-dir <dir> [--jobs N] [--states] [--hash-source]`, `--frames -` (stdin) | 一次解码，并行生成多个 bundle |
 | `verify <bundle> [--fonts <dir>]` | 按 manifest 检查 bundle（`.zip` 或解压后的目录）：已验证、缺失和被改动的文件，缺失的素材，需要在项目中确认的字体，以及 `findings`：每项缺失、不支持或未验证的 handoff 输入，附节点、证据和下一步；在本机或 `--fonts <dir>`（项目文件夹，同时生成 `@font-face`）中找到字体文件的字体为 `local_file`，不代表浏览器能加载 |
 | `export <file> <node> <out> [--bounds layout] [--scale N] [--quality 1-100] [--max-kb N] [--max-size N] [--match-dir DIR] [--hide ID[,ID]]` | SVG、PNG、JPG、WebP 或 AVIF；不超过 4,194,304 像素的 PNG 自动进行无损优化，解码后的 RGBA 不变，若未变小则保留原始编码字节，更大的 PNG 使用常规编码；`--max-kb` 会降低有损质量直到符合大小（PNG 若仍超限则失败，不会回退为有损编码）；`--bounds layout` 按 layout box 而不是 render bounds 导出；`--match-dir DIR`（仅 SVG，含子文件夹）列出绘制相同轮廓的 SVG（`matches`），以及最多 10 个带分数的相似形状（`similar`）；`--hide ID[,ID]` 把 node 内的这些图层当作隐藏、在相同范围内绘制，与正常导出对比即可看出 figlens 画出的这个图层改变了结果的哪些地方（没有差异不代表未渲染的调整没有影响） |
 | `export <file> --frames <list> --out-dir <dir> [--format F] [--scale N] ...`, `--frames -` (stdin) | 一次解码导出多个节点（默认 `png`）：写入 `<dir>/<nodeId>.<format>`，每个 id 一行 JSON（带 `nodeId` 的 `export` 输出，或 `{nodeId, error}`） |

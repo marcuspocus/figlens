@@ -435,6 +435,12 @@ pub const TOOLS: &[(&str, &str, &[Param])] = &[
                 false,
                 "include design/states.json and a bounded context.md summary; retains inspect's source, unknown and truncation markers; default false",
             ),
+            (
+                "hashSource",
+                "boolean",
+                false,
+                "record the .fig's sha256 as manifest.json source.sha256 (null when the file changed while bundling), to trace a built screen to the saved revision; reads the whole file once more; default false",
+            ),
         ],
     ),
     (
@@ -1102,7 +1108,7 @@ fn default(tool: &str, key: &str) -> Option<Value> {
         ("tree" | "find" | "search", "node") => Some(json!("0:0")),
         ("tree", "json" | "topFrames")
         | ("inspect", "images" | "states" | "flat" | "fullText" | "colors")
-        | ("bundle", "states")
+        | ("bundle", "states" | "hashSource")
         | ("search", "includeHidden" | "includeInternal") => Some(json!(false)),
         ("inspect", "depth") | ("export", "scale") => Some(json!(1)),
         ("find" | "search", "limit") => Some(json!(20)),

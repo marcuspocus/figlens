@@ -1753,9 +1753,9 @@ pub(crate) fn corpus_page(
 
 // ---- Source snapshot and cache ----
 
-pub(crate) type Stamp = (SystemTime, u64);
+pub type Stamp = (SystemTime, u64);
 
-pub(crate) fn stamp(path: &Path) -> std::io::Result<Stamp> {
+pub fn stamp(path: &Path) -> std::io::Result<Stamp> {
     stamp_of(&std::fs::metadata(path)?)
 }
 

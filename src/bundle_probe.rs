@@ -57,7 +57,7 @@ fn stages() {
     let dir = crate::test_support::TestDir::new();
     let bundle = dir.join("bundle.zip");
     stage("completeBundleInclusive", &mut rows, || {
-        write(&tree, file, None, None, &node, &bundle).unwrap()
+        write(&tree, file, None, None, None, &node, &bundle).unwrap()
     });
     // Repack exactly the entries emitted by the complete bundle, excluding its manifest.
     let mut zip = crate::open_zip(&bundle).unwrap();
@@ -88,6 +88,7 @@ fn stages() {
     stage("packExistingEntries", &mut rows, || {
         pack(
             files,
+            None,
             None,
             &node,
             "probe",

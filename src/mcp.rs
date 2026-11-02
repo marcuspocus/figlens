@@ -477,7 +477,7 @@ impl AdmittedCall {
 
     fn execute(
         &self,
-        loaded: Option<(&Path, &Tree)>,
+        loaded: Option<(&Path, &Tree, Option<figlens::search::Stamp>)>,
         roots: &[PathBuf],
         storage_roots: &[PathBuf],
     ) -> Value {
@@ -535,7 +535,7 @@ impl AdmittedCall {
                     })
                     .map_err(contract::Failure::from_error);
             }
-            let run = |tree: &Tree, path: &Path| {
+            let run = |tree: &Tree, path: &Path, decoded| {
                 if name == "compare_image" {
                     let opts = figlens::compare_image::Options {
                         scale: self.call.argument("scale").as_f64(),
@@ -577,13 +577,14 @@ impl AdmittedCall {
                     self.output.as_deref(),
                     self.match_dir.as_deref(),
                 )?
+                .decoded(decoded)
                 .execute(tree, path)
             };
             let result: Result<command::Output, Box<dyn Error>> = (|| {
-                if let Some((path, tree)) = loaded {
+                if let Some((path, tree, decoded)) = loaded {
                     // A metadata match alone does not prove that a warm source remains readable.
                     std::fs::File::open(path).map_err(|e| contract::source("", e.into()))?;
-                    return run(tree, path);
+                    return run(tree, path, decoded);
                 }
                 let path = match self.source.as_ref().unwrap() {
                     Source::Local(path) => path.clone(),
@@ -593,10 +594,11 @@ impl AdmittedCall {
                 };
                 #[cfg(test)]
                 LOADS.with(Counter::bump);
+                let decoded = stamp(&path);
                 let mut doc = Document::open(&path).map_err(|e| contract::source("", e))?;
                 let message = doc.take_message()?;
                 let tree = Tree::new(&message);
-                run(&tree, &path)
+                run(&tree, &path, decoded)
             })();
             result.map_err(contract::Failure::from_error)
         }))
@@ -1087,7 +1089,11 @@ fn interactive_loop(
             reply(call.execute(None, roots, storage_roots));
             continue;
         };
-        reply(call.execute(Some((path, &tree)), roots, storage_roots));
+        reply(call.execute(
+            Some((path, &tree, Some(stamp_at_open))),
+            roots,
+            storage_roots,
+        ));
         loop {
             match next() {
                 None => return,
@@ -1095,7 +1101,11 @@ fn interactive_loop(
                 Some(Admission::Call(next_call)) => match next_call.tree_source() {
                     None => reply(next_call.execute(None, roots, storage_roots)),
                     Some(next_path) if next_path == path && stamp(path) == Some(stamp_at_open) => {
-                        reply(next_call.execute(Some((path, &tree)), roots, storage_roots))
+                        reply(next_call.execute(
+                            Some((path, &tree, Some(stamp_at_open))),
+                            roots,
+                            storage_roots,
+                        ))
                     }
                     Some(_) => {
                         carried = Some(next_call);
@@ -1204,7 +1214,9 @@ pub fn call_tool(params: &Value, loaded: Option<(&Path, &Tree)>) -> Value {
     let request = json!({"id":1,"method":"tools/call","params":params}).to_string();
     match admit(&request, &[]) {
         Admission::Reply(reply) => reply["result"].clone(),
-        Admission::Call(call) => call.execute(loaded, &[], &[])["result"].clone(),
+        Admission::Call(call) => {
+            call.execute(loaded.map(|(path, tree)| (path, tree, None)), &[], &[])["result"].clone()
+        }
         _ => unreachable!(),
     }
 }

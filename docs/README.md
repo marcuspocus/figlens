@@ -61,7 +61,7 @@ frame.zip
 ├── assets.json               Maps design references to asset files
 ├── references/screen.png     A render of the frame to compare against
 ├── missing-assets.json       Anything that could not be produced
-└── manifest.json             File roles, media types, sizes and SHA-256 hashes
+└── manifest.json             File roles, media types, sizes and SHA-256 hashes; the source .fig hash with --hash-source
 ```
 
 Need one piece? The CLI does it directly:
@@ -233,8 +233,8 @@ Experimental. `figlens search <file> <query> --mode semantic|hybrid` ranks layer
 | `nodes <file> <node>` | The per-node object of a REST nodes response (`document`, `components`, `componentSets`, `styles`): expanded instances and overrides, auto-layout, text styles, fills, effects, bound variables, component properties, render bounds |
 | `nodes <file> --frames <list>`, `--frames -` (stdin), `--ids <node>...` | One decode, many nodes: one JSON line per listed id, the `nodes` output with its `nodeId`, or `{nodeId, error}` |
 | `variables <file> [node]`<br>`variables <file.fig> --format dtcg --collection ID --mode ID --out FILE` | Default: unchanged REST-shaped bound/local variables. DTCG 2025.10 export: exact collection/mode IDs, no node; colors and unitless numbers only. Create the output directory first; diagnostics fail the whole export without changing the output. A library collection exports from the copies cached in the file (`libraryCopy: true`). An alias into another collection exports that collection's value, recorded in `aliasOf`; several target modes need `--alias-mode COLLECTION=MODE`. |
-| `bundle <file> <node> <out.zip> [--states]` | A design bundle for one frame; prints `{nodeId, path, warnings}` |
-| `bundle <file> --frames <list> --out-dir <dir> [--jobs N] [--states]`, `--frames -` (stdin) | Many bundles from one decode, in parallel |
+| `bundle <file> <node> <out.zip> [--states] [--hash-source]` | A design bundle for one frame; prints `{nodeId, path, warnings}` |
+| `bundle <file> --frames <list> --out-dir <dir> [--jobs N] [--states] [--hash-source]`, `--frames -` (stdin) | Many bundles from one decode, in parallel |
 | `verify <bundle> [--fonts <dir>]` | Check a bundle `.zip` or its extracted directory against its manifest: verified, missing and changed files, missing assets, the font faces to confirm in the project, and `findings`: each missing, unsupported or unverified handoff input with its nodes, evidence and next action; a face with a font file on this machine or in `--fonts <dir>` (a project folder, which also yields an `@font-face`) is `local_file`, not proof the browser loads it |
 | `export <file> <node> <out> [--bounds layout] [--scale N] [--quality 1-100] [--max-kb N] [--max-size N] [--match-dir DIR] [--hide ID[,ID]]` | SVG, PNG, JPG, WebP or AVIF; PNGs up to 4,194,304 pixels are automatically losslessly optimized, with decoded RGBA unchanged; original encoded bytes are kept unless smaller, and larger PNGs use regular encoding; `--max-kb` lowers lossy quality until it fits (PNG fails if still over budget, with no lossy fallback); `--bounds layout` exports the layout box instead of the render bounds; `--match-dir DIR` (SVG only, subfolders included) lists the SVGs there that draw the same outlines (`matches`) and up to 10 similar shapes with a score (`similar`); `--hide ID[,ID]` draws those layers inside the node as hidden over the same area, so diffing it with the plain export shows where that layer, as figlens draws it, changes the result (no difference does not prove the skipped rendering is harmless) |
 | `export <file> --frames <list> --out-dir <dir> [--format F] [--scale N] ...`, `--frames -` (stdin) | One decode, many exports (default `png`): writes `<dir>/<nodeId>.<format>`, one JSON line per id, the `export` output with its `nodeId`, or `{nodeId, error}` |

@@ -18,7 +18,28 @@
       "description": "Changing MCP instructions, tool discovery or built-in workflow guidance.",
       "sources": [
         {
-          "path": "wiki/mcp.md"
+          "path": "wiki/mcp.md",
+          "heading": "Scope"
+        },
+        {
+          "path": "wiki/mcp.md",
+          "heading": "Startup arguments"
+        },
+        {
+          "path": "wiki/mcp.md",
+          "heading": "Intent and tool selection"
+        },
+        {
+          "path": "wiki/mcp.md",
+          "heading": "Shared sources and runtime behavior"
+        },
+        {
+          "path": "wiki/mcp.md",
+          "heading": "Verification"
+        },
+        {
+          "path": "wiki/mcp.md",
+          "heading": "Parameter contract and recoverable failures"
         }
       ]
     },
@@ -181,6 +202,10 @@
       "sources": [
         {
           "path": "wiki/integrations.md"
+        },
+        {
+          "path": "wiki/mcp.md",
+          "heading": "Roots in a checked-in config"
         }
       ]
     },

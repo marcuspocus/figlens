@@ -61,7 +61,7 @@ frame.zip
 ├── assets.json               Maps design references to asset files
 ├── references/screen.png     A render of the frame to compare against
 ├── missing-assets.json       Anything that could not be produced
-└── manifest.json             File roles, media types, sizes and SHA-256 hashes
+└── manifest.json             File roles, media types, sizes and SHA-256 hashes; the source .fig hash with --hash-source
 ```
 
 일부만 필요한가요? CLI로 바로 가져올 수 있습니다.
@@ -235,8 +235,8 @@ Pi, OpenCode, OMP는 각자의 opt-in 진입점으로 같은 인덱스를 쓰며
 | `nodes <file> <node>` | REST nodes 응답의 노드별 객체(`document`, `components`, `componentSets`, `styles`): 펼쳐진 인스턴스와 재정의, 자동 레이아웃, 텍스트 스타일, 채우기, 효과, 연결 변수, 컴포넌트 속성, 렌더링 경계 |
 | `nodes <file> --frames <list>`, `--frames -` (stdin), `--ids <node>...` | 한 번 디코딩해 여러 노드: 목록의 id마다 JSON 한 줄(`nodeId`가 붙은 `nodes` 출력 또는 `{nodeId, error}`) |
 | `variables <file> [node]`<br>`variables <file.fig> --format dtcg --collection ID --mode ID --out FILE` | 기본 REST 형식의 연결된/로컬 변수 출력은 그대로입니다. DTCG 2025.10 내보내기: 정확한 collection/mode ID를 지정하고 node는 생략합니다. 색상과 단위 없는 숫자만 지원합니다. 출력 디렉터리를 먼저 만드세요. 진단이 있으면 전체 내보내기가 실패하며 출력 파일은 변경되지 않습니다. 라이브러리 collection은 파일에 캐시된 사본에서 내보냅니다(`libraryCopy: true`). 다른 collection을 가리키는 alias는 그 collection의 값으로 내보내고 `aliasOf`에 기록합니다. mode가 여러 개면 `--alias-mode COLLECTION=MODE`를 지정하세요. |
-| `bundle <file> <node> <out.zip> [--states]` | 한 frame의 디자인 bundle. `{nodeId, path, warnings}` 출력 |
-| `bundle <file> --frames <list> --out-dir <dir> [--jobs N] [--states]`, `--frames -` (stdin) | 한 번 디코딩해 여러 bundle을 병렬 생성 |
+| `bundle <file> <node> <out.zip> [--states] [--hash-source]` | 한 frame의 디자인 bundle. `{nodeId, path, warnings}` 출력 |
+| `bundle <file> --frames <list> --out-dir <dir> [--jobs N] [--states] [--hash-source]`, `--frames -` (stdin) | 한 번 디코딩해 여러 bundle을 병렬 생성 |
 | `verify <bundle> [--fonts <dir>]` | bundle(`.zip` 또는 압축을 푼 디렉터리)을 manifest와 대조: 검증·누락·변경된 파일, 누락된 asset, 프로젝트에서 확인할 폰트, 그리고 `findings`: 누락·미지원·미검증 handoff 입력마다 노드, 근거, 다음 조치; 이 컴퓨터 또는 `--fonts <dir>`(프로젝트 폴더, `@font-face`도 생성)에 폰트 파일이 있으면 `local_file`이며, 브라우저가 로드한다는 증거는 아닙니다 |
 | `export <file> <node> <out> [--bounds layout] [--scale N] [--quality 1-100] [--max-kb N] [--max-size N] [--match-dir DIR] [--hide ID[,ID]]` | SVG, PNG, JPG, WebP, AVIF. 4,194,304픽셀 이하의 PNG는 디코딩된 RGBA를 바꾸지 않고 자동 무손실 최적화하며, 더 작아지지 않으면 원래 인코딩된 바이트를 유지. 더 큰 PNG는 일반 인코딩 사용. `--max-kb`는 크기에 맞을 때까지 손실 품질을 낮춤(PNG는 여전히 한도를 넘으면 실패하며 손실 방식으로 대체하지 않음). `--bounds layout`은 render bounds 대신 layout box로 내보냄. `--match-dir DIR`(SVG만, 하위 폴더 포함)은 같은 윤곽을 그리는 SVG(`matches`)와 점수가 붙은 비슷한 형태 최대 10개(`similar`)를 나열. `--hide ID[,ID]`는 node 안의 해당 레이어를 숨긴 상태로 같은 영역에 그리므로, 일반 내보내기와 비교하면 figlens가 그리는 그 레이어가 결과의 어디를 바꾸는지 알 수 있음(차이가 없어도 렌더링되지 않은 조정이 무해하다는 뜻은 아님) |
 | `export <file> --frames <list> --out-dir <dir> [--format F] [--scale N] ...`, `--frames -` (stdin) | 한 번 디코딩해 여러 개 내보내기(기본 `png`): `<dir>/<nodeId>.<format>`에 쓰고 id마다 JSON 한 줄(`nodeId`가 붙은 `export` 출력 또는 `{nodeId, error}`) |

@@ -452,6 +452,16 @@ fn assert_bundle(path: &str) {
     assert_eq!(manifest["root"]["name"], "Renamed");
     assert_eq!(manifest["source"]["fileKey"], "Key");
     assert_eq!(manifest["source"]["nodeId"], "0:1");
+    // The fixture writes the bundle beside its source.
+    let source = std::fs::read(std::path::Path::new(path).with_file_name("input.fig")).unwrap();
+    let digest: String = <sha2::Sha256 as sha2::Digest>::digest(&source)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    assert_eq!(
+        manifest["source"]["sha256"], digest,
+        "CLI and MCP pass the stamp read before decoding"
+    );
     for entry in [
         "design/nodes.json",
         "design/variables.json",
@@ -638,8 +648,9 @@ fn cli_and_mcp_success_results_match() {
                 "bundle.zip",
                 "--name",
                 "Renamed",
+                "--hash-source",
             ],
-            serde_json::json!({"node": "https://www.figma.com/design/Key/Test?node-id=0-1", "out": "bundle.zip", "name": "Renamed"}),
+            serde_json::json!({"node": "https://www.figma.com/design/Key/Test?node-id=0-1", "out": "bundle.zip", "name": "Renamed", "hashSource": true}),
             None,
         ),
     ] {
