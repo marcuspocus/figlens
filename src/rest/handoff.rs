@@ -56,32 +56,26 @@ pub(super) fn fields(k: &Obj, kind: &str, parent: Option<&Obj>, out: &mut Obj) {
             "Ordered-list type is emitted, but saved start/continuation metadata is not; no starting number is inferred.",
         );
     }
-    let grid: Vec<_> = [
-        "gridRows",
-        "gridColumns",
-        "gridRowsSizing",
-        "gridColumnsSizing",
-        "gridRowGap",
-        "gridColumnGap",
-        "gridRowAnchor",
-        "gridColumnAnchor",
-        "gridChildHorizontalAlign",
-        "gridChildVerticalAlign",
-        "gridAutoTracks",
-        "gridReflowEnabled",
-    ]
-    .into_iter()
-    .filter(|key| k.contains_key(*key))
-    .collect();
-    if at(k, "stackMode") == "GRID" || parent.is_some_and(|p| at(p, "stackMode") == "GRID") {
-        let mut sources = grid;
-        if at(k, "stackMode") == "GRID" {
-            sources.insert(0, "stackMode");
-        }
+    if at(k, "stackMode") == "GRID" {
         add(
-            "gridLayout",
-            sources,
-            "Saved grid tracks and child placement are not projected as grid semantics; fixed geometry does not establish responsive behavior.",
+            "gridAutoPlacement",
+            ["gridAutoTracks", "gridReflowEnabled"]
+                .into_iter()
+                .filter(|key| k.contains_key(*key))
+                .collect(),
+            "Saved grid auto-placement settings are not emitted.",
+        );
+    }
+    if parent.is_some_and(|p| at(p, "stackMode") == "GRID")
+        && at(k, "stackPositioning") != "ABSOLUTE"
+    {
+        add(
+            "gridCell",
+            ["gridRowAnchor", "gridColumnAnchor"]
+                .into_iter()
+                .filter(|key| k.contains_key(*key))
+                .collect(),
+            "Stored grid anchors can disagree with the saved layout, so no cell index is emitted; read the cell from the child's order and saved position.",
         );
     }
     if at(k, "layoutGrids")
@@ -191,7 +185,7 @@ mod tests {
     #[test]
     fn recorded_losses_have_counts_bounded_examples_and_explicit_coverage() {
         let k = object(
-            json!({"leadingTrim":"CAP_HEIGHT","hyperlink":{"url":"https://example.com"},"textData":{"styleOverrideTable":[{"hyperlink":{}}],"lines":[{"lineType":"ORDERED_LIST","listStartOffset":2}]},"stackMode":"GRID","isSlotContent":true}),
+            json!({"leadingTrim":"CAP_HEIGHT","hyperlink":{"url":"https://example.com"},"textData":{"styleOverrideTable":[{"hyperlink":{}}],"lines":[{"lineType":"ORDERED_LIST","listStartOffset":2}]},"stackMode":"GRID","gridAutoTracks":"ROWS","isSlotContent":true}),
         );
         let mut inventory = Inventory::default();
         for n in 0..7 {

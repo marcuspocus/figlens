@@ -399,6 +399,15 @@ pub(crate) const PLACEMENT: [&str; 5] = [
     "verticalConstraint",
 ];
 
+/// How a grid child sits in its cell: kept across swaps like `PLACEMENT`, but not part of the
+/// search fingerprint's placement (changing that would rebuild every index).
+pub(crate) const GRID_PLACEMENT: [&str; 4] = [
+    "gridRowSpan",
+    "gridColumnSpan",
+    "gridChildHorizontalAlign",
+    "gridChildVerticalAlign",
+];
+
 /// `a:b;c:d` key of an override's `guidPath`.
 fn path_key(entry: &Value) -> String {
     let guids = entry.get("guidPath").and_then(|p| p.get("guids"));
@@ -951,7 +960,10 @@ impl Expander<'_, '_> {
                 let derived = ["fillGeometry", "strokeGeometry", "derivedTextData"]
                     .iter()
                     .filter_map(|f| d.props.get(*f));
-                let placement = PLACEMENT.iter().filter_map(|f| Some((*f, child.get(f)?)));
+                let placement = PLACEMENT
+                    .iter()
+                    .chain(&GRID_PLACEMENT)
+                    .filter_map(|f| Some((*f, child.get(f)?)));
                 // A geometry-size entry copies the source size only where Figma derived no outline.
                 let copies = ["fillGeometry", "strokeGeometry"]
                     .iter()
@@ -1044,6 +1056,7 @@ impl Expander<'_, '_> {
             // Keep placement complete for semantic readers, including fields absent on the child.
             let mut props: Map<String, Json> = PLACEMENT
                 .into_iter()
+                .chain(GRID_PLACEMENT)
                 .filter_map(|f| Some((f.to_owned(), to_json(child.get(f)?))))
                 .collect();
             props.extend(o.props.clone());

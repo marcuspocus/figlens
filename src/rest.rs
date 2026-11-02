@@ -571,6 +571,15 @@ impl Builder<'_, '_> {
             let placement = self.ex.nodes.get(id).map_or(&kiwi, |e| &e.props);
             let mut evidence =
                 semantics::layout(placement, parent.or(root_parent.as_ref()), &mut out);
+            // A grid frame's tracks are its own (merged kiwi); a child's span and alignment are
+            // placement, kept from before a swap.
+            let tracks = semantics::grid(
+                &kiwi,
+                placement,
+                parent.or(root_parent.as_ref()),
+                &mut out,
+                &mut evidence,
+            );
             if let Some(expanded) = self.ex.nodes.get(id) {
                 evidence["instanceContext"] = json!({"instanceId": crate::export::root_of(id), "sourceNodeId": expanded.source, "state":"effective"});
             }
@@ -579,6 +588,10 @@ impl Builder<'_, '_> {
             }
             if evidence.as_object().is_some_and(|e| !e.is_empty()) {
                 out.insert("_figlens".into(), json!({"semantics":evidence}));
+            }
+            if let Some(tracks) = tracks {
+                out.entry("_figlens".to_owned())
+                    .or_insert_with(|| json!({}))["gridTracks"] = tracks;
             }
         }
         handoff::fields(&kiwi, &kind, parent.or(root_parent.as_ref()), &mut out);

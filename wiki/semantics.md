@@ -15,6 +15,18 @@ Missing axes stay absent, so `constraints` can contain only one axis. Swaps reta
 
 Each field's metadata contains `source` and `state`: `recorded` means a supported stored value and `unsupported` means a present value/context not emitted. A field whose source is not stored has no entry, and a node with no entries has no `_figlens.semantics`; through 0.11.3 such fields were listed with `state: "absent"`. On 61 screens from four community kits (2026-11-02), those entries plus per-node `verification` were 17–25% of `nodes` output; dropping them, with the wrappers they left empty, made it 18–26% smaller. Recorded does not mean calibrated against Figma. Expanded nodes additionally identify `instanceContext.instanceId` and `sourceNodeId` with `state: "effective"`; this describes the expansion used, not an override history.
 
+## Grid auto layout
+
+| Output | Snapshot source | Emitted |
+|---|---|---|
+| `gridRowCount`, `gridColumnCount` | entries of `gridRows`, `gridColumns` | on GRID frames |
+| `gridRowGap`, `gridColumnGap` | same-named fields | when nonzero |
+| `_figlens.gridTracks` `{rows, columns}` | `gridRows`/`gridColumns` ordered by `position`, sized by `gridRowsSizing`/`gridColumnsSizing` | each track as the Plugin API's `GridTrackSize` `{type: FLEX\|FIXED\|HUG, value}` (no value for HUG), `{min, max}` when the two stored sizing functions differ, `null` when a track has no stored size |
+| `gridRowSpan`, `gridColumnSpan` | same-named fields | on grid children when not 1 |
+| `gridChildHorizontalAlign`, `gridChildVerticalAlign` | same-named fields | on grid children when not `AUTO` |
+
+A swapped grid child keeps its own span and alignment, as other placement does (`expand::GRID_PLACEMENT`, kept out of the search fingerprint). Counts, gaps, spans and alignment are copied from same-named stored fields, so they have no per-field `_figlens.semantics` entry; `gridTracks` is `recorded` when track sizes are stored. REST's `gridRowsSizing`/`gridColumnsSizing` are CSS `grid-template` strings whose exact format Figma does not document, so figlens gives the stored tracks instead of composing one. Children get no `gridRowAnchorIndex`/`gridColumnAnchorIndex`: in 22 grids of one production file (2026-11-02), 17 of 124 stored anchors disagreed with the saved child positions (two grids anchored nearly every child to cell 0,0), all within the 20 grids that also store `gridReflowEnabled`, while child order matched the saved positions row by row in all 22. Children with stored anchors report `gridCell`, and frames with `gridAutoTracks`/`gridReflowEnabled` report `gridAutoPlacement`, in the handoff gaps below. No grid was compared with a Figma export.
+
 ## Component definitions
 
 `componentPropertyDefinitions` appears on selected COMPONENT/COMPONENT_SET nodes and on referenced `components`/`componentSets` metadata. Definitions resolve `parentPropDefId` through the same parent lookup used by existing instance property assignments. Provenance entries retain own/resolved definition IDs and source node IDs.
@@ -29,7 +41,7 @@ Each field's metadata contains `source` and `state`: `recorded` means a supporte
 
 ## Known handoff gaps
 
-`nodes` optionally adds `_figlens.handoffDiagnostics` beside `document`. It counts known stored fields the projection does not emit: non-default `leadingTrim`, base/range hyperlinks (including explicit clearing against a base link), ordered-list start/continuation metadata, active grid layout/child placement, layout guides and SLOT relationships. Effective nodes retain `_figlens.unrepresented` source-field markers. Cached grid fields outside active grid contexts do not establish grid layout. Hyperlink data is never opened, reconstructed or truncated into a different destination.
+`nodes` optionally adds `_figlens.handoffDiagnostics` beside `document`. It counts known stored fields the projection does not emit: non-default `leadingTrim`, base/range hyperlinks (including explicit clearing against a base link), ordered-list start/continuation metadata, grid auto-placement settings and stored grid child anchors, layout guides and SLOT relationships. Effective nodes retain `_figlens.unrepresented` source-field markers. Cached grid fields outside active grid contexts do not establish grid layout. Hyperlink data is never opened, reconstructed or truncated into a different destination.
 
 Each feature has a node count, reason and up to five example node IDs (at most 1,024 bytes each); `examplesTruncated` discloses omissions. Counts concern the selected expanded subtree, including recorded hidden nodes, independently of inspect depth. Hidden instance descendants and unreconstructed slot content are not checked. Exact instance-sublayer selection recomputes the inventory so siblings cannot leak into its counts. Missing diagnostics do not establish complete semantics or Figma parity. Verification remains `not-compared-with-figma`.
 

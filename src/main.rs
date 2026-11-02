@@ -125,9 +125,11 @@ usage:
                                              id TYPE \"name\" @x,y WxH relative to the node, then hidden, rot,
                                              component, text, font=family size/weight/lineHeight, fill,
                                              stroke=paint/weight, r, shadow|inner-shadow=x,y,blur[,spread],color,
-                                             blur, bg-blur, H|V gap or GRID, pad=top,right,bottom,left,
+                                             blur, bg-blur, H|V gap or GRID RxC gap=row,col rows=… cols=…
+                                             (stored sizes: flexN, px, hug or min..max), pad=top,right,bottom,left,
                                              align=main/cross and size=w/h (fixed|fill) unless min and hug,
-                                             or spacing=derived, and opacity when set; children=N and
+                                             or spacing=derived, span=rows,cols on grid children,
+                                             and opacity when set; children=N and
                                              `… N more` mark omissions
   figlens nodes <file.fig> <node>              print a frame as the per-node object of a Figma REST
                                              nodes response: {document, components, componentSets,

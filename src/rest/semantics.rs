@@ -93,6 +93,113 @@ pub(super) fn layout(k: &Obj, parent: Option<&Obj>, out: &mut Obj) -> Json {
     evidence
 }
 
+/// A grid's tracks in display order: stored as GUIDs keyed by a fractional-index `position`.
+fn grid_tracks<'a>(grid: &'a Obj, tracks: &str) -> Vec<&'a Json> {
+    let mut list: Vec<&Json> = at(grid, tracks)["entries"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .collect();
+    list.sort_by(|a, b| a["position"].as_str().cmp(&b["position"].as_str()));
+    list
+}
+
+/// One stored track size as the Plugin API's `GridTrackSize` (`{type, value}`), or
+/// `{min, max}` when the two sizing functions differ. Values are not converted to CSS.
+fn track_size(size: &Json) -> Json {
+    let one = |f: &Json| {
+        let mut out = json!({"type": f["type"]});
+        if let Some(v) = f["value"].as_f64().filter(|_| f["type"] != "HUG") {
+            out["value"] = json!(v);
+        }
+        out
+    };
+    let (min, max) = (one(&size["minSizing"]), one(&size["maxSizing"]));
+    if min == max {
+        min
+    } else {
+        json!({"min": min, "max": max})
+    }
+}
+
+/// Stored grid auto layout: REST track counts and gaps on a GRID frame, spans and alignment on
+/// its children, and the frame's track sizes (returned for `_figlens.gridTracks`). Children get no
+/// anchor index: in 22 grids of one production file, 17 of 124 stored anchors disagreed with the
+/// saved positions (some put every child in cell 0,0), while child order matched them in all 22.
+pub(super) fn grid(
+    k: &Obj,
+    placement: &Obj,
+    parent: Option<&Obj>,
+    out: &mut Obj,
+    evidence: &mut Json,
+) -> Option<Json> {
+    let mut tracks = None;
+    if at(k, "stackMode") == "GRID" {
+        for (kiwi, count) in [
+            ("gridRows", "gridRowCount"),
+            ("gridColumns", "gridColumnCount"),
+        ] {
+            if let Some(entries) = at(k, kiwi)["entries"].as_array() {
+                out.insert(count.into(), json!(entries.len()));
+            }
+        }
+        for gap in ["gridRowGap", "gridColumnGap"] {
+            if let Some(v) = at(k, gap).as_f64().filter(|v| *v != 0.0) {
+                out.insert(gap.into(), json!(v));
+            }
+        }
+        let sizes = |list: &str, sizing: &str| -> Vec<Json> {
+            // Indexed once per axis: a crafted grid can hold many thousands of tracks. The first
+            // entry for a track wins, as a linear scan would pick it.
+            let mut stored: HashMap<String, &Json> = HashMap::new();
+            for e in at(k, sizing)["entries"].as_array().into_iter().flatten() {
+                if let Some(id) = guid(&e["id"]) {
+                    stored.entry(id).or_insert(&e["trackSize"]);
+                }
+            }
+            grid_tracks(k, list)
+                .iter()
+                .map(|t| {
+                    guid(&t["id"])
+                        .and_then(|id| stored.get(&id))
+                        .map_or(Json::Null, |size| track_size(size))
+                })
+                .collect()
+        };
+        let rows = sizes("gridRows", "gridRowsSizing");
+        let columns = sizes("gridColumns", "gridColumnsSizing");
+        put(
+            evidence,
+            "gridTracks",
+            status(
+                "gridRows|gridColumns|gridRowsSizing|gridColumnsSizing",
+                k.contains_key("gridRows") || k.contains_key("gridColumns"),
+                k.contains_key("gridRowsSizing") || k.contains_key("gridColumnsSizing"),
+            ),
+        );
+        if !rows.is_empty() || !columns.is_empty() {
+            tracks = Some(json!({"rows": rows, "columns": columns}));
+        }
+    }
+    let k = placement;
+    if !parent.is_some_and(|p| at(p, "stackMode") == "GRID")
+        || at(k, "stackPositioning") == "ABSOLUTE"
+    {
+        return tracks;
+    }
+    for span in ["gridRowSpan", "gridColumnSpan"] {
+        if let Some(v) = at(k, span).as_u64().filter(|v| *v != 1) {
+            out.insert(span.into(), json!(v));
+        }
+    }
+    for align in ["gridChildHorizontalAlign", "gridChildVerticalAlign"] {
+        if let Some(v) = at(k, align).as_str().filter(|v| *v != "AUTO") {
+            out.insert(align.into(), json!(v));
+        }
+    }
+    tracks
+}
+
 fn definition_id(value: &Json) -> Option<String> {
     let id = guid(value)?;
     let session = value["sessionID"].as_u64()?;
