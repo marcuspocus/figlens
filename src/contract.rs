@@ -364,8 +364,23 @@ pub const TOOLS: &[(&str, &str, &[Param])] = &[
     ),
     (
         "nodes",
-        "A node or exact instance sublayer as the per-node object of a Figma REST nodes response ({document, components, componentSets, styles, schemaVersion, _figlens}; _figlens.semantics.verification covers every node's _figlens.semantics): instances expanded, fills, strokes, effects, full text, auto-layout, masks and component data. Use it when inspect's compact summary lacks paints, masks or full text. A whole screen can be hundreds of KB; replies over the MCP reply budget fail with response_budget_exceeded instead of being truncated, so scope to a smaller node, use inspect, or write a bundle.",
-        &[FILE, NODE],
+        "A node or exact instance sublayer as the per-node object of a Figma REST nodes response ({document, components, componentSets, styles, schemaVersion, _figlens}; _figlens.semantics.verification covers every node's _figlens.semantics): instances expanded, fills, strokes, effects, full text, auto-layout, masks and component data. Use it when inspect's compact summary lacks paints, masks or full text. A whole screen can be hundreds of KB; replies over the MCP reply budget fail with response_budget_exceeded instead of being truncated, so scope to a smaller node, use inspect, or write a bundle. Opt-in compact shares styles, and subtrees additionally shares templates; resolve the versioned references before passing to REST consumers. The reply budget applies to the compact result, with separate finite construction limits.",
+        &[
+            FILE,
+            NODE,
+            (
+                "compact",
+                "boolean",
+                false,
+                "lossless figlens.nodes.compact.v1 wrapper: data contains node style slots as {$style: index}, sharedStyles holds their literal values; default false; use for large full-paint reads, not REST consumers",
+            ),
+            (
+                "subtrees",
+                "boolean",
+                false,
+                "with compact: true, also share repeated subtrees; {$subtree: index, placements: [...]} references subtrees templates with preorder id/absoluteBoundingBox/absoluteRenderBounds overrides; default false",
+            ),
+        ],
     ),
     (
         "variables",
@@ -1109,6 +1124,7 @@ fn default(tool: &str, key: &str) -> Option<Value> {
         ("tree" | "find" | "search", "node") => Some(json!("0:0")),
         ("tree", "json" | "topFrames")
         | ("inspect", "images" | "states" | "flat" | "fullText" | "colors")
+        | ("nodes", "compact" | "subtrees")
         | ("bundle", "states" | "hashSource")
         | ("search", "includeHidden" | "includeInternal") => Some(json!(false)),
         ("inspect", "depth") | ("export", "scale") => Some(json!(1)),
@@ -1409,6 +1425,9 @@ pub fn prepare(tool: &str, args: &Value) -> Result<PreparedCall, Failure> {
             }
             _ => {}
         }
+    }
+    if tool == "nodes" && checked["subtrees"] == true && checked["compact"] != true {
+        return Err(Failure::argument("nodes subtrees requires compact: true"));
     }
     if tool == "export"
         && figlens::export::Format::of(std::path::Path::new(checked["out"].as_str().unwrap()))

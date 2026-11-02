@@ -3,6 +3,8 @@ use std::io::Write as _;
 
 use crate::test_support::TestDir;
 
+mod compact;
+
 #[test]
 fn handoff_gaps_and_text_summary_reach_cli_mcp_and_bundle() {
     use kiwi_schema::{Def, Field, Schema, TYPE_STRING, TYPE_UINT, Value as K};

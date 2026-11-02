@@ -13,6 +13,7 @@ use crate::expand::{
 use crate::render::{self, Rect};
 use crate::{Tree, to_json};
 
+pub mod compact;
 mod handoff;
 mod semantics;
 
@@ -35,7 +36,7 @@ pub fn render_nodes(tree: &Tree, root: &str) -> Json {
 
 /// Select an exact stored or expanded ID, retaining its instance overrides and geometry.
 pub fn resolve_nodes(tree: &Tree, id: &str) -> Result<Json, Box<dyn std::error::Error>> {
-    resolve_target(tree, id, false, None)
+    resolve_target(tree, id, false, None, false)
 }
 
 /// `resolve_nodes` that stops building, with `ResponseBudget`, once the selection's JSON exceeds `bytes`.
@@ -44,12 +45,32 @@ pub fn resolve_nodes_within(
     id: &str,
     bytes: usize,
 ) -> Result<Json, Box<dyn std::error::Error>> {
-    resolve_target(tree, id, false, Some(bytes))
+    resolve_target(tree, id, false, Some(bytes), false)
 }
 
 /// `resolve_nodes` with renderer input, for selected-node image inspection and export.
 pub fn resolve_render_nodes(tree: &Tree, id: &str) -> Result<Json, Box<dyn std::error::Error>> {
-    resolve_target(tree, id, true, None)
+    resolve_target(tree, id, true, None, false)
+}
+
+/// Opt-in lossless sharing, with a separate finite construction guard before encoding.
+/// `bytes` limits the compact JSON, not the larger REST representation it resolves to.
+pub fn resolve_compact_nodes(
+    tree: &Tree,
+    id: &str,
+    subtrees: bool,
+    bytes: Option<usize>,
+) -> Result<Json, Box<dyn std::error::Error>> {
+    let data = resolve_target(tree, id, false, Some(64 * 1024 * 1024), true)?;
+    let result = compact::encode(data, subtrees);
+    if bytes.is_some_and(|limit| compact::serialized_size(&result, limit) > limit) {
+        return Err(crate::FigError::new(
+            crate::ErrorKind::ResponseBudget,
+            "compact nodes exceeds response budget; select a smaller node or use CLI nodes",
+        )
+        .into());
+    }
+    Ok(result)
 }
 
 fn resolve_target(
@@ -57,6 +78,7 @@ fn resolve_target(
     id: &str,
     render: bool,
     bytes: Option<usize>,
+    compact: bool,
 ) -> Result<Json, Box<dyn std::error::Error>> {
     let root = crate::export::root_of(id);
     if !tree.nodes.contains_key(root) {
@@ -71,9 +93,17 @@ fn resolve_target(
         bytes,
         used: Cell::new(0),
         inside: Cell::new(false),
+        compact,
     });
     let mut doc = build(tree, root, render, budget.as_ref())?;
     if let Some(b) = budget.filter(Budget::exceeded) {
+        if compact {
+            return Err(crate::FigError::new(
+                crate::ErrorKind::ResponseBudget,
+                "compact nodes construction exceeds 64 MiB; select a smaller node",
+            )
+            .into());
+        }
         return Err(crate::FigError::new(crate::ErrorKind::ResponseBudget, format!(
             "response exceeds {} bytes; use inspect, a scoped bundle, or CLI nodes instead of a larger MCP reply", b.bytes
         ))
@@ -99,6 +129,7 @@ struct Budget<'a> {
     used: Cell<usize>,
     /// Inside the selected node, which may be an expanded sublayer of the built root.
     inside: Cell<bool>,
+    compact: bool,
 }
 
 impl Budget<'_> {
@@ -123,15 +154,36 @@ fn build(
         }
     }
     // Every expansion under a selected stored root is emitted, so expansion can stop early too.
-    let ex = match budget.filter(|b| b.target == root) {
-        Some(b) => match expand_instances_within(tree, root, b.bytes) {
-            Some(ex) => ex,
-            None => {
-                b.used.set(b.bytes.saturating_add(1));
-                return Ok(Json::Null);
-            }
-        },
-        None => expand_instances(tree, root),
+    let ex = if budget.is_some_and(|b| b.compact) {
+        let (ex, bounds) = crate::expand::expand_instances_bounded(
+            tree,
+            root,
+            crate::expand::Bounds {
+                work: 2_000_000,
+                bytes: 64 * 1024 * 1024,
+                depth: crate::expand::MAX_DEPTH,
+                deadline: std::time::Instant::now() + std::time::Duration::from_secs(10),
+                stop: None,
+            },
+        );
+        if bounds.stop.is_some() {
+            return Err(crate::FigError::new(
+                crate::ErrorKind::ResponseBudget,
+                "compact nodes expansion limit reached; select a smaller node",
+            ));
+        }
+        ex
+    } else {
+        match budget.filter(|b| b.target == root) {
+            Some(b) => match expand_instances_within(tree, root, b.bytes) {
+                Some(ex) => ex,
+                None => {
+                    b.used.set(b.bytes.saturating_add(1));
+                    return Ok(Json::Null);
+                }
+            },
+            None => expand_instances(tree, root),
+        }
     };
     // Building, rendering and dropping the result all recurse once per layer.
     check_depth(root, |id| {

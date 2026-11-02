@@ -135,11 +135,14 @@ usage:
                                              nodes response: {document, components, componentSets,
                                              styles, schemaVersion, _figlens}; instances expanded,
                                              fills/text/auto-layout included
+                     [--compact [--subtrees]] opt-in lossless style references; --subtrees also shares
+                                             repeated templates with per-node ids and bounds;
+                                             default REST shape unchanged
   figlens nodes <file.fig> --frames <list|-> | --ids <node>...
                                              one decode, many nodes: <list> has one node id per line
                                              (- reads stdin), or name ids after --ids (at most 10000);
                                              prints one JSON line per id, the nodes output with its
-                                             nodeId, or {nodeId,error}
+                                             nodeId, or {nodeId,error}; --compact [--subtrees] also works
   figlens variables <file.fig> [node]          print the variables a frame binds (design/variables.json);
                                              without a node, every local variable
   figlens variables <file.fig> --format dtcg --collection ID --mode ID --out FILE
@@ -683,12 +686,21 @@ fn run(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
         "bundle" if args.get(2).map(String::as_str) == Some("--frames") => {
             batch(&tree, &path, decoded, &args[2..])?;
         }
-        "nodes" if matches!(args.get(2).map(String::as_str), Some("--frames" | "--ids")) => {
-            nodes_batch(
-                &tree,
-                &node_list(&args[2..])?,
-                &mut std::io::stdout().lock(),
-            )?;
+        "nodes"
+            if args[2..]
+                .iter()
+                .any(|arg| matches!(arg.as_str(), "--frames" | "--ids")) =>
+        {
+            let (args, compact, subtrees) = command::nodes_options(&args[2..])?;
+            let frames = node_list(&args)?;
+            if compact {
+                batch_lines(&frames, &mut std::io::stdout().lock(), |id| {
+                    figlens::rest::resolve_compact_nodes(&tree, id, subtrees, None)
+                        .map_err(|e| e.to_string())
+                })?;
+            } else {
+                nodes_batch(&tree, &frames, &mut std::io::stdout().lock())?;
+            }
         }
         "export" if args.get(2).map(String::as_str) == Some("--batch") => {
             let source = args.get(3).filter(|_| args.len() == 4).ok_or(USAGE)?;

@@ -22,6 +22,31 @@ fn an_oversized_reply_is_bounded_before_it_waits_for_the_writer() {
 }
 
 #[test]
+fn compact_nodes_reply_budget_counts_escaped_transport_text() {
+    let compact = figlens::rest::compact::encode(
+        serde_json::json!({
+            "document": {"id":"1:1", "type":"TEXT", "characters":"\"".repeat(2 << 20)}
+        }),
+        false,
+    );
+    assert!(serde_json::to_vec(&compact).unwrap().len() < MAX_RESPONSE_BYTES);
+    let result = tool_reply(
+        "nodes",
+        Ok(command::Output::Json {
+            value: compact,
+            pretty: false,
+        }),
+    );
+    let (sender, replies) = mpsc::sync_channel(1);
+    Writer(sender).send(response(&serde_json::json!(1), result));
+    let reply = replies.recv().unwrap();
+    assert_eq!(
+        reply["result"]["_meta"]["figlens"]["code"],
+        "response_budget_exceeded"
+    );
+}
+
+#[test]
 fn index_and_jobs_declare_that_they_change_state() {
     let tools = contract::tools();
     let hints = |name: &str| {

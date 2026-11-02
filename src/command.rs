@@ -34,7 +34,7 @@ pub enum Command {
     },
     Node(String),
     /// The node, and an MCP reply budget that stops oversized JSON before it is built.
-    Nodes(String, Option<usize>),
+    Nodes(String, Option<usize>, bool, bool),
     Find {
         query: String,
         root: String,
@@ -241,7 +241,15 @@ impl Command {
                 }
             }
             "node" => Self::Node(node()?),
-            "nodes" => Self::Nodes(node()?, None),
+            "nodes" => {
+                let (ids, compact, subtrees) = nodes_options(args)?;
+                if ids.len() != 1 || ids[0].starts_with("--") {
+                    return Err(
+                        "nodes needs one node id and optional --compact [--subtrees]".into(),
+                    );
+                }
+                Self::Nodes(ids[0].clone(), None, compact, subtrees)
+            }
             "find" => {
                 let query = node()?;
                 let (mut root, mut kind, mut limit) = ("0:0".to_owned(), None, 20);
@@ -413,7 +421,19 @@ impl Command {
                 json: call.argument("json") == true,
                 top_frames: call.argument("topFrames") == true,
             },
-            "nodes" => Self::Nodes(node()?, Some(crate::mcp::MAX_RESPONSE_BYTES)),
+            "nodes" => {
+                let compact = call.argument("compact") == true;
+                let subtrees = call.argument("subtrees") == true;
+                if subtrees && !compact {
+                    return Err("nodes subtrees requires compact: true".into());
+                }
+                Self::Nodes(
+                    node()?,
+                    Some(crate::mcp::MAX_RESPONSE_BYTES),
+                    compact,
+                    subtrees,
+                )
+            }
             "find" => Self::Find {
                 query: string("query").ok_or(USAGE)?,
                 root: normalize_id(call.string("node").unwrap()),
@@ -580,12 +600,21 @@ impl Command {
                 require_node(tree, &id)?;
                 pretty(to_json(tree.nodes[&id]))
             }
-            Self::Nodes(node, budget) => {
+            Self::Nodes(node, budget, shared, subtrees) => {
                 let id = normalize_id(&node);
-                pretty(match budget {
-                    Some(bytes) => figlens::rest::resolve_nodes_within(tree, &id, bytes)?,
-                    None => resolve_nodes(tree, &id)?,
-                })
+                let value = if shared {
+                    figlens::rest::resolve_compact_nodes(tree, &id, subtrees, budget)?
+                } else {
+                    match budget {
+                        Some(bytes) => figlens::rest::resolve_nodes_within(tree, &id, bytes)?,
+                        None => resolve_nodes(tree, &id)?,
+                    }
+                };
+                if shared {
+                    compact(value)
+                } else {
+                    pretty(value)
+                }
             }
             Self::Find {
                 query,
@@ -1925,6 +1954,23 @@ pub fn search(
         value,
         pretty: false,
     })
+}
+
+/// Strip the shared nodes flags for both single-node and batch CLI paths.
+pub fn nodes_options(args: &[String]) -> Result<(Vec<String>, bool, bool), Box<dyn Error>> {
+    let compact = args.iter().any(|arg| arg == "--compact");
+    let subtrees = args.iter().any(|arg| arg == "--subtrees");
+    if subtrees && !compact {
+        return Err("--subtrees requires --compact".into());
+    }
+    Ok((
+        args.iter()
+            .filter(|arg| !matches!(arg.as_str(), "--compact" | "--subtrees"))
+            .cloned()
+            .collect(),
+        compact,
+        subtrees,
+    ))
 }
 
 /// The `--match-dir` folder parsed once, for SVG output only.
