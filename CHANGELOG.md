@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.12.0](https://github.com/runkids/figlens/compare/v0.11.4...v0.12.0) (2026-11-03)
+
+
+### New Features
+
+* **clipboard:** read a selection copied from Figma without a local copy ([#212](https://github.com/runkids/figlens/issues/212)) ([1ad0263](https://github.com/runkids/figlens/commit/1ad026315ac616efefc84945ed9c3532d02d47ac))
+* **nodes:** emit Dev Mode annotations and Ready for dev status ([#213](https://github.com/runkids/figlens/issues/213)) ([7801d93](https://github.com/runkids/figlens/commit/7801d93d6c997a1aa339e65366c571866fe31edf))
+
+
+### Bug Fixes
+
+* **export:** warn when an image or component a .fig lacks is drawn empty ([#212](https://github.com/runkids/figlens/issues/212)) ([1ad0263](https://github.com/runkids/figlens/commit/1ad026315ac616efefc84945ed9c3532d02d47ac))
+
 ## [0.11.4](https://github.com/runkids/figlens/compare/v0.11.3...v0.11.4) (2026-11-02)
 
 
