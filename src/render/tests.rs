@@ -186,6 +186,39 @@ fn diagnostics_preserve_drawn_stroke_warnings_and_other_sources() {
 }
 
 #[test]
+fn diagnostics_name_vector_layers_without_stored_outlines() {
+    let tree = Tree {
+        nodes: Default::default(),
+        children: Default::default(),
+        blobs: Vec::new(),
+    };
+    let mut node = serde_json::json!({"id":"1:1","type":"VECTOR","strokeWeight":1,"_r":{
+        "fillPaints":[{"type":"SOLID"}],"strokePaints":[{"type":"SOLID"}],"strokeWeight":1
+    }});
+    let fields = |node: &Json| -> Vec<String> {
+        diagnostics(&tree, node)
+            .iter()
+            .map(|d| d["field"].as_str().unwrap().to_owned())
+            .collect()
+    };
+    assert_eq!(fields(&node), ["fillGeometry", "strokeGeometry"]);
+    // Both are drawn around the node's box, not skipped.
+    assert!(
+        diagnostics(&tree, &node)
+            .iter()
+            .all(|d| d["state"] == "approximate")
+    );
+    // A saved file's empty list means nothing to draw, not a missing outline.
+    node["_r"]["fillGeometry"] = serde_json::json!([]);
+    node["_r"]["strokeGeometry"] = serde_json::json!([]);
+    assert!(fields(&node).is_empty());
+    node["type"] = serde_json::json!("RECTANGLE");
+    node["_r"]["fillGeometry"] = Json::Null;
+    node["_r"]["strokeGeometry"] = Json::Null;
+    assert!(fields(&node).is_empty(), "a box draws from its size");
+}
+
+#[test]
 fn diagnostics_report_only_active_paint_fallbacks() {
     let tree = Tree {
         nodes: Default::default(),

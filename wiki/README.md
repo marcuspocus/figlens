@@ -9,7 +9,7 @@ The wiki holds procedures, reference and decisions, and no task needs all of it 
 | `mcp` | Changing MCP instructions, tool discovery or built-in workflow guidance | `mcp.md` |
 | `gcs` | Changing the `gs://` snapshot handoff, its download cache or refresh | `gcs.md` |
 | `performance` | Measuring load time and memory, reading the perf baseline, changing cache or decode cost | `performance.md` |
-| `parsing` | Changing untrusted container/schema/value decoding or parsing budgets | `parsing.md` |
+| `parsing` | Changing untrusted container/schema/value decoding or parsing budgets | `parsing.md`, `clipboard.md` |
 | `fig-format` | Changing decoding, instance expansion, emitted REST fields or variables | `fig-format.md` |
 | `tokens` | Changing DTCG variable export, validation or interoperability | `tokens.md` |
 | `discovery` | Changing find or inspect summaries (fields, limits, truncation, `--flat` lines), `tree --top-frames` screen lists or `export --match-dir` icon matching | `discovery.md` |

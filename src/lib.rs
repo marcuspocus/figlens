@@ -13,6 +13,7 @@ use std::path::Path;
 use kiwi_schema::{Schema, Value};
 
 pub mod bundle;
+pub mod clipboard;
 pub mod compare;
 pub mod compare_image;
 pub mod expand;

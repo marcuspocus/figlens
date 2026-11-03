@@ -11,6 +11,9 @@
       "sources": [
         {
           "path": "wiki/parsing.md"
+        },
+        {
+          "path": "wiki/clipboard.md"
         }
       ]
     },

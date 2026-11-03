@@ -363,6 +363,16 @@ usage:
                                              background runner refreshes it on each save; prints the
                                              lease, then its end line on stdin EOF or Ctrl-C
   figlens watch status <select>              the workspace's leases and runner; never writes
+  figlens clipboard <copied.html> <out.fig>    turn a selection copied in Figma (Cmd/Ctrl+C), saved from
+                                             the clipboard's HTML, into a .fig every command reads, with
+                                             no Save local copy; same ids as the source file, used
+                                             components included; never replaces an existing
+                                             file; prints {path,sourceFileKey,layers,
+                                             nodeCount,missingImages,missingComponents,
+                                             layersWithoutOutlines (a count),warnings}: a copy carries no image
+                                             bytes or vector outlines, so exports warn where they draw
+                                             without them. macOS: osascript -e 'the clipboard as
+                                             «class HTML»' | sed 's/^«data HTML//;s/»$//' | xxd -r -p > copied.html
   figlens update                               install the latest GitHub release over this binary
   figlens --help | --version
 
@@ -445,6 +455,7 @@ fn run(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
                     | "changes"
                     | "watch"
                     | "update"
+                    | "clipboard"
             )
         )
     {
@@ -597,6 +608,14 @@ fn run(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
                 _ => return Err(USAGE.into()),
             };
             let report = figlens::verify::verify_with_fonts(Path::new(bundle), fonts.as_deref())?;
+            writeln!(out, "{}", serde_json::to_string_pretty(&report)?)?;
+            return Ok(());
+        }
+        Some("clipboard") => {
+            let [input, output] = &args[1..] else {
+                return Err(USAGE.into());
+            };
+            let report = figlens::clipboard::convert(Path::new(input), Path::new(output))?;
             writeln!(out, "{}", serde_json::to_string_pretty(&report)?)?;
             return Ok(());
         }
