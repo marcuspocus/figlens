@@ -1595,3 +1595,10 @@ fn a_usage_error_shows_only_that_command() {
     assert!(error.starts_with("  figlens diff "), "{error}");
     assert!(!error.contains("figlens tree "), "{error}");
 }
+
+#[test]
+fn help_after_help_still_prints_everything() {
+    let mut out = String::new();
+    run(vec!["--help".into(), "--help".into()], &mut out).unwrap();
+    assert!(out.starts_with("figlens — read Figma .fig files"), "{out}");
+}

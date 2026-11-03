@@ -433,6 +433,9 @@ fn main() -> ExitCode {
 /// `USAGE`'s entries for one command, continuation lines included, and a pointer to the rest;
 /// `None` for a command it does not list.
 fn command_usage(command: &str) -> Option<String> {
+    if command.starts_with('-') {
+        return None;
+    }
     let mut section = String::new();
     let mut inside = false;
     for line in USAGE.lines() {
