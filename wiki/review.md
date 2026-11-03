@@ -25,7 +25,7 @@ When a change adds, removes or alters a feature, or adds, renames, removes or al
 
 | Surface | Where |
 |---|---|
-| CLI help | `USAGE` in `src/main.rs`; `--help` prints it |
+| CLI help | `USAGE` in `src/main.rs`; `--help` prints it, `<command> --help` and a usage error only that command's entries |
 | Commands table | `docs/README.md` and every `docs/README-*.md` locale, at the same row; the root `README.md` only links there |
 | Agent guidance | `skills/figlens/SKILL.md`. `figlens workflow <topic>` and MCP `workflow` serve only the sections listed in `src/workflow.rs` (`build` serves `Building a frame`, not `Many frames`), so put at least a pointer in a served section and confirm it with `figlens workflow build` |
 | Wiki | the topic page that describes the behavior, such as `fig-format`, `bundle` or `mcp` |
