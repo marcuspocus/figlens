@@ -46,7 +46,7 @@ Opt-in `variables --format dtcg --collection ID --mode ID --out FILE [--alias-mo
 
 Rules marked pending have local evidence; others are sweep-backed.
 
-- `canvas.fig`: `fig-kiwi` magic, u32 LE version (106), then u32-LE-length chunks: 0 = binary schema, 1 = `Message`. zstd or raw deflate.
+- `canvas.fig`: `fig-kiwi` magic, u32 LE version (106), then u32-LE-length chunks: 0 = binary schema, 1 = `Message`. zstd or raw deflate. `scripts/kiwi-scan.py` lists schema types and counts nodes storing a field.
 - Node id = `guid` `sessionID:localID` = Figma URL `node-id` with `-` → `:`. `4294967295:4294967295` (u32::MAX twice) means no guid, e.g. an unset `overrideKey`; `guid_key` returns none for it, since using it as a path element gives unrelated instance sublayers one id and the tree then contains itself (Real Estate App UI Kit, 7 frames overflowed the stack).
 - GROUP is a FRAME with `resizeToFit`. `size` is pre-rotation; apply the `transform` chain before comparing with REST `absoluteBoundingBox`.
 - Instances store only themselves; expand from `symbolData.symbolID`. Child ids are `I<instance>;<nested instance ids…>;<node>`: only instance boundaries enter the path, plain frames do not. Path elements use `overrideKey ?? guid` (library component copies keep library ids in `overrideKey`).

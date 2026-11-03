@@ -10,7 +10,7 @@ Reads Figma `.fig` files offline: no API rate limits, login or running Figma. Ru
 
 - **Rust runs only in Docker** for development: `docker compose run --rm dev ...`; do not install or use a host Rust toolchain. Users run the native `figlens` binary with no Docker or Rust installed.
 - **Format changes need evidence.** Before changing how nodes are decoded, expanded or emitted, load `fig-format`; claim accuracy only after measuring with the `accuracy` topic, on a file the change was not written against.
-- **Keep the docs true.** When a doc disagrees with the code, trust the code: verify, then fix the stale doc in the same task. When your change alters behaviour that a topic describes, update that topic page in the same change. Put a new lesson in the kernel as a one-line rule and in its topic as the procedure. Run `python3 scripts/ai-context.py check` after any doc change (see `ai-context`).
+- **Keep the docs true.** When a doc disagrees with the code, trust the code: verify, then fix the stale doc in the same task. When your change alters behaviour that a topic describes, update that topic page in the same change. Put a new lesson in its topic as a one-line rule beside the procedure; the kernel takes only rules every task needs. Run `python3 scripts/ai-context.py check` after any doc change (see `ai-context`).
 - **Search before you edit; change as little as possible.** Match the existing style.
 - **Check CLI, MCP, Pi, OpenCode and OMP together.** For every feature or optimization, assess each interface, complete affected behavior/contracts/guidance/tests, and explain why any interface needs no change. A new, changed or removed feature also updates `--help`, every README locale, the site, a served skill section and its wiki topic; see `review`.
 - **Helper files go in the repo.** Helper scripts go in `scripts/`; private designs, Figma exports and run outputs go in the gitignored `samples/`. The original public fixture below and the reviewed regression baselines in `scripts/corpus/` are the exceptions.
@@ -73,26 +73,7 @@ Over budget: split the topic, never raise the cap. Skills are workflow adapters 
 
 ## Verification
 
-Pi viewer startup waits for a successful catalog response, not a printed URL; see `pi`.
-Verify each host's entry from one extracted npm candidate; dispatch is not model completion; see `host-acceptance`.
-Validate host reference-output directories before export, including symlinked parents; see `integrations`.
-Cancel owned CLI process trees and await exit before reference cleanup; see `integrations`.
-Check parsing budgets before Kiwi recursion or declared-length expansion; see `parsing`.
-Gate readers on the schema that added their feature, not `SCHEMA`; see `workspace`.
-Run `expand::check_depth` before any walk that recurses once per layer; see `parsing`.
-Bound declared and actual original-image bytes per image and scope before keeping them; see `parsing`.
-Write bundle/export/snapshot files via `output::write`, protecting sources and outputs; see `parsing`.
-Apply MCP budgets before request admission and to complete serialized replies; see `mcp`.
-Test fixtures use `src/test_support.rs` for atomic ownership and scoped cleanup; see `fig-format`.
-Stroke checks read `render::stroke_weights`, not `strokeWeight`, which per-side strokes can leave 0; see `render`.
-Charge search and bounded-expansion visits, copies and allocations to `expand::Bounds` first; see `search`.
-Keep OpenCode's managed MCP key apart from the plugin's `figlens_*` tools, or OpenCode drops the server; see `integrations`.
-Image-fill changes must test shifted sprites exported from a clipping frame; see `render`.
-Blur backdrops reference blur-free copies within the per-export budget, or nested blurs explode; see `render`.
-Reproduce a browser SVG misdraw with the consumer's optimizer and inlining before changing export coordinates or ids; see `render`.
-Cancel a job only after its worker exits; publish via fence; see `index`.
-Keep libdeflate's Zig SIMD guards; see `release`.
-Build guidance asks for real frontend code, reviewed before pixels; see `mcp`.
+Area rules (parsing budgets, output writes, fixtures, rendering, hosts, release) live in their topics: load the topic before editing its area.
 
 ```sh
 docker compose run --rm dev cargo test

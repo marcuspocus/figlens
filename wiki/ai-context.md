@@ -21,7 +21,7 @@ Update docs **in the same change** that makes them stale:
 |---|---|
 | Changed behaviour a topic describes | That topic's page |
 | Found a doc that contradicts the code | Fix the doc, because the code wins; mention it in your handoff |
-| Learned a lesson the hard way | A one-line kernel rule plus the procedure in its topic |
+| Learned a lesson the hard way | A one-line rule plus the procedure in its topic; in the kernel only if every task needs it |
 | Finished a milestone | Add `wiki/history/<milestone>.md` and one index row in `wiki/README.md` |
 | Added a new kind of recurring task | Add a new topic: page, JSON entry, and both tables |
 | Added a nested `AGENTS.md` | Map it in some topic, or record a reason-bearing exception if loaded by cwd |

@@ -41,7 +41,7 @@ Before committing, search these files for both the old and the new command forms
 2. Every PR gets this review, including docs- and wiki-only changes and fixes pushed to an open PR. Simplify the change, then review correctness, repository rules, the requested behavior, consumers and cleanup. The `figlens-code-review` skill adapts these passes to the available tools. Verify each finding against actual code or execution before fixing it.
 3. Apply the CLI/MCP/Pi coverage check above to every changed concept. Fix related findings together, run the relevant checks and stage only task-owned files.
 4. Describe the final behavior, executed checks and remaining limitations in English.
-5. Give the PR a Conventional Commit title (`feat(clipboard): ...`): its squash merge becomes the commit Release Please reads, and any other title is left out of the CHANGELOG. Open every PR as a draft (`gh pr create --draft`). Draft PRs skip the Test workflow, so push fixes for review findings freely. Right after opening the draft, post `@codex review` on it (command below) so AI review runs while CI is skipped. When the findings are fixed, mark it ready (`gh pr ready <n>`) to run CI, then follow it through review below. Release Please PRs are the exception: they are opened by the bot and reviewed as releases.
+5. Give the PR a Conventional Commit title (`feat(clipboard): ...`): its squash merge becomes the commit Release Please reads, and any other title is left out of the CHANGELOG. The `PR title` workflow (`.github/workflows/pr-title.yml`) fails on any other title. Open every PR as a draft (`gh pr create --draft`). Draft PRs skip the Test workflow, so push fixes for review findings freely. Right after opening the draft, post `@codex review` on it (command below) so AI review runs while CI is skipped. When the findings are fixed, mark it ready (`gh pr ready <n>`) to run CI, then follow it through review below. Release Please PRs are the exception: they are opened by the bot and reviewed as releases.
 
 ## Follow the PR through review
 
@@ -63,7 +63,7 @@ After all verified fixes pass their checks:
 3. Post `@codex review` yourself to request review of the updated head. A push alone is not proof that review was requested. Avoid duplicate requests while that same head is already under review.
 
    ```sh
-   gh pr comment <number> --body '@codex review'
+   scripts/codex-review.sh <number>   # requests, waits for this head, prints its findings; --wait-only skips the request
    ```
 
 4. Wait for the AI review of that head to complete and inspect its new findings and CI. Repeat the fix/check/push/review cycle for verified findings. A previous commit's clean review, a dispatch acknowledgement, an eyes reaction or green CI does not establish a clean current review.

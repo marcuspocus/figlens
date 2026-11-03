@@ -57,7 +57,7 @@ Regressions: `nodes_frames_report_a_too_deep_frame_and_continue` and `bundle_fra
 
 Bundle, export and offline snapshot outputs share `src/output.rs`. Existing output symlinks resolve to their target, including unrooted dangling links; the caller retains the requested encoding and reply label. A canonical output equal to the source is refused. An alternate hard link is replaced by a new file, preserving the original source inode. Ordinary MCP root admission/rechecks still apply.
 
-Writers exclusively create a sibling `.figlens-<pid>-<counter>.part`, retry occupied names, close it and rename it over the destination only after success. Cleanup removes only the owned staging file, including on callback failure or unwind. Existing read-only outputs are refused and existing permissions are retained. A failed write or rename preserves the previous output. This is atomic file publication, not a disk-sync/durable-save guarantee or protection against arbitrary concurrent directory replacement. It does not change preview disk-cache or GCS-cache writes.
+Writers exclusively create a sibling `.figlens-<pid>-<counter>.part`, retry occupied names, close it and rename it over the destination only after success. Cleanup removes only the owned staging file, including on callback failure or unwind. Existing read-only outputs are refused and existing permissions are retained. A failed write or rename preserves the previous output. This is atomic file publication, not a disk-sync/durable-save guarantee or protection against arbitrary concurrent directory replacement. It does not change preview disk-cache or GCS-cache writes. New bundle, export or snapshot writers go through `output::write`.
 
 ## Safe verification
 

@@ -1,0 +1,26 @@
+name: PR title
+
+# A squash merge makes the PR title the commit Release Please reads; any other
+# title is left out of the CHANGELOG. Runs on drafts too, and again on a title edit.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+
+permissions: {}
+
+jobs:
+  conventional:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Title is a Conventional Commit
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if printf '%s\n' "$TITLE" | grep -Eq '^(feat|fix|perf|docs|chore|ci|test|refactor|build|style|revert)(\([^)]+\))?!?: [^ ]'; then
+            exit 0
+          fi
+          echo "::error::PR title is not a Conventional Commit, so Release Please would leave it out of the CHANGELOG: $TITLE"
+          echo "Use <type>(<scope>): <summary>, for example: feat(clipboard): read a copied selection"
+          exit 1
