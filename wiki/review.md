@@ -41,7 +41,7 @@ Before committing, search these files for both the old and the new command forms
 2. Every PR gets this review, including docs- and wiki-only changes and fixes pushed to an open PR. Simplify the change, then review correctness, repository rules, the requested behavior, consumers and cleanup. The `figlens-code-review` skill adapts these passes to the available tools. Verify each finding against actual code or execution before fixing it.
 3. Apply the CLI/MCP/Pi coverage check above to every changed concept. Fix related findings together, run the relevant checks and stage only task-owned files.
 4. Describe the final behavior, executed checks and remaining limitations in English.
-5. Open every PR as a draft (`gh pr create --draft`). Draft PRs skip the Test workflow, so push fixes for review findings freely. Right after opening the draft, post `@codex review` on it (command below) so AI review runs while CI is skipped. When the findings are fixed, mark it ready (`gh pr ready <n>`) to run CI, then follow it through review below. Release Please PRs are the exception: they are opened by the bot and reviewed as releases.
+5. Give the PR a Conventional Commit title (`feat(clipboard): ...`): its squash merge becomes the commit Release Please reads, and any other title is left out of the CHANGELOG. Open every PR as a draft (`gh pr create --draft`). Draft PRs skip the Test workflow, so push fixes for review findings freely. Right after opening the draft, post `@codex review` on it (command below) so AI review runs while CI is skipped. When the findings are fixed, mark it ready (`gh pr ready <n>`) to run CI, then follow it through review below. Release Please PRs are the exception: they are opened by the bot and reviewed as releases.
 
 ## Follow the PR through review
 
@@ -70,6 +70,37 @@ After all verified fixes pass their checks:
 5. Report the PR link, reviewed head, review outcome and CI outcome separately. If an external review or check cannot complete, state what is still pending instead of reporting it as passed.
 
 Keep private fixtures and local report paths out of public comments. Model planning quality, deterministic tests and visual acceptance are separate evidence; preserve their actual results throughout follow-up.
+
+<a id="release-pr"></a>
+
+## Release PR
+
+Run these checks on the bot's Release PR before merging it; the `figlens-release` skill gives the order.
+
+1. **CHANGELOG coverage.** Release Please skips a squash commit whose title is not Conventional (`clipboard: ...` rather than `feat(clipboard): ...`). List the skipped commits:
+
+   ```sh
+   git log --oneline v<last>..origin/main | grep -Ev '^[0-9a-f]+ (feat|fix|perf|docs|chore|ci|test|refactor|build|style|revert)(\(.+\))?!?: '
+   ```
+
+   For each user-visible one, append a block to the merged PR's body. Give one Conventional message per change, separated by blank lines:
+
+   ```text
+   BEGIN_COMMIT_OVERRIDE
+   feat(<scope>): <summary> (#<pr>)
+   END_COMMIT_OVERRIDE
+   ```
+
+   Then run `gh workflow run release-please.yml --ref main` and reread the Release PR's version and CHANGELOG.
+2. **Docs coverage.** Every user-visible `feat` and `fix` is described in all of these places (`rg -il '<feature term>'` over them is a quick check):
+   - the lead of `README.md` and every root `README-*.md`: the feature bullets, and the setup line for a new way to get a `.fig`
+   - the reference in `docs/README*.md`
+   - `npm/README.md` and `pi/README.md`
+   - the site landing page (`site/src/data.ts`, `site/src/pages/index.astro`)
+   - `skills/figlens/SKILL.md` and the wiki topics
+
+   Fix gaps in a docs PR before merging the Release PR. The site deploys only at publish, so the fix ships with the release.
+3. **CI.** Runs on the bot's PR wait as `action_required`. Approve the run for the head you will merge with `gh api -X POST repos/runkids/figlens/actions/runs/<id>/approve`. A push to `main` rebuilds the Release PR, and its new run needs approval again.
 
 ## Opening an issue
 

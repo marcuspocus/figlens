@@ -15,7 +15,7 @@ Reads Figma `.fig` files offline: no API rate limits, login or running Figma. Ru
 - **Check CLI, MCP, Pi, OpenCode and OMP together.** For every feature or optimization, assess each interface, complete affected behavior/contracts/guidance/tests, and explain why any interface needs no change. A new, changed or removed feature also updates `--help`, every README locale, the site, a served skill section and its wiki topic; see `review`.
 - **Helper files go in the repo.** Helper scripts go in `scripts/`; private designs, Figma exports and run outputs go in the gitignored `samples/`. The original public fixture below and the reviewed regression baselines in `scripts/corpus/` are the exceptions.
 - **Review before every PR.** Run the `figlens-code-review` passes on the pinned diff and fix verified findings before opening or updating a PR, docs- and wiki-only changes included; see `review`.
-- **Open PRs as drafts** (Release Please's excepted). Drafts skip CI; request `@codex review`, fix findings there, then mark ready to run CI; see `review`.
+- **Open PRs as drafts** with Conventional titles (Release Please's excepted). Drafts skip CI; request `@codex review`, fix findings, then mark ready for CI; see `review`.
 - **Open issues by the rules.** English, `<scope>: <summary>` titles, one type label plus `area:` labels, no private design details; see `review`.
 - **Own PR follow-up.** Check AI reviews and CI, fix verified findings, then request and check `@codex review` on the updated head; see `review`.
 

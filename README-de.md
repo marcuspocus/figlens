@@ -24,11 +24,11 @@
 
 figlens macht aus gespeicherten Figma-Dateien Designkontext, mit dem dein Coding-Agent arbeiten kann—nicht nur einen Screenshot zum Interpretieren.
 
-- **Mit den Quelldetails umsetzen.** Layout, Text, Stile und Variablen lesen; Vektor-Icons als SVG und Bilder als Assets exportieren. `bundle` sammelt Daten, Assets und Referenz-Rendering eines Frames; `verify` meldet fehlende Dateien, Schriftprüfungen und Einschränkungen der Übergabe.
+- **Mit den Quelldetails umsetzen.** Layout, Text, Stile, Variablen sowie Dev-Mode-Anmerkungen und Ready-for-dev-Status lesen; Vektor-Icons als SVG und Bilder als Assets exportieren. `bundle` sammelt Daten, Assets und Referenz-Rendering eines Frames; `verify` meldet fehlende Dateien, Schriftprüfungen und Einschränkungen der Übergabe.
 - **Die laufende UI vergleichen.** `compare-image` vergleicht deinen Screenshot mit dem Rendering von figlens und nennt die Ebenen unter abweichenden Bereichen. Prüfe diese Unterschiede und Rendering-Warnungen; das ist keine Garantie für Pixelgenauigkeit.
 - **Designänderungen verfolgen.** `diff` vergleicht gespeicherte Versionen; `changes` und `watch` melden Aktualisierungen verfolgter lokaler Bereiche. Speichere eine neue `.fig` aus Figma, um Designänderungen zu übernehmen—keine Live-Synchronisierung mit Figma.
 
-**Offline als Grundlage.** Wähle in Figma **File > Save local copy**. Lege `design.fig` neben deinen Code. Ein natives Binary liest die Datei lokal, ohne laufende Figma-App, Login oder Netzwerkaufrufe an Figma.
+**Offline als Grundlage.** Wähle in Figma **File > Save local copy**. Lege `design.fig` neben deinen Code. Für einen einzelnen Screen kannst du stattdessen die Auswahl in Figma kopieren und das gespeicherte Zwischenablage-HTML mit `figlens clipboard` in eine `.fig` umwandeln. Ein natives Binary liest die Datei lokal, ohne laufende Figma-App, Login oder Netzwerkaufrufe an Figma.
 
 <a id="start"></a>
 

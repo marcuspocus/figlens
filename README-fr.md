@@ -24,11 +24,11 @@
 
 figlens transforme les fichiers Figma sauvegardés en contexte de design exploitable par votre coding agent, pas seulement en capture d’écran à interpréter.
 
-- **Réaliser à partir des détails source.** Lisez la mise en page, le texte, les styles et les variables ; exportez les icônes vectorielles en SVG et les images comme ressources. `bundle` rassemble les données, ressources et rendu de référence d’une frame ; `verify` signale les fichiers manquants, les vérifications de polices et les limites de la transmission.
+- **Réaliser à partir des détails source.** Lisez la mise en page, le texte, les styles, les variables ainsi que les annotations et le statut Ready for dev de Dev Mode ; exportez les icônes vectorielles en SVG et les images comme ressources. `bundle` rassemble les données, ressources et rendu de référence d’une frame ; `verify` signale les fichiers manquants, les vérifications de polices et les limites de la transmission.
 - **Comparer l’UI en cours d’exécution.** `compare-image` compare votre capture au rendu de figlens et nomme les calques sous les régions qui diffèrent. Examinez ces écarts et les avertissements de rendu ; ce n’est pas une garantie de fidélité au pixel près.
 - **Suivre les changements du design.** `diff` compare les révisions sauvegardées ; `changes` et `watch` signalent les mises à jour des périmètres locaux suivis. Sauvegardez un nouveau `.fig` depuis Figma pour récupérer les modifications : ce n’est pas une synchronisation en direct avec Figma.
 
-**Le fonctionnement hors ligne comme base.** Dans Figma, **File > Save local copy**. Placez `design.fig` à côté de votre code. Un binaire natif le lit en local, sans app Figma ouverte, connexion au compte ni appel réseau vers Figma.
+**Le fonctionnement hors ligne comme base.** Dans Figma, **File > Save local copy**. Placez `design.fig` à côté de votre code. Pour un seul écran, copiez plutôt la sélection dans Figma et convertissez le HTML du presse-papiers enregistré en `.fig` avec `figlens clipboard`. Un binaire natif le lit en local, sans app Figma ouverte, connexion au compte ni appel réseau vers Figma.
 
 <a id="start"></a>
 

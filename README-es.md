@@ -24,11 +24,11 @@
 
 figlens convierte archivos de Figma guardados en contexto de diseño con el que tu coding agent puede trabajar, no solo una captura que interpretar.
 
-- **Implementar con los detalles de origen.** Lee layout, texto, estilos y variables; exporta iconos vectoriales como SVG e imágenes como recursos. `bundle` reúne los datos, recursos y render de referencia de un frame; `verify` informa de archivos ausentes, comprobaciones de fuentes y limitaciones de la entrega.
+- **Implementar con los detalles de origen.** Lee layout, texto, estilos, variables y las anotaciones y el estado Ready for dev de Dev Mode; exporta iconos vectoriales como SVG e imágenes como recursos. `bundle` reúne los datos, recursos y render de referencia de un frame; `verify` informa de archivos ausentes, comprobaciones de fuentes y limitaciones de la entrega.
 - **Comparar la UI en ejecución.** `compare-image` compara tu captura con el render de figlens e identifica las capas bajo las regiones que difieren. Revisa esas diferencias y las advertencias de renderizado; no es una garantía de fidelidad píxel a píxel.
 - **Seguir los cambios del diseño.** `diff` compara revisiones guardadas; `changes` y `watch` informan de actualizaciones en ámbitos locales bajo seguimiento. Guarda una nueva `.fig` desde Figma para incorporar cambios; no es sincronización en vivo con Figma.
 
-**Offline como base.** En Figma, **File > Save local copy**. Coloca `design.fig` junto a tu código. Un binario nativo lo lee en local, sin una app de Figma en ejecución, login ni llamadas de red a Figma.
+**Offline como base.** En Figma, **File > Save local copy**. Coloca `design.fig` junto a tu código. Para una sola pantalla, copia la selección en Figma y convierte el HTML guardado del portapapeles en un `.fig` con `figlens clipboard`. Un binario nativo lo lee en local, sin una app de Figma en ejecución, login ni llamadas de red a Figma.
 
 <a id="start"></a>
 

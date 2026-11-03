@@ -24,11 +24,11 @@
 
 figlens turns saved Figma files into design context your coding agent can act on—not just a screenshot to interpret.
 
-- **Build from the source details.** Read layout, text, styles and variables; export vector icons as SVG and images as assets. `bundle` collects a frame's data, assets and reference render; `verify` reports missing files, font checks and handoff limitations.
+- **Build from the source details.** Read layout, text, styles, variables, Dev Mode annotations and Ready for dev status; export vector icons as SVG and images as assets. `bundle` collects a frame's data, assets and reference render; `verify` reports missing files, font checks and handoff limitations.
 - **Compare the running UI.** `compare-image` compares your screenshot with figlens's render and names the layers under differing regions. Review those differences and rendering warnings; it is not a pixel-perfect guarantee.
 - **Follow design changes.** `diff` compares saved revisions; `changes` and `watch` report updates to tracked local scopes. Save a new `.fig` from Figma to pick up design edits—this is not live Figma sync.
 
-**Offline at the foundation.** In Figma, **File > Save local copy**. Put `design.fig` next to your code. One native binary reads it locally, without a running Figma app, login or network calls to Figma.
+**Offline at the foundation.** In Figma, **File > Save local copy**. Put `design.fig` next to your code. For one screen, copy the selection in Figma instead and turn the saved clipboard HTML into a `.fig` with `figlens clipboard`. One native binary reads it locally, without a running Figma app, login or network calls to Figma.
 
 <a id="start"></a>
 

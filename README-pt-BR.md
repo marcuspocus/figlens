@@ -24,11 +24,11 @@
 
 O figlens transforma arquivos salvos do Figma em contexto de design que seu coding agent pode usar, não apenas uma captura de tela para interpretar.
 
-- **Implementar com os detalhes de origem.** Leia layout, texto, estilos e variáveis; exporte ícones vetoriais como SVG e imagens como recursos. `bundle` reúne os dados, recursos e renderização de referência de um frame; `verify` informa arquivos ausentes, verificações de fontes e limitações do handoff.
+- **Implementar com os detalhes de origem.** Leia layout, texto, estilos, variáveis e as anotações e o status Ready for dev do Dev Mode; exporte ícones vetoriais como SVG e imagens como recursos. `bundle` reúne os dados, recursos e renderização de referência de um frame; `verify` informa arquivos ausentes, verificações de fontes e limitações do handoff.
 - **Comparar a UI em execução.** `compare-image` compara sua captura com a renderização do figlens e identifica as camadas sob as regiões diferentes. Revise essas diferenças e os avisos de renderização; não é uma garantia de fidelidade pixel a pixel.
 - **Acompanhar mudanças no design.** `diff` compara revisões salvas; `changes` e `watch` informam atualizações em escopos locais monitorados. Salve um novo `.fig` no Figma para incorporar alterações; não é sincronização em tempo real com o Figma.
 
-**Offline como base.** No Figma, **File > Save local copy**. Coloque `design.fig` ao lado do seu código. Um binário nativo o lê localmente, sem app do Figma em execução, login ou chamadas de rede ao Figma.
+**Offline como base.** No Figma, **File > Save local copy**. Coloque `design.fig` ao lado do seu código. Para uma única tela, copie a seleção no Figma e converta o HTML salvo da área de transferência em um `.fig` com `figlens clipboard`. Um binário nativo o lê localmente, sem app do Figma em execução, login ou chamadas de rede ao Figma.
 
 <a id="start"></a>
 

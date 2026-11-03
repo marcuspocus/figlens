@@ -24,11 +24,11 @@
 
 figlens 把保存的 Figma 文件转成 coding agent 可用的设计上下文，而不只是一张需要猜测的截图。
 
-- **依据原始细节实现。** 读取布局、文字、样式与变量，导出 SVG 矢量图标和图片素材。`bundle` 汇集 frame 的数据、素材和参考渲染图；`verify` 报告缺失文件、字体检查事项与交接限制。
+- **依据原始细节实现。** 读取布局、文字、样式、变量以及 Dev Mode 标注和 Ready for dev 状态，导出 SVG 矢量图标和图片素材。`bundle` 汇集 frame 的数据、素材和参考渲染图；`verify` 报告缺失文件、字体检查事项与交接限制。
 - **比对运行中的 UI。** `compare-image` 将截图与 figlens 的渲染结果比对，并指出差异区域下方的图层。仍需检查差异与渲染警告，不保证像素级一致。
 - **追踪设计变更。** `diff` 比较保存的版本；`changes` 与 `watch` 报告已追踪本地范围的更新。设计改动后需从 Figma 保存新的 `.fig`，并非与 Figma 实时同步。
 
-**离线是基础。** 在 Figma 中选择 **File > Save local copy**，把 `design.fig` 放在代码旁边。一个原生可执行文件在本地读取，无需运行 Figma 应用、登录或向 Figma 发出网络请求。
+**离线是基础。** 在 Figma 中选择 **File > Save local copy**，把 `design.fig` 放在代码旁边。只需要一个画面时，也可以在 Figma 复制选取范围，再用 `figlens clipboard` 把保存的剪贴板 HTML 转成 `.fig`。一个原生可执行文件在本地读取，无需运行 Figma 应用、登录或向 Figma 发出网络请求。
 
 <a id="start"></a>
 

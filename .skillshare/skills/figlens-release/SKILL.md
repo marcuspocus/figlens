@@ -30,8 +30,8 @@ Requested version: with the user's authorization for a direct push, push an empt
 - The version follows the policy in the `release` topic; a breaking change needs migration notes in the CHANGELOG.
 - `Cargo.toml`, `Cargo.lock`, `npm/package.json` and the host plugin manifests carry the same version (`python3 -B -m unittest scripts/host_plugins_test.py`).
 - The tracking manifest agrees with that version.
-- Every user-visible `feat` and `fix` in `<last tag>..origin/main` is reflected in `README.md`, `skills/figlens/SKILL.md` and the wiki topics; fix stale docs on `main` first, then let the PR update.
-- CI on `main` and the exact Release PR head is green. If bot-created PR checks need workflow approval, approve through GitHub's native prompt/API before waiting for results.
+- Every user-visible change in `<last tag>..origin/main` has a CHANGELOG entry and is described in the user-facing docs. Follow the [Release PR checklist](../../../wiki/review.md#release-pr) (`python3 scripts/ai-context.py review`): skipped commits and their recovery, the docs to check, and approving the PR's waiting CI run.
+- CI on `main` and the exact Release PR head is green.
 
 Report the version, the changelog entries and anything missing. Within the authorized scope, merge the reviewed head (`gh pr merge <n> --squash --match-head-commit <sha>`). If a required review blocks it, obtain a reviewer approval or explicit permission for an admin merge; keep all CI gates intact.
 
