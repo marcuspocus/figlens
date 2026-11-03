@@ -1161,6 +1161,9 @@ fn emitted_metadata_scopes_code_syntax_and_prototype_settings_are_properties() {
         "variableScopes",
         "codeSyntax",
         "prototypeInteractions",
+        "annotations",
+        "handoffStatusMap",
+        "annotationCategories",
     ] {
         let n = &run(one(key, "a"), one(key, "b"))["frames"][0]["nodes"][0];
         assert_eq!(n["facets"], json!(["properties"]), "{key}");
@@ -1873,6 +1876,60 @@ fn modes_a_frame_inherits_from_above_it_make_its_diff_partial() {
     // Over the whole page the mode setting is a compared record.
     let out = scoped(moded_page(), moded_page(), "0:1");
     assert_eq!(out["coverage"]["complete"], json!(true));
+}
+
+/// `doc(screen)` with frame 10 marked Ready for dev on its page, or its title annotated in
+/// category 90 of the document.
+fn dev_mode_page(status: bool, category: bool) -> K<'static> {
+    let mut message = doc(screen("Hi", 0.5, 400.0));
+    if let K::Object(_, o) = &mut message
+        && let Some(K::Array(nodes)) = o.get_mut("nodeChanges")
+    {
+        if let K::Object(_, document) = &mut nodes[0] {
+            let item = obj(vec![("id", guid(90))]);
+            document.insert(
+                "annotationCategories",
+                obj(vec![("items", K::Array(vec![item]))]),
+            );
+        }
+        if status && let K::Object(_, page) = &mut nodes[1] {
+            let entry = obj(vec![("guid", guid(10))]);
+            page.insert(
+                "handoffStatusMap",
+                obj(vec![("entries", K::Array(vec![entry]))]),
+            );
+        }
+        if let K::Object(_, title) = &mut nodes[3] {
+            let mut note = vec![("label", K::String("<p>a</p>".into()))];
+            if category {
+                note.push(("categoryId", guid(90)));
+            }
+            title.insert("annotations", K::Array(vec![obj(note)]));
+        }
+    }
+    message
+}
+
+#[test]
+fn dev_mode_state_above_a_frame_makes_its_diff_partial_only_when_the_frame_uses_it() {
+    let plain = scoped(
+        dev_mode_page(false, false),
+        dev_mode_page(false, false),
+        "0:10",
+    );
+    assert_eq!(plain["coverage"]["complete"], json!(true));
+    let status = scoped(
+        dev_mode_page(true, false),
+        dev_mode_page(true, false),
+        "0:10",
+    );
+    assert_eq!(status["coverage"]["reasons"], not_compared(1));
+    let both = scoped(dev_mode_page(true, true), dev_mode_page(true, true), "0:10");
+    assert_eq!(both["coverage"]["reasons"], not_compared(2));
+    // Over the whole document both are compared records.
+    let whole = scoped(dev_mode_page(true, true), dev_mode_page(true, true), "0:0");
+    assert_eq!(whole["coverage"]["complete"], json!(true));
+    outside_parity(dev_mode_page(true, true), dev_mode_page(true, true), "0:10");
 }
 
 /// Page 1 holds color variable 61 (red in mode 70, blue in 71), its collection 64, a component

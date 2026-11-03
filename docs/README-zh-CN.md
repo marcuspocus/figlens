@@ -54,7 +54,7 @@
 frame.zip
 ├── context.md                Start here: instructions for your agent
 ├── design/
-│   ├── nodes.json            Layout, text, styles and expanded instances
+│   ├── nodes.json            Layout, text, styles, Dev Mode notes and expanded instances
 │   ├── fonts.json            Font faces the visible text uses, with node ids
 │   └── variables.json        Bound variables, collections, modes and aliases
 ├── assets/                   Image fills, SVGs and composited node renders
@@ -270,4 +270,4 @@ Pi、OpenCode 和 OMP 通过各自的 opt-in 入口使用同一个索引，works
 
 node 参数接受 `12:345`、`12-345`，或带 `?node-id=` 的 Figma URL。`<file>` 也可以是 `gs://bucket/object`，通过你的 `gcloud` 登录下载并缓存。固定 object 交接、所需访问权限与更新限制，请参阅 [GCS 快照操作说明](../wiki/gcs.md)。每次 CLI 调用都会解码文件；MCP 只复用最后读取且未变更的本地文件，远程输入仍会重新解析。运行 `figlens --help` 或 `figlens inspect --help`（也可用 `-h`）查看完整 CLI 用法。`index add gs://bucket/object` 会登记该 generation 的固定副本并报告 `remote {uri, generation}`；只有 add 会运行 gcloud。
 
-`inspect` 包含已记录的文字尺寸调整、截断、最大行数与装饰。没有 auto-layout 的父层会带 `childSpacing: "derived"`：子层之间的间距是坐标差，不是 auto-layout 规则；`constraints` 仍可能固定它们。`handoffDiagnostics` 会列出已保存但尚未输出的语义、数量、示例及[覆盖限制](../wiki/semantics.md#known-handoff-gaps)。`_figlens.semantics` 只列出来源已保存的字段（缺少条目即表示未保存）；这些映射未与 Figma 比对，每个响应会在顶层的 `_figlens.semantics.verification` 中说明一次。grid auto layout 的 frame 会带行列数、间距和已保存的轨道尺寸（`_figlens.gridTracks`）。输出会保护源文件，完整写入后才替换目标。MCP 请求行上限为 1 MiB，完整响应上限为 8 MiB，超限会明确报错；CLI 仍可输出完整 JSON。
+`inspect` 包含已记录的文字尺寸调整、截断、最大行数与装饰。Dev Mode 标注出现在对应节点的 `annotations`（纯文本 `label` 预览、固定的 `properties`、`categoryId`；`nodes` 另含 `labelMarkdown`），并附上有名称的 `annotationCategories`；Ready for dev 的 frame 和 section 带 `devStatus`，`--flat` 会标出两者；测量列在 `handoffDiagnostics`。没有 auto-layout 的父层会带 `childSpacing: "derived"`：子层之间的间距是坐标差，不是 auto-layout 规则；`constraints` 仍可能固定它们。`handoffDiagnostics` 会列出已保存但尚未输出的语义、数量、示例及[覆盖限制](../wiki/semantics.md#known-handoff-gaps)。`_figlens.semantics` 只列出来源已保存的字段（缺少条目即表示未保存）；这些映射未与 Figma 比对，每个响应会在顶层的 `_figlens.semantics.verification` 中说明一次。grid auto layout 的 frame 会带行列数、间距和已保存的轨道尺寸（`_figlens.gridTracks`）。输出会保护源文件，完整写入后才替换目标。MCP 请求行上限为 1 MiB，完整响应上限为 8 MiB，超限会明确报错；CLI 仍可输出完整 JSON。

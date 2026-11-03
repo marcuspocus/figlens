@@ -10,7 +10,7 @@ For multiple screens, record name/purpose, actual frame IDs and paths, state/siz
 
 Use the render to check appearance. When a decision depends on style names, masks or crop, read full `nodes`: the top-level `styles` map resolves node style IDs; node fills, `isMask`/`maskType`, clipping and image transforms describe structure absent from the image or compact `inspect` summary. When expanded instance data leaves a relevant decision unresolved, follow its component ID to the actual definition, including on canvases such as "Internal Only Canvas". Excluding a canvas from delivery does not exclude its components as evidence; retrieve only the dependencies relevant to this slice.
 
-Read relevant hidden TEXT notes and component descriptions as design context, preserving their associated node and provenance; keep them out of visual output. Native Dev Mode annotations are not emitted by figlens. When such a note matters, request its exact wording/export and node association, then record it as supplied evidence. Hidden text does not prove annotation completeness. Continue independent work; leave a decision blocked only if the missing information would materially change that slice.
+Read relevant Dev Mode annotations (`annotations` in `inspect`/`nodes`), hidden TEXT notes and component descriptions as design context, preserving their associated node and provenance; keep them out of visual output. Dev Mode measurements are not emitted by figlens. When one matters, request its value and the nodes it spans, then record it as supplied evidence. Continue independent work; leave a decision blocked only if the missing information would materially change that slice.
 
 ## Ground decisions in the project
 

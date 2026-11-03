@@ -13,6 +13,7 @@ use crate::expand::{
 use crate::render::{self, Rect};
 use crate::{Tree, to_json};
 
+mod annotations;
 pub mod compact;
 mod handoff;
 mod semantics;
@@ -145,12 +146,33 @@ fn build(
     budget: Option<&Budget>,
 ) -> Result<Json, crate::FigError> {
     let mut styles: HashMap<String, Vec<String>> = HashMap::new();
+    let mut dev_status = HashMap::new();
+    let mut categories = HashMap::new();
     for (id, node) in &tree.nodes {
         if let (Some(_), Some(key)) = (node.get("styleType"), node.get("key")) {
             styles
                 .entry(key.as_string().to_owned())
                 .or_default()
                 .push(id.clone());
+        }
+        // Each page records the Ready for dev status of its frames and sections.
+        if let Some(kiwi_schema::Value::Array(entries)) =
+            node.get("handoffStatusMap").and_then(|m| m.get("entries"))
+        {
+            for entry in entries {
+                if let (Some(id), Some(status)) = (
+                    entry.get("guid").and_then(crate::guid_key),
+                    entry
+                        .get("handoffStatus")
+                        .and_then(|s| annotations::dev_status(&to_json(s))),
+                ) {
+                    dev_status.insert(id, status);
+                }
+            }
+        }
+        // The document lists its annotation categories.
+        if let Some(stored) = node.get("annotationCategories") {
+            categories.extend(annotations::categories(&to_json(stored)));
         }
     }
     // Every expansion under a selected stored root is emitted, so expansion can stop early too.
@@ -196,6 +218,7 @@ fn build(
         base: abs_matrix(tree, root, ""),
         vars: variables(tree),
         styles,
+        dev_status,
         render,
         budget,
     };
@@ -206,11 +229,23 @@ fn build(
         return Ok(Json::Null);
     }
     let (mut components, mut sets, mut styles) = (Obj::new(), Obj::new(), Obj::new());
+    let mut used_categories = Obj::new();
     let mut handoff = handoff::Inventory::default();
     let mut stack = vec![&document];
     while let Some(n) = stack.pop() {
         handoff.record(n);
         stack.extend(n["children"].as_array().into_iter().flatten());
+        for id in n["annotations"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|a| a["categoryId"].as_str())
+        {
+            if let (false, Some(category)) = (used_categories.contains_key(id), categories.get(id))
+            {
+                used_categories.insert(id.to_owned(), category.clone());
+            }
+        }
         if let Some(main) = n["componentId"]
             .as_str()
             .filter(|m| tree.nodes.contains_key(*m) && !components.contains_key(*m))
@@ -253,6 +288,10 @@ fn build(
         "styles": styles,
         "schemaVersion": 0,
     });
+    // Like `styles`: the categories the emitted annotations name, as the Plugin API reads them.
+    if !used_categories.is_empty() {
+        result["annotationCategories"] = used_categories.into();
+    }
     // Stated once here rather than on every node's `_figlens.semantics`.
     result["_figlens"] = json!({"semantics":{"verification":"not-compared-with-figma"}});
     if let Some(summary) = handoff.finish() {
@@ -438,6 +477,8 @@ struct Builder<'t, 'a> {
     /// Keep each node's render input (`_r`) in the output.
     render: bool,
     budget: Option<&'t Budget<'t>>,
+    /// Stored node id → REST `devStatus`.
+    dev_status: HashMap<String, Json>,
 }
 
 impl Builder<'_, '_> {
@@ -647,6 +688,10 @@ impl Builder<'_, '_> {
             }
         }
         handoff::fields(&kiwi, &kind, parent.or(root_parent.as_ref()), &mut out);
+        annotations::node(&kiwi, &mut out);
+        if let Some(status) = self.dev_status.get(id) {
+            out.insert("devStatus".into(), status.clone());
+        }
         if let Some(prototype) = crate::prototype::node(self.tree, id, self.ex.nodes.get(id), &kind)
         {
             out.entry("_figlens".to_owned())

@@ -54,7 +54,7 @@ frame 하나, zip 하나. 구현할 구조, 사용할 에셋, 비교할 이미�
 frame.zip
 ├── context.md                Start here: instructions for your agent
 ├── design/
-│   ├── nodes.json            Layout, text, styles and expanded instances
+│   ├── nodes.json            Layout, text, styles, Dev Mode notes and expanded instances
 │   ├── fonts.json            Font faces the visible text uses, with node ids
 │   └── variables.json        Bound variables, collections, modes and aliases
 ├── assets/                   Image fills, SVGs and composited node renders
@@ -270,4 +270,4 @@ Pi, OpenCode, OMP는 각자의 opt-in 진입점으로 같은 인덱스를 쓰며
 
 노드 인수는 `12:345`, `12-345`, `?node-id=`가 있는 Figma URL을 받을 수 있습니다. `<file>`에 `gs://bucket/object`도 지정할 수 있으며 `gcloud` 로그인으로 다운로드하고 캐시합니다. 고정 객체를 통한 전달, 필요한 접근 권한과 갱신 제한은 [GCS 스냅샷 가이드](../wiki/gcs.md)를 참고하세요. CLI 호출은 매번 파일을 디코딩합니다. MCP는 마지막으로 읽은 변경 없는 로컬 파일만 재사용합니다. 원격 입력은 다시 파싱합니다. 전체 CLI 사용법은 `figlens --help` 또는 `figlens inspect --help`(`-h`도 가능)를 실행하세요. `index add gs://bucket/object`는 해당 generation의 고정된 사본을 등록하고 `remote {uri, generation}`을 보고하며, gcloud는 add만 실행합니다.
 
-`inspect`에는 기록된 텍스트 크기 조정, 잘림, 최대 줄 수와 장식이 포함됩니다. auto-layout이 없는 부모에는 `childSpacing: "derived"`가 붙습니다. 자식 사이의 간격은 좌표 차이이며 auto-layout 규칙이 아닙니다. `constraints`가 고정할 수는 있습니다. `handoffDiagnostics`는 저장되었지만 출력되지 않는 의미 정보를 개수, 예시, [범위 제한](../wiki/semantics.md#known-handoff-gaps)과 함께 보고합니다. `_figlens.semantics`에는 소스가 저장된 필드만 나옵니다(항목이 없으면 저장되지 않은 것입니다). 이 매핑이 Figma와 비교되지 않았다는 점은 응답마다 한 번, 최상위 `_figlens.semantics.verification`에 표시됩니다. grid auto layout 프레임에는 행·열 수, 간격, 저장된 트랙 크기(`_figlens.gridTracks`)가 포함됩니다. 출력은 원본을 보호하고 쓰기가 완료된 뒤 대상을 교체합니다. MCP 요청 행은 1 MiB, 전체 응답은 8 MiB로 제한되며 초과하면 명시적인 오류를 반환합니다. CLI에서는 전체 JSON을 계속 출력할 수 있습니다.
+`inspect`에는 기록된 텍스트 크기 조정, 잘림, 최대 줄 수와 장식이 포함됩니다. Dev Mode 주석은 각 노드의 `annotations`(일반 텍스트 `label` 미리 보기, 고정된 `properties`, `categoryId`; `nodes`는 `labelMarkdown`도 포함)에 담기고 이름이 있는 `annotationCategories`가 함께 제공됩니다. Ready for dev 프레임과 섹션에는 `devStatus`가 붙고 `--flat`은 둘 다 표시합니다. 측정은 `handoffDiagnostics`에 보고됩니다. auto-layout이 없는 부모에는 `childSpacing: "derived"`가 붙습니다. 자식 사이의 간격은 좌표 차이이며 auto-layout 규칙이 아닙니다. `constraints`가 고정할 수는 있습니다. `handoffDiagnostics`는 저장되었지만 출력되지 않는 의미 정보를 개수, 예시, [범위 제한](../wiki/semantics.md#known-handoff-gaps)과 함께 보고합니다. `_figlens.semantics`에는 소스가 저장된 필드만 나옵니다(항목이 없으면 저장되지 않은 것입니다). 이 매핑이 Figma와 비교되지 않았다는 점은 응답마다 한 번, 최상위 `_figlens.semantics.verification`에 표시됩니다. grid auto layout 프레임에는 행·열 수, 간격, 저장된 트랙 크기(`_figlens.gridTracks`)가 포함됩니다. 출력은 원본을 보호하고 쓰기가 완료된 뒤 대상을 교체합니다. MCP 요청 행은 1 MiB, 전체 응답은 8 MiB로 제한되며 초과하면 명시적인 오류를 반환합니다. CLI에서는 전체 JSON을 계속 출력할 수 있습니다.

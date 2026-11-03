@@ -135,6 +135,16 @@ pub(super) fn fields(k: &Obj, kind: &str, parent: Option<&Obj>, out: &mut Obj) {
         code,
         "Saved code layers are not emitted; their source and rendered result are not read.",
     );
+    if at(k, "measurements")
+        .as_array()
+        .is_some_and(|v| !v.is_empty())
+    {
+        add(
+            "measurements",
+            vec!["measurements"],
+            "Saved Dev Mode measurements are not emitted; how their stored end node, side and offset map to Figma's is not established.",
+        );
+    }
     if at(k, "layoutGrids")
         .as_array()
         .is_some_and(|v| !v.is_empty())
@@ -329,6 +339,11 @@ mod tests {
             gaps(json!({"isEmbedCodeLayer":true}), "FRAME"),
             [(json!("codeLayers"), json!(["isEmbedCodeLayer"]))]
         );
+        assert_eq!(
+            gaps(json!({"measurements":[{"freeText":""}]}), "FRAME"),
+            [(json!("measurements"), json!(["measurements"]))]
+        );
+        assert!(gaps(json!({"measurements":[]}), "FRAME").is_empty());
         // Prototype transitions also store easingType; it is not Motion evidence, and neither
         // is a stored false switch.
         assert!(gaps(json!({"easingType":"EASE_IN"}), "FRAME").is_empty());

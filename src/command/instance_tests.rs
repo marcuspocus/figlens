@@ -63,10 +63,10 @@ impl Fixture {
     }
 
     fn with_variants(variants: bool) -> Self {
-        Self::build(variants, false)
+        Self::build(variants, false, false)
     }
 
-    fn build(variants: bool, prototype: bool) -> Self {
+    fn build(variants: bool, prototype: bool, annotations: bool) -> Self {
         let field = |name: &str, type_id, value, is_array| Field {
             name: name.into(),
             type_id,
@@ -155,6 +155,7 @@ impl Fixture {
                     field("fillPaints", 8, 4, true),
                     field("textData", 9, 5, false),
                     field("prototypeInteractions", 21, 6, true),
+                    field("annotations", 24, 7, true),
                 ],
             ),
             def(
@@ -183,6 +184,9 @@ impl Fixture {
                     field("componentPropDefs", 15, 12, true),
                     field("variantPropSpecs", 16, 13, true),
                     field("prototypeInteractions", 21, 14, true),
+                    field("annotations", 24, 15, true),
+                    field("handoffStatusMap", 28, 16, false),
+                    field("annotationCategories", 33, 17, false),
                 ],
             ),
             def(
@@ -250,6 +254,83 @@ impl Fixture {
                     field("isDeleted", TYPE_BOOL, 3, false),
                     field("condition", TYPE_STRING, 4, false),
                 ],
+            ),
+            def(
+                "AnnotationPropertyType",
+                DefKind::Enum,
+                vec![field("FILL", 0, 0, false)],
+            ),
+            def(
+                "AnnotationProperty",
+                DefKind::Message,
+                vec![field("type", 22, 1, false)],
+            ),
+            def(
+                "Annotation",
+                DefKind::Message,
+                vec![
+                    field("label", TYPE_STRING, 1, false),
+                    field("properties", 23, 2, true),
+                    field("categoryId", 0, 3, false),
+                ],
+            ),
+            def(
+                "SectionStatus",
+                DefKind::Enum,
+                vec![field("NONE", 0, 0, false), field("BUILD", 0, 1, false)],
+            ),
+            def(
+                "SectionStatusInfo",
+                DefKind::Message,
+                vec![field("status", 25, 1, false)],
+            ),
+            def(
+                "HandoffStatusMapEntry",
+                DefKind::Message,
+                vec![
+                    field("guid", 0, 1, false),
+                    field("handoffStatus", 26, 2, false),
+                ],
+            ),
+            def(
+                "HandoffStatusMap",
+                DefKind::Message,
+                vec![field("entries", 27, 1, true)],
+            ),
+            def(
+                "AnnotationCategoryPreset",
+                DefKind::Enum,
+                vec![
+                    field("NONE", 0, 0, false),
+                    field("DEVELOPMENT", 0, 1, false),
+                ],
+            ),
+            def(
+                "AnnotationCategoryColor",
+                DefKind::Enum,
+                vec![field("PINK", 0, 0, false)],
+            ),
+            def(
+                "AnnotationCategoryCustom",
+                DefKind::Message,
+                vec![
+                    field("color", 30, 1, false),
+                    field("label", TYPE_STRING, 2, false),
+                ],
+            ),
+            def(
+                "AnnotationCategory",
+                DefKind::Message,
+                vec![
+                    field("id", 0, 1, false),
+                    field("preset", 29, 2, false),
+                    field("custom", 31, 3, false),
+                ],
+            ),
+            def(
+                "AnnotationCategories",
+                DefKind::Message,
+                vec![field("items", 32, 1, true)],
             ),
         ]);
         let node = |id, parent, kind, name: &str, extra: Vec<_>| {
@@ -614,6 +695,122 @@ impl Fixture {
                 ],
             ));
         }
+        if annotations {
+            let K::Object(_, fields) = &mut message else {
+                unreachable!()
+            };
+            let Some(K::Array(nodes)) = fields.get_mut("nodeChanges") else {
+                unreachable!()
+            };
+            for node in nodes.iter_mut() {
+                let K::Object(_, fields) = node else {
+                    unreachable!()
+                };
+                match fields["guid"].get("localID").unwrap().as_uint() {
+                    // The document lists its categories; only the one in use is emitted.
+                    0 => {
+                        let category = |id, preset, custom: Vec<_>| {
+                            let mut fields = vec![
+                                ("id", guid(id)),
+                                ("preset", K::Enum("AnnotationCategoryPreset", preset)),
+                            ];
+                            if !custom.is_empty() {
+                                fields.push(("custom", obj("AnnotationCategoryCustom", custom)));
+                            }
+                            obj("AnnotationCategory", fields)
+                        };
+                        fields.insert(
+                            "annotationCategories",
+                            obj(
+                                "AnnotationCategories",
+                                vec![(
+                                    "items",
+                                    K::Array(vec![
+                                        category(70, "DEVELOPMENT", vec![]),
+                                        category(
+                                            71,
+                                            "NONE",
+                                            vec![
+                                                (
+                                                    "color",
+                                                    K::Enum("AnnotationCategoryColor", "PINK"),
+                                                ),
+                                                ("label", K::String("Needs review".into())),
+                                            ],
+                                        ),
+                                    ]),
+                                )],
+                            ),
+                        );
+                    }
+                    // The page marks the Screen frame Ready for dev, which Figma stores as BUILD.
+                    30 => {
+                        let entry = |id, status| {
+                            obj(
+                                "HandoffStatusMapEntry",
+                                vec![
+                                    ("guid", guid(id)),
+                                    (
+                                        "handoffStatus",
+                                        obj(
+                                            "SectionStatusInfo",
+                                            vec![("status", K::Enum("SectionStatus", status))],
+                                        ),
+                                    ),
+                                ],
+                            )
+                        };
+                        fields.insert(
+                            "handoffStatusMap",
+                            obj(
+                                "HandoffStatusMap",
+                                vec![(
+                                    "entries",
+                                    K::Array(vec![entry(1, "BUILD"), entry(60, "NONE")]),
+                                )],
+                            ),
+                        );
+                    }
+                    // The main's label carries the note every copy inherits ...
+                    13 => {
+                        fields.insert(
+                            "annotations",
+                            K::Array(vec![obj(
+                                "Annotation",
+                                vec![
+                                    (
+                                        "label",
+                                        K::String("<p>Truncate at <em>one</em> line</p>".into()),
+                                    ),
+                                    (
+                                        "properties",
+                                        K::Array(vec![obj(
+                                            "AnnotationProperty",
+                                            vec![(
+                                                "type",
+                                                K::Enum("AnnotationPropertyType", "FILL"),
+                                            )],
+                                        )]),
+                                    ),
+                                    ("categoryId", guid(71)),
+                                ],
+                            )]),
+                        );
+                    }
+                    // ... unless an empty override clears it.
+                    2 => {
+                        let Some(K::Object(_, symbol)) = fields.get_mut("symbolData") else {
+                            unreachable!()
+                        };
+                        let Some(K::Array(overrides)) = symbol.get_mut("symbolOverrides") else {
+                            unreachable!()
+                        };
+                        overrides.push(patch(&[13], vec![("annotations", K::Array(vec![]))]));
+                    }
+                    _ => {}
+                }
+            }
+        }
         let dir = TestDir::new();
         let file = dir.join("instances.fig");
         let mut canvas = b"fig-kiwi".to_vec();
@@ -684,6 +881,69 @@ fn bundle_files(path: &Path) -> std::collections::BTreeMap<String, Vec<u8>> {
             (name, bytes)
         })
         .collect()
+}
+
+#[test]
+fn dev_mode_annotations_status_and_categories_reach_cli_mcp_and_bundle() {
+    let f = Fixture::build(false, false, true);
+    let nodes: Value = serde_json::from_str(&f.cli("nodes", &["0:1"]).unwrap()).unwrap();
+    let screen = &nodes["document"];
+    assert_eq!(screen["devStatus"], json!({"type": "READY_FOR_DEV"}));
+    let note = json!([{"label": "Truncate at one line", "labelMarkdown": "Truncate at _one_ line",
+                       "properties": [{"type": "fills"}], "categoryId": "0:71"}]);
+    assert_eq!(descendant(screen, "I0:3;0:13")["annotations"], note);
+    assert!(descendant(screen, "I0:2;0:13").get("annotations").is_none());
+    let categories = json!({"0:71": {"label": "Needs review", "isPreset": false, "color": "pink"}});
+    assert_eq!(nodes["annotationCategories"], categories);
+    let reply = f.tool("nodes", json!({"node": "0:1"}));
+    assert_eq!(
+        serde_json::from_str::<Value>(reply["content"][0]["text"].as_str().unwrap()).unwrap(),
+        nodes
+    );
+    // inspect keeps the plain label as a preview and leaves the Markdown to nodes.
+    let inspect: Value =
+        serde_json::from_str(&f.cli("inspect", &["0:1", "--depth", "3"]).unwrap()).unwrap();
+    assert_eq!(
+        inspect["node"]["devStatus"],
+        json!({"type": "READY_FOR_DEV"})
+    );
+    let mut preview = note.clone();
+    preview[0].as_object_mut().unwrap().remove("labelMarkdown");
+    assert_eq!(
+        descendant(&inspect["node"], "I0:3;0:13")["annotations"],
+        preview
+    );
+    assert_eq!(inspect["annotationCategories"], categories);
+    // A category only a node past the depth names is not listed.
+    let shallow: Value =
+        serde_json::from_str(&f.cli("inspect", &["0:1", "--depth", "0"]).unwrap()).unwrap();
+    assert!(shallow.get("annotationCategories").is_none());
+    assert_eq!(
+        f.tool("inspect", json!({"node": "0:1", "depth": 3}))["structuredContent"],
+        inspect
+    );
+    let flat = f
+        .cli("inspect", &["0:1", "--depth", "3", "--flat"])
+        .unwrap();
+    assert!(
+        flat.lines()
+            .next()
+            .unwrap()
+            .contains("devStatus=READY_FOR_DEV")
+    );
+    assert!(
+        flat.lines()
+            .any(|l| l.trim_start().starts_with("I0:3;0:13 ") && l.contains("annotations=1"))
+    );
+    let out = f.dir.join("annotated.zip");
+    f.cli("bundle", &["0:1", out.to_str().unwrap()]).unwrap();
+    let mut zip = zip::ZipArchive::new(std::fs::File::open(&out).unwrap()).unwrap();
+    let stored: Value = serde_json::from_slice(&zip_bytes(&mut zip, "design/nodes.json")).unwrap();
+    assert_eq!(
+        descendant(&stored["document"], "I0:3;0:13")["annotations"],
+        note
+    );
+    assert_eq!(stored["annotationCategories"], categories);
 }
 
 fn descendant<'a>(node: &'a Value, id: &str) -> &'a Value {
@@ -905,7 +1165,7 @@ fn batch_bundle_states_match_single_bundles_in_both_job_modes() {
 
 #[test]
 fn prototype_evidence_reaches_cli_mcp_bundle_and_snapshot_with_exact_sources() {
-    let f = Fixture::build(true, true);
+    let f = Fixture::build(true, true, false);
     let inspected = f.tool("inspect", json!({"node":"0:1","states":true}));
     assert_eq!(inspected["isError"], false, "{inspected}");
     let states = &inspected["structuredContent"]["states"];
@@ -1051,7 +1311,7 @@ fn prototype_evidence_reaches_cli_mcp_bundle_and_snapshot_with_exact_sources() {
 
 #[test]
 fn truncated_prototype_actions_match_cli_mcp_bundle_and_snapshot() {
-    let f = Fixture::build(true, true);
+    let f = Fixture::build(true, true, false);
     let cli: Value =
         serde_json::from_str(&f.cli("inspect", &["0:43", "--states"]).unwrap()).unwrap();
     let mcp = f.tool("inspect", json!({"node":"0:43", "states":true}));
@@ -1125,7 +1385,7 @@ fn truncated_prototype_actions_match_cli_mcp_bundle_and_snapshot() {
 
 #[test]
 fn variant_comparison_cli_and_mcp_match_without_changing_existing_outputs() {
-    let f = Fixture::build(true, true);
+    let f = Fixture::build(true, true, false);
     let normal: Value =
         serde_json::from_str(&f.cli("inspect", &["0:10", "--states", "--images"]).unwrap())
             .unwrap();

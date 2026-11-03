@@ -101,7 +101,7 @@ The first launch downloads the matching native release binary, verifies it again
 
 ## What to check
 
-`.fig` is a snapshot: design updates need a new export. Some assets and fonts may be unavailable, and the independent parser/renderer has known gaps, including native Dev Mode annotations. Check the source, output and missing-asset report before claiming a visual match. Exporting or sharing a design requires its owner's permission; the tool's MIT license does not license the design or its assets.
+`.fig` is a snapshot: design updates need a new export. Some assets and fonts may be unavailable, and the independent parser/renderer has known gaps, including Dev Mode measurements. Check the source, output and missing-asset report before claiming a visual match. Exporting or sharing a design requires its owner's permission; the tool's MIT license does not license the design or its assets.
 
 [Full documentation, limitations and standalone installs](https://github.com/runkids/figlens) · [Report a reproducible issue](https://github.com/runkids/figlens/issues)
 

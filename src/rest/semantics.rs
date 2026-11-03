@@ -200,7 +200,8 @@ pub(super) fn grid(
     tracks
 }
 
-fn definition_id(value: &Json) -> Option<String> {
+/// A stored GUID as `sessionID:localID`, or none for the unset sentinel or out-of-range parts.
+pub(super) fn definition_id(value: &Json) -> Option<String> {
     let id = guid(value)?;
     let session = value["sessionID"].as_u64()?;
     let local = value["localID"].as_u64()?;

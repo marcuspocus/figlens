@@ -109,6 +109,7 @@ usage:
                                              compact layout/text summary, instances expanded;
                                              depth 1 (0-10), at most 200 nodes, 200 characters per text;
                                              recorded text resize/truncation/decoration and known handoff gaps;
+                                             Dev Mode annotations (label previews) and Ready for dev devStatus;
                                              childSpacing: derived marks gaps that are coordinates, not auto-layout;
                                              --images adds source pixels/bytes and source-pixel crop rectangles;
                                              --states lists related component variants and evidence gaps;
@@ -123,7 +124,8 @@ usage:
                                              solid fills, also on --flat; no gradients, images or strokes;
                                              --flat prints one line per node instead (not with the above):
                                              id TYPE \"name\" @x,y WxH relative to the node, then hidden, rot,
-                                             component, text, font=family size/weight/lineHeight, fill,
+                                             component, devStatus=…, annotations=N (count only), text,
+                                             font=family size/weight/lineHeight, fill,
                                              stroke=paint/weight, r, shadow|inner-shadow=x,y,blur[,spread],color,
                                              blur, bg-blur, H|V gap or GRID RxC gap=row,col rows=… cols=…
                                              (stored sizes: flexN, px, hug or min..max), pad=top,right,bottom,left,
@@ -134,7 +136,7 @@ usage:
   figlens nodes <file.fig> <node>              print a frame as the per-node object of a Figma REST
                                              nodes response: {document, components, componentSets,
                                              styles, schemaVersion, _figlens}; instances expanded,
-                                             fills/text/auto-layout included
+                                             fills/text/auto-layout, Dev Mode annotations and devStatus included
                      [--compact [--subtrees]] opt-in lossless style references; --subtrees also shares
                                              repeated templates with per-node ids and bounds;
                                              default REST shape unchanged

@@ -128,6 +128,11 @@ pub(crate) const FIELDS: [&[&str]; 4] = [
         "styleType",
         // Triggers and transitions; edges hold only their destinations.
         "prototypeInteractions",
+        // Dev Mode notes, a page's Ready for dev status of its frames and sections, and the
+        // document's annotation categories; a scope below their holder counts them outside.
+        "annotations",
+        "handoffStatusMap",
+        "annotationCategories",
     ],
 ];
 /// Largest value one field may scan; a larger one is `unread`, like a usages binding field.
@@ -587,7 +592,8 @@ struct Side {
     /// The selected node's own parent and position among its siblings, which the index's
     /// root record leaves out; `Err` when it could not be verified within the side's bounds.
     origin: Result<Option<(String, u32)>, ()>,
-    /// Ancestors above the selected node that set explicit variable modes (`inherited_modes`).
+    /// Ancestors above the selected node that set explicit variable modes (`inherited_modes`),
+    /// plus the Dev Mode state stored above it that its records depend on (`outside_dev_mode`).
     inherited: usize,
 }
 
@@ -832,6 +838,67 @@ fn inherited_modes(tree: &Tree, node: &str, bounds: &mut Bounds) -> usize {
     }
     // Only a chain that goes on past the walk is unknown.
     n + usize::from(tree.nodes[&at].get("parentIndex").is_some())
+}
+
+/// Dev Mode state stored above `node`, which `nodes` projects into the records below it: the
+/// ids its pages' Ready for dev maps hold, and whether the document defines annotation
+/// categories. Each step and entry is charged; `None` when the walk does not fit `bounds`.
+fn dev_mode_above(tree: &Tree, node: &str, bounds: &mut Bounds) -> Option<(HashSet<String>, bool)> {
+    use kiwi_schema::Value as K;
+    let (mut statuses, mut categories, mut at) = (HashSet::new(), false, node.to_owned());
+    for _ in 0..DEPTH {
+        let Some(guid) = tree
+            .nodes
+            .get(&at)
+            .and_then(|x| x.get("parentIndex")?.get("guid"))
+        else {
+            return Some((statuses, categories));
+        };
+        if !bounds.charge(1, 64) {
+            return None;
+        }
+        let Some(p) = guid_key(guid).filter(|p| tree.nodes.contains_key(p)) else {
+            return Some((statuses, categories));
+        };
+        let parent = &tree.nodes[&p];
+        if let Some(K::Array(entries)) = parent
+            .get("handoffStatusMap")
+            .and_then(|m| m.get("entries"))
+        {
+            if !bounds.charge(entries.len(), entries.len() * 64) {
+                return None;
+            }
+            statuses.extend(entries.iter().filter_map(|e| guid_key(e.get("guid")?)));
+        }
+        categories |= matches!(
+            parent.get("annotationCategories").and_then(|c| c.get("items")),
+            Some(K::Array(items)) if !items.is_empty()
+        );
+        at = p;
+    }
+    tree.nodes[&at]
+        .get("parentIndex")
+        .is_none()
+        .then_some((statuses, categories))
+}
+
+/// How many kinds of Dev Mode state above the selected node its compared records depend on: a
+/// page's Ready for dev entry for one of them, and the document's categories when one of them
+/// has a categorized annotation (one holding a GUID). A walk that did not finish counts as one.
+fn outside_dev_mode(
+    above: &Option<(HashSet<String>, bool)>,
+    index: &Index,
+    facets: &[Facets],
+) -> usize {
+    let Some((statuses, categories)) = above else {
+        return 1;
+    };
+    let status = index.records.iter().any(|r| statuses.contains(&r.id));
+    let named = *categories
+        && facets
+            .iter()
+            .any(|f| f.fields.iter().any(|x| x.key == "annotations" && x.local));
+    usize::from(status) + usize::from(named)
 }
 
 /// A record's structure digest input: name, kind, parent id, order among siblings and hidden.
@@ -2184,6 +2251,7 @@ pub(crate) fn tracked(
     };
     let origin = origin(tree, node, &mut bounds);
     let inherited = inherited_modes(tree, node, &mut bounds);
+    let above = dev_mode_above(tree, node, &mut bounds);
     let mut facets = Vec::new();
     let present = tree.nodes.contains_key(node);
     let index = match present {
@@ -2191,10 +2259,10 @@ pub(crate) fn tracked(
         false => Index::empty(),
     };
     let t = Tracked {
+        inherited: inherited + outside_dev_mode(&above, &index, &facets),
         facets,
         present,
         origin,
-        inherited,
     };
     (index, t)
 }
@@ -2719,6 +2787,7 @@ fn compare_trees(old: &Tree, new: &Tree, works: [usize; 3], node: &str) -> Pair 
         };
         let origin = origin(tree, node, &mut bounds);
         let inherited = inherited_modes(tree, node, &mut bounds);
+        let above = dev_mode_above(tree, node, &mut bounds);
         let mut facets = Vec::new();
         let present = tree.nodes.contains_key(node);
         let index = match present {
@@ -2732,6 +2801,7 @@ fn compare_trees(old: &Tree, new: &Tree, works: [usize; 3], node: &str) -> Pair 
             ),
             false => Index::empty(),
         };
+        let inherited = inherited + outside_dev_mode(&above, &index, &facets);
         Side {
             present,
             signature: format!("{}:{}", index.generation, index.stop.unwrap_or("")),
