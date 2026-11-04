@@ -1615,3 +1615,22 @@ fn help_after_help_still_prints_everything() {
     run(vec!["--help".into(), "--help".into()], &mut out).unwrap();
     assert!(out.starts_with("figlens — read Figma .fig files"), "{out}");
 }
+
+#[test]
+fn preview_refuses_an_idle_exit_of_zero() {
+    let error = run(
+        vec![
+            "preview".into(),
+            concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/examples/first-success/design.fig"
+            )
+            .into(),
+            "--idle-exit".into(),
+            "0".into(),
+        ],
+        &mut String::new(),
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("1 or more seconds"), "{error}");
+}

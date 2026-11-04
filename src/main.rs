@@ -221,9 +221,10 @@ usage:
                                              unverified; neither shows the browser loads it. Plus
                                              findings: one entry per missing, unsupported or
                                              unverified handoff input with node ids, evidence and action
-  figlens preview <file.fig> [node] [--out preview.html] [--port N] [--bind IP]
+  figlens preview <file.fig> [node] [--out preview.html] [--port N] [--bind IP] [--idle-exit SECONDS]
                                              local viewer that never writes the design (loopback,
-                                             random port by default);
+                                             random port by default); --idle-exit stops it after that
+                                             long with no request (an open page asks every 2 s);
                                              --out requires a node and writes an offline snapshot;
                                              live, it also runs ranked search and exact usages of
                                              the loaded revision (snapshots search their layers only);
@@ -781,12 +782,20 @@ fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
     if command == "preview" {
         let (mut node, mut output, mut port, mut bind) =
             (None, None, 0u16, "127.0.0.1".parse::<std::net::IpAddr>()?);
+        let mut idle = None;
         let mut rest = args[2..].iter();
         while let Some(arg) = rest.next() {
             match arg.as_str() {
                 "--out" | "-o" => output = Some(rest.next().ok_or("--out needs a path")?),
                 "--port" => port = rest.next().ok_or("--port needs a number")?.parse()?,
                 "--bind" => bind = rest.next().ok_or("--bind needs an IP address")?.parse()?,
+                "--idle-exit" => {
+                    let secs: u64 = rest.next().ok_or("--idle-exit needs seconds")?.parse()?;
+                    if secs == 0 {
+                        return Err("--idle-exit takes 1 or more seconds".into());
+                    }
+                    idle = Some(std::time::Duration::from_secs(secs));
+                }
                 _ if !arg.starts_with('-') && node.is_none() => node = Some(normalize_id(arg)),
                 _ => return Err(USAGE.into()),
             }
@@ -811,6 +820,7 @@ fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
             node.as_deref(),
             std::net::SocketAddr::new(bind, port),
             &signals::INTERRUPTED,
+            idle,
         );
     }
     // Read before decoding, so a bundle's `source.sha256` names the bytes this tree came from.

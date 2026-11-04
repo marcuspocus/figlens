@@ -8,7 +8,7 @@ use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, mpsc};
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 
 use crate::{
     Document, FigError, Tree,
@@ -589,16 +589,19 @@ pub fn serve(file: &Path, initial: Option<&str>, address: SocketAddr) -> Result<
         initial,
         address,
         &std::sync::atomic::AtomicBool::new(false),
+        None,
     )
 }
 
-/// `serve` until `stop` is set (by a signal handler): it then cancels in-flight model queries
-/// and the build it owns, waits for them and their workers, and returns.
+/// `serve` until `stop` is set (by a signal handler), or until `idle` passes with no request
+/// (an open page polls every two seconds, so that means no page is open): it then cancels
+/// in-flight model queries and the build it owns, waits for them and their workers, and returns.
 pub fn serve_until(
     file: &Path,
     initial: Option<&str>,
     address: SocketAddr,
     stop: &std::sync::atomic::AtomicBool,
+    idle: Option<Duration>,
 ) -> Result<()> {
     let listener = TcpListener::bind(address)?;
     // Polled, so a stop is seen while idle; accepted sockets are blocking again.
@@ -631,6 +634,7 @@ pub fn serve_until(
     // A connection accepted just as a save was noticed is answered after the reload.
     let mut pending: Option<TcpStream> = None;
     let indexing = semantic::Indexing::default();
+    let mut last_request = Instant::now();
     loop {
         // Decode once per revision; the revision's workers share the tree and finish before a reload.
         let next = {
@@ -684,10 +688,21 @@ pub fn serve_until(
                         None => match listener.accept() {
                             Ok((stream, _)) => {
                                 stream.set_nonblocking(false)?;
+                                last_request = Instant::now();
                                 stream
                             }
                             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                                if stop.load(Ordering::SeqCst) {
+                                // A build the person started runs to the end, page or not.
+                                let idled = idle.filter(|d| {
+                                    last_request.elapsed() >= *d && !indexing.building()
+                                });
+                                if let Some(d) = idled {
+                                    eprintln!(
+                                        "Stopped: no page asked anything for {}s (--idle-exit).",
+                                        d.as_secs()
+                                    );
+                                }
+                                if stop.load(Ordering::SeqCst) || idled.is_some() {
                                     end();
                                     return Ok(None);
                                 }
