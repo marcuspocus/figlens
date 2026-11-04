@@ -70,6 +70,31 @@ fn index_and_jobs_declare_that_they_change_state() {
 }
 
 #[test]
+fn freshness_is_a_read_only_open_world_tool_over_a_mapping_or_one_file() {
+    let reply = mcp_reply(r#"{"jsonrpc":"2.0","id":1,"method":"tools/list"}"#).unwrap();
+    let tool = reply["result"]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["name"] == "freshness")
+        .unwrap();
+    let mut params: Vec<_> = tool["inputSchema"]["properties"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .cloned()
+        .collect();
+    params.sort();
+    assert_eq!(
+        (tool["annotations"].clone(), params),
+        (
+            serde_json::json!({"readOnlyHint": true, "openWorldHint": true}),
+            vec!["file".to_owned(), "sources".to_owned(), "url".to_owned()]
+        )
+    );
+}
+
+#[test]
 fn mcp_lists_every_tool() {
     let reply = mcp_reply(r#"{"jsonrpc":"2.0","id":1,"method":"tools/list"}"#).unwrap();
     let names: Vec<_> = reply["result"]["tools"]
@@ -92,6 +117,7 @@ fn mcp_lists_every_tool() {
             "variables",
             "bundle",
             "verify",
+            "freshness",
             "export",
             "export_batch",
             "compare_image",

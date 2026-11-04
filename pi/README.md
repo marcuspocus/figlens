@@ -1,6 +1,6 @@
 # Build Figma screens in Pi from a local `.fig`
 
-Save the design from Figma, put it next to your code, describe the screen. Pi finds the frame, reads layout, text and assets, and builds it with your project's components. It can then compare the running UI with the design's render, and report what changed between saved revisions of the `.fig`. No Figma app, login or API calls. Works on a remote machine.
+Save the design from Figma, put it next to your code, describe the screen. Pi finds the frame, reads layout, text and assets, and builds it with your project's components. It can then compare the running UI with the design's render, and report what changed between saved revisions of the `.fig`. No Figma app or login, and no API calls except the opt-in `freshness` check with your `FIGMA_TOKEN`. Works on a remote machine.
 
 **[Website](https://figlens.runkids.cc/)** · [Pi guide](https://figlens.runkids.cc/docs/pi/) · [Docs](https://figlens.runkids.cc/docs/)
 
@@ -115,6 +115,8 @@ pi install /absolute/path/to/figlens
 **Searching by image.** Ask Pi to enable visual indexing for the design and scope: the agent calls `index` with action `visual` on the prepared scope and polls `jobs`. It then searches by `workspaceId` with an authorized local PNG in `image`, or an exact result reference in `imageRef`, and optional pixel `crop`; adding text uses `mode` `hybrid`. Hash matching works without a model; optional `siglip-base` configuration through `models` adds broader visual similarity. Query images are never stored, and similarity does not prove component identity. The live viewer offers the same image, crop and mode controls.
 
 **Comparing revisions.** Ask Pi what changed between two saved copies of a design: the agent calls the MCP `diff` tool with `old` and `file` (local paths) and pages with `nextCursor`. Layers match by exact id and type only; `unknown` means a side stopped or left that layer unexpanded, not that it was removed. It reads both files and writes nothing.
+
+**Checking a saved copy.** When a node is not found, or `find` matches nothing, in a copy listed in `.figlens/sources.json`, the agent calls the MCP `freshness` tool: `stale` means the online Figma file changed after the copy was saved, so save a new local copy before treating the node as missing. It is the only call that reaches Figma, sending `FIGMA_TOKEN` from the environment Pi starts the figlens server with; without it the state is `unknown` and nothing is sent. It writes nothing.
 
 **Agent tools.** The MCP `workflow` tool exposes on-demand build, audit, image, planning and opt-in YOLO guides from the same skill sources used by the commands above. For an existing UI, ask Pi to compare it with the design; the shared skill routes to `workflow(topic="audit")`, with no separate audit command. Static review and screenshot comparison are reported separately; fixes require a fix request. It returns guidance only; the current agent performs the authorized work with its project/browser tools. Besides the design tools (`tree`, `find`, `search`, `usages`, `inspect`, `nodes`, `variables`, `bundle`, `export`), the extension adds:
 

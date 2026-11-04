@@ -43,7 +43,7 @@
 | 전달 | `.fig` 또는 frame bundle 공유 | Figma 접근 권한 공유 |
 | 충실도 | [알려진 차이](../README-ko.md#limitations)가 있는 독립 파서 | Figma가 유지 관리 |
 
-`.fig`를 읽는 일은 오프라인입니다. figlens 설치와 업데이트, `gs://` 입력, 모델 제공업체, 프로젝트 의존성에는 여전히 네트워크가 필요합니다.
+`.fig`를 읽는 일은 오프라인입니다. figlens 설치와 업데이트, `gs://` 입력, 선택 사항인 `freshness` 확인, 모델 제공업체, 프로젝트 의존성에는 여전히 네트워크가 필요합니다.
 
 <a id="bundle"></a>
 
@@ -155,7 +155,7 @@ npx -y @runkids/figlens preview design.fig 12:345 --out preview.html   # 누구�
 
 ## MCP 서버와 에이전트 skill
 
-**MCP.** 서버는 로컬에서 stdio로 실행되며 `workflow`, `tree`, `find`, `search`, `usages`, `diff`, `inspect`, `nodes`, `variables`, `bundle`, `verify`, `index`, `jobs`, `changes`, `watch`, `export`, `export_batch`, `compare_image`, `models`를 제공합니다. `export_batch`는 한 번의 호출로 최대 64개 파일을 쓰고 인라인 이미지 대신 매니페스트를 반환합니다. 절대 경로를 전달하세요. `--root /path/to/designs`(반복 가능)를 추가하면 모든 파일과 출력 경로를 선택한 폴더로 제한합니다. 사용자 지정 저장소를 명시적으로 요청하려면 `--storage-root DIR`(반복 가능)이 필요합니다. 기억된 workspace 위치는 이 옵션 없이 재사용합니다. [시작 인수와 여러 루트 설정 예](../README-ko.md#mcp-args)를 참고하세요. 래스터 내보내기는 `maxSize`(기본 1600px)에 맞게 축소되어 인라인 이미지가 작게 유지되며, SVG는 메타데이터만 반환합니다.
+**MCP.** 서버는 로컬에서 stdio로 실행되며 `workflow`, `tree`, `find`, `search`, `usages`, `diff`, `inspect`, `nodes`, `variables`, `bundle`, `verify`, `freshness`, `index`, `jobs`, `changes`, `watch`, `export`, `export_batch`, `compare_image`, `models`를 제공합니다. `export_batch`는 한 번의 호출로 최대 64개 파일을 쓰고 인라인 이미지 대신 매니페스트를 반환합니다. 절대 경로를 전달하세요. `--root /path/to/designs`(반복 가능)를 추가하면 모든 파일과 출력 경로를 선택한 폴더로 제한합니다. 사용자 지정 저장소를 명시적으로 요청하려면 `--storage-root DIR`(반복 가능)이 필요합니다. 기억된 workspace 위치는 이 옵션 없이 재사용합니다. [시작 인수와 여러 루트 설정 예](../README-ko.md#mcp-args)를 참고하세요. 래스터 내보내기는 `maxSize`(기본 1600px)에 맞게 축소되어 인라인 이미지가 작게 유지되며, SVG는 메타데이터만 반환합니다.
 
 agent는 `workflow`로 `build`, `audit`, `images`, `search`, `plan`, `planning-details` 또는 명시적으로 요청된 경우 `yolo` 가이드를 읽을 수 있습니다. portable skill과 같은 소스를 사용하므로 MCP 사용 시 별도 skill 설치는 선택 사항입니다. 실제 작업은 agent의 프로젝트·브라우저 도구와 호스트 권한으로 수행합니다. 가이드를 읽는 것만으로 작업이 실행되지는 않으며, 활용 방식은 클라이언트 지원과 모델 동작에 따라 달라집니다.
 
@@ -270,6 +270,7 @@ Pi, OpenCode, OMP는 각자의 opt-in 진입점으로 같은 인덱스를 쓰며
 | `compare-image <file> <node> <screenshot.png>` | 구현한 화면의 스크린샷을 그 배율로 렌더링한 node와 비교 (`--scale`, `--limit`, `--out diff.png`, frame보다 짧은 전체 페이지 캡처에는 `--full-page`, 데이터에서 오는 콘텐츠 레이어에는 `--ignore`, 옅은 테두리를 보려면 `--threshold`; `image: true`는 이미지 채우기 영역; MCP `compare_image`). `mismatch`, `nonTextMismatch`와 가장 큰 차이 영역을 node 픽셀 좌표로 출력하고 각 영역 아래의 가장 깊은 레이어를 표시합니다. `text: true`는 텍스트 위의 영역입니다(대개 대체 글꼴이지만 각각 확인하세요) |
 | `node <file> <node>` | 원시 `.fig` 노드 하나 |
 | `clipboard [copied.html] <out.fig>` | 저장한 `.fig`가 없을 때 사용: Figma에서 레이어를 선택해 복사(마우스 오른쪽 클릭 > Copy 또는 Cmd/Ctrl+C)한 뒤 이 명령을 실행하면 클립보드가 모든 명령이 읽는 `.fig`로 변환됨. 다른 곳에 붙여넣으면 레이어의 텍스트만 나옴. 시스템 클립보드(macOS, Windows PowerShell 5.1과 Linux `wl-paste`/`xclip`은 미검증) 또는 저장한 클립보드 HTML 파일을 읽음. 노드 ID는 원본과 같고 사용된 컴포넌트도 포함. `missingImages`, `missingComponents`, `layersWithoutOutlines`를 보고: 복사본에는 이미지 바이트와 벡터 윤곽선이 없으므로 export와 bundle은 그것 없이 그린 곳을 경고. 기존 파일은 덮어쓰지 않음. 저장한 `.fig`가 있으면 대신 Figma 링크를 노드로 전달: 이미지와 벡터가 유지됨 |
+| `freshness [<file.fig> [--url URL] \| --sources <mapping.json>]` | 디자인에 프레임이 없다고 판단하기 전에 저장된 사본이 온라인 Figma 파일보다 오래되었는지 확인합니다. 대상은 가장 가까운 `.figlens/sources.json`의 디자인(`{name, url, file}` 목록, `file`은 저장소 루트 기준 상대 경로이며, `.figlens/` 밖의 `--sources` 매핑은 자기 폴더 기준), 파일 하나, 또는 URL을 지정한 파일 하나입니다. 사본 `meta.json`의 `exported_at`을 `curl`과 `FIGMA_TOKEN`의 personal access token(스코프 `file_metadata:read`)으로 읽은 온라인 `last_touched_at`과 비교하여 `stale`, `current` 또는 이유가 붙은 `unknown`을 출력하며, 토큰이나 네트워크가 없어도 실패하지 않습니다. 토큰이 있으면 매핑된 오래된 사본에서 노드를 찾지 못하거나 `find` 결과가 없을 때 로컬 사본을 다시 저장하라고 알려 줍니다(MCP `freshness`) |
 | `index prepare\|refresh\|rebuild\|clear\|status\|add\|remove\|relocate\|reset\|track\|untrack\|embed\|visual` | 사용자별 figlens state 디렉터리 또는 workspace가 이후 기억하는 `--storage DIR` 아래의 로컬 workspace. `prepare <file> --scope NODE`로 해당 범위의 검색 인덱스를 한 번 만들면, 이후 `search --file <file>`(또는 `--workspace DIR`)은 다시 파싱하지 않고 workspace의 모든 소스를 함께 순위 매겨 답합니다. `refresh`는 변경된 파일을, `rebuild`는 전부(또는 `--source`/`--scope` 하나)를 다시 만들고, `clear`는 쓰지 않는 인덱스를 지웁니다. 새 인덱스가 준비될 때까지 이전 인덱스가 계속 쓰입니다. `reset`은 workspace 데이터베이스만 지우며 디자인, 내보내기, 기억된 위치는 건드리지 않습니다. `track --scope NODE`는 baseline 빌드부터 그 스코프의 변경을 기록하고, `untrack`은 기록을 남긴 채 중단합니다. `embed`는 게시된 스코프를 설정된 모델로 임베딩합니다(CPU와 메모리 사용). workspace 시맨틱 검색이 필요할 때만 실행하세요. `visual --scope NODE`는 게시된 스코프의 화면과 컴포넌트를 이미지 검색용으로 렌더링하고, 비전 프로필이 설정되면 임베딩도 합니다. workspace 이미지 검색이 필요할 때만 실행하세요. |
 | `jobs status\|cancel <jobId>` | 인덱스 빌드 상태 확인 또는 취소. `cancel`은 빌드가 멈춘 뒤에 반환합니다 |
 | `changes --file <file>\|--id ID\|--workspace DIR [--source ID] [--scope NODE] [--consumer NAME\|--subscription ID\|--cursor C] [--revision R] [--limit N]` | 추적 중인 스코프에 기록된 변경을 오래된 순으로 반환합니다. 게시된 빌드마다 리비전 하나(baseline 또는 changes)와 커버리지, 변경 종류·facet별 개수를 포함합니다. changes 리비전마다 변경이 닿는 레이어의 `impact` 요약이 있습니다(스키마 7 이전은 null). `--revision`은 그 리비전의 변경된 노드와 이어서 impact가 나열한 레이어를 페이지로 나눕니다(`entry`가 어느 쪽인지 알려 줍니다). `tracking`은 변경을 기록하려면 `index refresh`가 필요한 스코프를 알려 줍니다. 읽기 전용 |

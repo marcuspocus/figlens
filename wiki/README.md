@@ -8,6 +8,7 @@ The wiki holds procedures, reference and decisions, and no task needs all of it 
 |---|---|---|
 | `mcp` | Changing MCP instructions, tool discovery or built-in workflow guidance | `mcp.md` |
 | `gcs` | Changing the `gs://` snapshot handoff, its download cache or refresh | `gcs.md` |
+| `freshness` | Changing `freshness`, the `.figlens/sources.json` mapping or the stale hint on a missing node | `freshness.md` |
 | `performance` | Measuring load time and memory, reading the perf baseline, changing cache or decode cost | `performance.md` |
 | `parsing` | Changing untrusted container/schema/value decoding or parsing budgets | `parsing.md`, `clipboard.md` |
 | `fig-format` | Changing decoding, instance expansion, emitted REST fields or variables | `fig-format.md` |

@@ -25,6 +25,7 @@ Field reference linked from [mcp](mcp.md).
 | `compare_image.fullPage` | boolean / false; true lets a screenshot shorter than the node compare, its missing rows a differing region |
 | `compare_image.ignore` | comma-separated ids of layers strictly inside `node`, at least one; their render boxes leave every count |
 | `compare_image.threshold` | 1–254 / 48 per-channel difference |
+| `freshness.sources`, `freshness.file`, `freshness.url` | all optional strings; `sources` (a mapping) or `file` is required, never both; `url` only with `file`; `gs://` refused. Missing token, network or mapping entry is `state: unknown` with a `reason`, not a failure ([freshness](freshness.md)) |
 | `variables.format` | `rest` (default) or `dtcg`; DTCG requires nonempty `collection`, `mode`, `out`, takes optional `aliasModes` (`{collectionId: modeId}`, non-empty strings) and forbids `node`; REST rejects export selectors/output |
 
 `tree`/`find`/`search` root defaults to `0:0`; booleans default false. `tree` `topFrames: true` ignores `depth` and returns the screens under the root (rule in the `discovery` topic): `id TYPE "name"` lines whose JSON-escaped names keep one id per line, or with `json` a flat array of entries without children plus `page` and innermost `section`. With `json`, children of a page or section (and every `topFrames` entry) add `firstText`. Search queries take at most 256 characters and 64 distinct terms (a CJK run of n characters is n-1 bigrams), types 16 names, scopes 1 KiB and cursors offset 100,000 (past it `hasMore` stays true without a `nextCursor`, so narrow the query); a page whose estimated copied names, paths and snippets exceed 8 MiB is refused with `response_budget_exceeded` before results are built (the serialized-reply cap above still applies), so lower `limit` or narrow `node`; `scripts/measure-search.py` measures cold CLI, MCP first and warm search cost and peak RSS on one approved input. File/output strings are nonempty; find queries contain non-whitespace. Export extensions follow the existing case-insensitive encoder selection, including `.jpeg`. Search type remains a free-form, case-insensitive plugin type, not an invented enum. Successful outputs and CLI parameter order remain unchanged.
@@ -58,6 +59,10 @@ Tool failures retain `isError: true` and text content; additive `_meta.figlens` 
 JSON parsing (`-32700`), invalid JSON-RPC envelopes (`-32600`), unknown methods (`-32601`) and a missing/non-string `tools/call` name (`-32602`) remain protocol errors. Business/argument failures inside a named tool call are tool results. Envelope-valid messages without `id` are ignored before preparation/I/O, even with unknown methods or invalid arguments. `id: null` gets a reply. Omitted `jsonrpc` remains accepted; prefer `"jsonrpc":"2.0"`.
 
 See the [GCS cookbook](gcs.md) for download versus parsed-tree caching and [bounded baseline](performance.md) for measurement limits. `scripts/mcp_smoke.py` shares its real subprocess session with GCS mock checks and measurement; no model, sockets or paid API are needed. The candidate installation matrix runs the same contract assertions through native and packaged wrapper stdio paths.
+
+## Stale hint on design tools
+
+A `node_not_found` failure keeps its code and recovery and gains a "save a new local copy" sentence, and a `find` with no results gains `freshness` (the design report plus `hint`), only when `FIGMA_TOKEN` is set and the mapped copy is older than its online file; details in [freshness](freshness.md#stale-hint).
 
 ## verify font lookup
 

@@ -477,6 +477,30 @@ pub const TOOLS: &[(&str, &str, &[Param])] = &[
         ],
     ),
     (
+        "freshness",
+        "Tell whether saved .fig copies are older than their online Figma files, before concluding a design lacks a frame: the designs in a mapping (a JSON list of {name, url, file}, file relative to the project root for .figlens/sources.json, else to the mapping's folder), one file found in the nearest .figlens/sources.json at or above it, or one file with its url. Saved time is exported_at in the copy's meta.json; online time is last_touched_at from Figma's REST file metadata, read with the server's FIGMA_TOKEN environment variable (never an argument or output). Each design is stale, current or unknown with a reason (no_token, no_saved_time, not_mapped, file_missing, url_unrecognized, offline, token_rejected, file_not_found, rate_limited, curl_unavailable, outside_roots, unexpected_response, token_invalid, deadline when a listing ran out of its 60 s, cancelled). A stale copy needs the user to save a new local copy (File > Save local copy); nothing is downloaded. With a token, a node not found or an empty find in a mapped stale copy carries the same hint.",
+        &[
+            (
+                "sources",
+                "string",
+                false,
+                "path of a mapping JSON to list every design of; not with file",
+            ),
+            (
+                "file",
+                "string",
+                false,
+                "a local saved .fig to check alone; its mapping is the nearest .figlens/sources.json at or above it unless url is given",
+            ),
+            (
+                "url",
+                "string",
+                false,
+                "with file: the Figma file URL it was saved from, instead of a mapping",
+            ),
+        ],
+    ),
+    (
         "export",
         "Export a node to SVG, PNG, JPG, WebP or AVIF. Create the output directory first. Returns metadata and, for raster formats, an inline image. PNG suits inline references: up to 4,194,304 pixels it is losslessly optimized with exact decoded RGBA, keeping original encoded bytes unless smaller; larger PNGs keep regular encoding. For website assets, follow the target project's existing image pipeline; otherwise start with WebP for bitmaps, sized for display dimensions and DPR using scale/maxSize and quality/maxKb. SVG embeds original images and can be large; keep it for vector artwork. When inlining or optimizing SVG, keep its root transform and unique ids (SVGO: prefixIds, not cleanupIds). The export covers what the node draws; bounds: layout exports the layout box, and warnings report when the two differ, any known skipped or approximated rendering in the subtree, as bundle warnings do, and images or components the file lacks. scale, quality and maxSize affect raster formats only; maxSize defaults to 1600. Check returned dimensions/bytes and isError; read content on failure.",
         &[
@@ -828,8 +852,18 @@ pub fn output_schema(tool: &str) -> Option<serde_json::Value> {
                 "root": {"type": "string"},
                 "results": {"type": "array", "items": {"type": "object"}},
                 "truncated": {"type": "boolean"},
+                "freshness": {"type": "object", "description": "only on no results in a mapped copy known to be stale: the freshness design report plus hint"},
             }),
             ["root", "results", "truncated"].as_slice(),
+        ),
+        "freshness" => (
+            serde_json::json!({
+                "mapping": {"type": ["string", "null"]},
+                "tokenVar": {"type": "string"},
+                "tokenSet": {"type": "boolean"},
+                "designs": {"type": "array", "items": {"type": "object"}, "description": "name, file (as mapped or given), savedAt, onlineModifiedAt, onlineVersion, state stale|current|unknown, reason when unknown"},
+            }),
+            ["mapping", "tokenVar", "tokenSet", "designs"].as_slice(),
         ),
         "search" => (
             serde_json::json!({
@@ -1545,6 +1579,8 @@ pub fn tools() -> Value {
             "models" => tool["annotations"] = json!({"readOnlyHint": false, "destructiveHint": true,
                 "openWorldHint": false}),
             "changes" => tool["annotations"] = json!({"readOnlyHint": true, "openWorldHint": false}),
+            // Reads Figma's REST API with the server's token.
+            "freshness" => tool["annotations"] = json!({"readOnlyHint": true, "openWorldHint": true}),
             // unsubscribe and forget delete checkpoints; start makes a new lease each time.
             "watch" => tool["annotations"] = json!({"readOnlyHint": false, "destructiveHint": true,
                 "idempotentHint": false, "openWorldHint": false}),

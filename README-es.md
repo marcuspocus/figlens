@@ -26,9 +26,9 @@ figlens convierte archivos de Figma guardados en contexto de diseño con el que 
 
 - **Implementar con los detalles de origen.** Lee layout, texto, estilos, variables y las anotaciones y el estado Ready for dev de Dev Mode; exporta iconos vectoriales como SVG e imágenes como recursos. `bundle` reúne los datos, recursos y render de referencia de un frame; `verify` informa de archivos ausentes, comprobaciones de fuentes y limitaciones de la entrega.
 - **Comparar la UI en ejecución.** `compare-image` compara tu captura con el render de figlens e identifica las capas bajo las regiones que difieren. Revisa esas diferencias y las advertencias de renderizado; no es una garantía de fidelidad píxel a píxel.
-- **Seguir los cambios del diseño.** `diff` compara revisiones guardadas; `changes` y `watch` informan de actualizaciones en ámbitos locales bajo seguimiento. Guarda una nueva `.fig` desde Figma para incorporar cambios; no es sincronización en vivo con Figma.
+- **Seguir los cambios del diseño.** `diff` compara revisiones guardadas; `changes` y `watch` informan de actualizaciones en ámbitos locales bajo seguimiento; `freshness` indica cuándo una copia guardada es anterior al archivo en línea. Guarda una nueva `.fig` desde Figma para incorporar cambios; no es sincronización en vivo con Figma.
 
-**Offline como base.** En Figma, **File > Save local copy**. Coloca `design.fig` junto a tu código. Entonces basta un enlace de Figma: su id de nodo elige el frame. Sin una copia guardada, copia las capas en Figma (clic derecho > Copy) y ejecuta `figlens clipboard screen.fig`; una copia no trae imágenes ni contornos vectoriales ([cómo](docs/README-es.md#copy-a-selection)). Un binario nativo lo lee en local, sin una app de Figma en ejecución, login ni llamadas de red a Figma.
+**Offline como base.** En Figma, **File > Save local copy**. Coloca `design.fig` junto a tu código. Entonces basta un enlace de Figma: su id de nodo elige el frame. Sin una copia guardada, copia las capas en Figma (clic derecho > Copy) y ejecuta `figlens clipboard screen.fig`; una copia no trae imágenes ni contornos vectoriales ([cómo](docs/README-es.md#copy-a-selection)). Un binario nativo lo lee en local, sin una app de Figma en ejecución, login ni llamadas de red a Figma; solo la comprobación opcional `freshness`, con tu `FIGMA_TOKEN`, pregunta a Figma cuándo se editó un archivo por última vez.
 
 <a id="start"></a>
 
@@ -249,7 +249,7 @@ El GIF en bucle reproduce el vídeo editado a triple velocidad. Haz clic para ve
 
 Usa **figlens** cuando el diseño deba viajar como archivo: agents remotos, CI, trabajo sin conexión, traspaso entre agents, lecturas repetidas sin límite. Usa el **MCP oficial de Figma** cuando el agent deba ver el diseño en vivo sin un paso de exportación.
 
-Leer un `.fig` funciona sin conexión. Instalar y actualizar figlens, las entradas `gs://`, tu proveedor de modelos y las dependencias de tu proyecto sí necesitan red.
+Leer un `.fig` funciona sin conexión. Instalar y actualizar figlens, las entradas `gs://`, la comprobación opcional `freshness`, tu proveedor de modelos y las dependencias de tu proyecto sí necesitan red.
 
 [Comparación completa](docs/README-es.md#why)
 

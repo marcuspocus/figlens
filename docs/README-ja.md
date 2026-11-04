@@ -43,7 +43,7 @@
 | 引き継ぎ | `.fig` または frame の bundle を共有 | Figma のアクセス権を共有 |
 | 忠実度 | 独自のパーサー、[既知のギャップ](../README-ja.md#limitations)あり | Figma が保守 |
 
-`.fig` の読み取りはオフラインで動作します。figlens のインストールと更新、`gs://` 入力、モデルプロバイダー、プロジェクトの依存関係にはネットワークが必要です。
+`.fig` の読み取りはオフラインで動作します。figlens のインストールと更新、`gs://` 入力、任意の `freshness` チェック、モデルプロバイダー、プロジェクトの依存関係にはネットワークが必要です。
 
 <a id="bundle"></a>
 
@@ -155,7 +155,7 @@ npx -y @runkids/figlens preview design.fig 12:345 --out preview.html   # 誰に�
 
 ## MCP サーバーとエージェント skill
 
-**MCP。** サーバーは stdio 経由でローカル実行され、`workflow`、`tree`、`find`、`search`、`usages`、`diff`、`inspect`、`nodes`、`variables`、`bundle`、`verify`、`index`、`jobs`、`changes`、`watch`、`export`、`export_batch`、`compare_image`、`models` を公開します。`export_batch` は 1 回の呼び出しで最大 64 ファイルを書き出し、インライン画像の代わりにマニフェストを返します。パスは絶対パスで渡します。`--root /path/to/designs`（複数指定可）を追加すると、すべてのファイルパスと出力パスを指定フォルダーに制限できます。カスタム保存先を明示するには `--storage-root DIR`（複数指定可）が必要です。記憶済みの workspace の場所はこのオプションなしで再利用できます。[起動引数と複数ルートの設定例](../README-ja.md#mcp-args)を参照してください。ラスターエクスポートは `maxSize`（デフォルト 1600 px）に縮小され、インライン画像は小さく保たれます。SVG はメタデータのみを返します。
+**MCP。** サーバーは stdio 経由でローカル実行され、`workflow`、`tree`、`find`、`search`、`usages`、`diff`、`inspect`、`nodes`、`variables`、`bundle`、`verify`、`freshness`、`index`、`jobs`、`changes`、`watch`、`export`、`export_batch`、`compare_image`、`models` を公開します。`export_batch` は 1 回の呼び出しで最大 64 ファイルを書き出し、インライン画像の代わりにマニフェストを返します。パスは絶対パスで渡します。`--root /path/to/designs`（複数指定可）を追加すると、すべてのファイルパスと出力パスを指定フォルダーに制限できます。カスタム保存先を明示するには `--storage-root DIR`（複数指定可）が必要です。記憶済みの workspace の場所はこのオプションなしで再利用できます。[起動引数と複数ルートの設定例](../README-ja.md#mcp-args)を参照してください。ラスターエクスポートは `maxSize`（デフォルト 1600 px）に縮小され、インライン画像は小さく保たれます。SVG はメタデータのみを返します。
 
 エージェントは `workflow` で `build`、`audit`、`images`、`search`、`plan`、`planning-details`、または明示的に依頼された場合の `yolo` ガイドを取得できます。portable skill と同じソースを使うため、MCP 利用時の skill の別途インストールは任意です。実作業にはエージェント自身のプロジェクト・ブラウザツールとホストの権限を使います。ガイドを読むだけでは処理は実行されません。利用方法はクライアントの対応とモデルの動作に依存します。
 
@@ -270,6 +270,7 @@ Pi、OpenCode、OMP は、それぞれのオプトイン用エントリから同
 | `compare-image <file> <node> <screenshot.png>` | 実装した画面のスクリーンショットを、そのスケールで描画した node と比較（`--scale`、`--limit`、`--out diff.png`、frame より短いフルページキャプチャには `--full-page`、データ由来のコンテンツのレイヤーには `--ignore`、薄い枠線を見るには `--threshold`、`image: true` は画像塗りの領域、MCP `compare_image`）。`mismatch`、`nonTextMismatch` と、差分の大きい領域を node のピクセル座標で出力し、各領域の下にある最も深いレイヤーを示します。`text: true` はテキスト上の領域です（多くはフォント代替。各領域を確認してください） |
 | `node <file> <node>` | `.fig` の生ノード 1 つ |
 | `clipboard [copied.html] <out.fig>` | 保存した `.fig` がないとき向け: Figma でレイヤーを選択してコピー（右クリック > Copy、または Cmd/Ctrl+C）し、これを実行してクリップボードを全コマンドが読める `.fig` に変換する。ほかの場所に貼り付けても得られるのはレイヤーのテキストだけ。システムのクリップボード（macOS。Windows PowerShell 5.1 と Linux の `wl-paste`/`xclip` は未検証）か、保存したクリップボードの HTML ファイルを読む。ノード ID は元ファイルと同じで、使用中のコンポーネントも含む。`missingImages`、`missingComponents`、`layersWithoutOutlines` を報告: コピーには画像バイトもベクターのアウトラインも含まれないため、export と bundle はそれらなしで描いた箇所を警告する。既存ファイルは置き換えない。保存した `.fig` がある場合は、代わりに Figma リンクをノードとして渡す。画像とベクターが残る |
+| `freshness [<file.fig> [--url URL] \| --sources <mapping.json>]` | デザインにフレームがないと判断する前に、保存済みコピーがオンラインの Figma ファイルより古いかを確認します。対象は最寄りの `.figlens/sources.json` のデザイン（`{name, url, file}` のリスト。`file` はリポジトリのルートからの相対パス。`.figlens/` 外の `--sources` マッピングはそのフォルダーからの相対パス）、1 つのファイル、または URL を指定した 1 つのファイルです。コピーの `meta.json` にある `exported_at` を、`curl` と `FIGMA_TOKEN` の personal access token（スコープ `file_metadata:read`）で取得したオンラインの `last_touched_at` と比較し、`stale`、`current`、または理由付きの `unknown` を出力します。トークンやネットワークがなくても失敗しません。トークンがあれば、対応付けられた古いコピーでノードが見つからないときや `find` が空のときにも、ローカルコピーの保存し直しを案内します（MCP `freshness`） |
 | `index prepare\|refresh\|rebuild\|clear\|status\|add\|remove\|relocate\|reset\|track\|untrack\|embed\|visual` | ユーザーごとの figlens state ディレクトリ、または workspace が以後記憶する `--storage DIR` の下にあるローカル workspace。`prepare <file> --scope NODE` でその範囲の検索インデックスを一度だけ作成し、以後 `search --file <file>`（または `--workspace DIR`）は再解析せず、workspace の全ソースをまとめてランク付けして答えます。`refresh` は変更されたファイル、`rebuild` はすべて（または `--source`/`--scope` の一つ）を再作成し、`clear` は使われていないインデックスを削除します。新しいインデックスができるまで以前のものが使われます。`reset` は workspace データベースだけを削除し、デザイン、エクスポート、記憶された場所には触れません。`track --scope NODE` は baseline ビルドからそのスコープの変更を記録し、`untrack` は履歴を残したまま停止します。 `embed` は公開済みスコープを設定済みモデルで埋め込みます（CPU とメモリを使用）。workspace のセマンティック検索が必要なときだけ実行してください。 `visual --scope NODE` は公開済みスコープの画面とコンポーネントを画像検索用にレンダリングし、ビジョンプロファイル設定時は埋め込みも行います。workspace の画像検索が必要なときだけ実行してください。 |
 | `jobs status\|cancel <jobId>` | インデックス作成の状態表示または取り消し。`cancel` は作成が止まってから戻ります |
 | `changes --file <file>\|--id ID\|--workspace DIR [--source ID] [--scope NODE] [--consumer NAME\|--subscription ID\|--cursor C] [--revision R] [--limit N]` | 追跡中のスコープで記録された変更を古い順に返します。公開されたビルドごとに 1 リビジョン（baseline または changes）で、カバレッジと変更種別・ファセットごとの件数を含みます。changes リビジョンには変更が及ぶレイヤーの `impact` 要約があります（スキーマ 7 より前は null）。`--revision` でそのリビジョンの変更ノード、続いて impact が列挙するレイヤーをページングします（`entry` がどちらかを示します）。`tracking` は変更を記録するために `index refresh` が必要なスコープを示します。読み取りのみ |

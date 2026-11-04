@@ -43,7 +43,7 @@
 | 交接 | 分享 `.fig` 或 frame bundle | 分享 Figma 存取權 |
 | 精確度 | 獨立的 parser，有[已知缺漏](../README-zh-TW.md#limitations) | 由 Figma 維護 |
 
-讀取 `.fig` 可離線進行。安裝與更新 figlens、`gs://` 輸入、你的模型供應商，以及專案的相依套件仍需要網路。
+讀取 `.fig` 可離線進行。安裝與更新 figlens、`gs://` 輸入、選用的 `freshness` 檢查、你的模型供應商，以及專案的相依套件仍需要網路。
 
 <a id="bundle"></a>
 
@@ -155,7 +155,7 @@ npx -y @runkids/figlens preview design.fig 12:345 --out preview.html   # 可寄�
 
 ## MCP 伺服器與 agent skill
 
-**MCP。** 伺服器透過 stdio 在本機執行，提供 `workflow`、`tree`、`find`、`search`、`usages`、`diff`、`inspect`、`nodes`、`variables`、`bundle`、`verify`、`index`、`jobs`、`changes`、`watch`、`export`、`export_batch`、`compare_image` 與 `models`。`export_batch` 一次呼叫最多寫出 64 個檔案，回傳 manifest 而非內嵌圖片。請傳入絕對路徑。加上 `--root /path/to/designs`（可重複）可將所有檔案與輸出路徑限制在指定的資料夾。明確指定自訂索引位置時，需要 `--storage-root DIR`（可重複）；已記住的 workspace 位置不必再指定。參見[啟動參數與多個 root 的設定範例](../README-zh-TW.md#mcp-args)。點陣圖匯出會縮小到 `maxSize`（預設 1600 px），讓內嵌圖片維持小巧；SVG 只回傳 metadata。
+**MCP。** 伺服器透過 stdio 在本機執行，提供 `workflow`、`tree`、`find`、`search`、`usages`、`diff`、`inspect`、`nodes`、`variables`、`bundle`、`verify`、`freshness`、`index`、`jobs`、`changes`、`watch`、`export`、`export_batch`、`compare_image` 與 `models`。`export_batch` 一次呼叫最多寫出 64 個檔案，回傳 manifest 而非內嵌圖片。請傳入絕對路徑。加上 `--root /path/to/designs`（可重複）可將所有檔案與輸出路徑限制在指定的資料夾。明確指定自訂索引位置時，需要 `--storage-root DIR`（可重複）；已記住的 workspace 位置不必再指定。參見[啟動參數與多個 root 的設定範例](../README-zh-TW.md#mcp-args)。點陣圖匯出會縮小到 `maxSize`（預設 1600 px），讓內嵌圖片維持小巧；SVG 只回傳 metadata。
 
 agent 可透過 `workflow` 讀取內建的 `build`、`audit`、`images`、`search`、`plan`、`planning-details`，或明確要求時的 `yolo` 指引。它們與 portable skill 共用來源；MCP 使用者可自行選擇是否另裝 skill。實際工作仍由 agent 使用專案與瀏覽器工具，並遵守 host 權限。讀取指引不會執行工作流程；使用方式取決於客戶端支援與模型行為。
 
@@ -270,6 +270,7 @@ Pi、OpenCode 和 OMP 透過各自的 opt-in 入口使用同一個索引，works
 | `compare-image <file> <node> <screenshot.png>` | 將實作畫面的截圖與依其縮放渲染的 node 比對（`--scale`、`--limit`、`--out diff.png`、`--full-page` 用於比 frame 短的整頁截圖，`--ignore` 用於內容來自資料的圖層，`--threshold` 用於看出淺色邊框；`image: true` 標記圖片填充；MCP `compare_image`）。輸出 `mismatch`、`nonTextMismatch` 與差異最大的區域（node 像素座標），每個區域附上其下最深的圖層；`text: true` 表示區域位於文字上（多為字型替代，需逐一檢查） |
 | `node <file> <node>` | 單一原始 `.fig` 節點 |
 | `clipboard [copied.html] <out.fig>` | 用於沒有已存 `.fig` 的情況：在 Figma 選取圖層並複製（右鍵 > Copy，或 Cmd/Ctrl+C），再執行此指令，把剪貼簿轉成每個指令都能讀取的 `.fig`；貼到其他地方只會得到圖層的文字。讀取系統剪貼簿（macOS；Windows PowerShell 5.1 與 Linux `wl-paste`/`xclip` 未驗證）或已存的剪貼簿 HTML 檔。節點 ID 與來源檔案相同，並包含用到的元件。回報 `missingImages`、`missingComponents` 和 `layersWithoutOutlines`：複製內容沒有圖片位元組和向量輪廓，因此 export 和 bundle 會在缺少它們的地方發出警告。不會覆寫既有檔案。有已存的 `.fig` 時，改為把 Figma 連結當作節點傳入：可保留圖片和向量 |
+| `freshness [<file.fig> [--url URL] \| --sources <mapping.json>]` | 在斷定設計缺少某個 frame 之前，先確認每份已存副本是否比線上 Figma 檔案舊：檢查最近的 `.figlens/sources.json` 中的設計（`{name, url, file}` 清單，`file` 相對於 repository 根目錄；`.figlens/` 以外的 `--sources` 對照檔則相對於它自己的資料夾）、單一檔案，或附上 URL 的單一檔案。比較副本 `meta.json` 中的 `exported_at` 與線上的 `last_touched_at`（以 `curl` 和 `FIGMA_TOKEN` 中的 personal access token 讀取，scope 為 `file_metadata:read`）；輸出 `stale`、`current` 或附原因的 `unknown`，缺少 token 或網路時也不會失敗。設定 token 後，在已對應且過期的副本中找不到節點或 `find` 沒有結果時，也會提示重新儲存本機副本（MCP `freshness`） |
 | `index prepare\|refresh\|rebuild\|clear\|status\|add\|remove\|relocate\|reset\|track\|untrack\|embed\|visual` | 使用者 figlens state 目錄中的本機 workspace，或位於 workspace 之後會記住的 `--storage DIR` 下。`prepare <file> --scope NODE` 為該範圍建立一次搜尋索引；之後 `search --file <file>`（或 `--workspace DIR`）不再解析檔案，跨 workspace 的所有來源統一排序作答。`refresh` 重建有變更的檔案，`rebuild` 重建全部或單一 `--source`/`--scope`，`clear` 刪除未使用的索引；新索引就緒前繼續使用舊索引。`reset` 只刪除 workspace 資料庫，不會刪除設計、匯出或記住的位置。`track --scope NODE` 從 baseline 建置開始記錄該範圍的變更；`untrack` 停止記錄並保留歷史。 `embed` 用已設定的模型嵌入已發布的範圍（使用 CPU 與記憶體）；僅在需要 workspace 語意搜尋時執行。 `visual --scope NODE` 為圖片搜尋渲染該已發布範圍的畫面與元件，設定視覺模型時一併嵌入；僅在需要 workspace 視覺搜尋時執行。 |
 | `jobs status\|cancel <jobId>` | 查看或取消索引建置；`cancel` 在建置停止後才返回 |
 | `changes --file <file>\|--id ID\|--workspace DIR [--source ID] [--scope NODE] [--consumer NAME\|--subscription ID\|--cursor C] [--revision R] [--limit N]` | 已追蹤範圍記錄的變更，從最舊開始：每次發布的建置一個修訂（baseline 或 changes），含涵蓋狀況及依變更類型與 facet 的計數；每個 changes 修訂都有 `impact` 摘要，說明變更波及的圖層（schema 7 之前為 null）；`--revision` 分頁列出該修訂變更的節點，再列出 impact 列出的圖層（`entry` 標明是哪一種）；`tracking` 指出哪些範圍需要 `index refresh` 才能記錄變更。唯讀 |

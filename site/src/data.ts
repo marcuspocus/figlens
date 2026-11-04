@@ -4,7 +4,7 @@ export const REPO = 'https://github.com/runkids/figlens';
 export const outcomes = [
   { title: 'Build from the source details', description: 'Read layout, text, styles, variables and Dev Mode annotations; export vector icons as SVG and images as assets. Bundle a frame’s data, assets and reference render, then check for missing files, font requirements and handoff limitations.' },
   { title: 'Compare the running UI', description: 'Compare a screenshot with figlens’s render and get the layers under differing regions. Review those differences and rendering warnings: this is not a pixel-perfect guarantee.' },
-  { title: 'Follow design changes', description: 'Compare saved revisions with diff, or use changes and watch to report updates to tracked local scopes. Save a new .fig from Figma to pick up design edits; this is not live Figma sync.' },
+  { title: 'Follow design changes', description: 'Compare saved revisions with diff, use changes and watch to report updates to tracked local scopes, and freshness to tell when a saved copy is older than the online file. Save a new .fig from Figma to pick up design edits; this is not live Figma sync.' },
 ];
 
 // An illustrative frame (not a real customer design), drawn in src/scripts/screen.ts.

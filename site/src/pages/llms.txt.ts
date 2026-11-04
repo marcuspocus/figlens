@@ -8,7 +8,7 @@ export function GET() {
   const body = [
     '# figlens',
     '',
-    '> figlens reads Figma .fig files offline for coding agents: layout, text, styles, variables, assets and a reference render, from a saved local copy. No Figma API, login, Dev Mode seat or running Figma app. Native CLI, MCP server, and plugins for Claude Code, Codex, Pi, Cursor, OpenCode and OMP, and a Herdr panel. MIT licensed.',
+    '> figlens reads Figma .fig files offline for coding agents: layout, text, styles, variables, assets and a reference render, from a saved local copy. No Figma API (except the opt-in freshness check), login, Dev Mode seat or running Figma app. Native CLI, MCP server, and plugins for Claude Code, Codex, Pi, Cursor, OpenCode and OMP, and a Herdr panel. MIT licensed.',
     '',
     `The full documentation as one file: ${SITE}/llms-full.txt`,
     '',

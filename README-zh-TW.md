@@ -26,9 +26,9 @@ figlens 把儲存的 Figma 檔案轉成 coding agent 可用的設計上下文，
 
 - **依據原始細節實作。** 讀取排版、文字、樣式、variables，以及 Dev Mode 標註和 Ready for dev 狀態，匯出 SVG 向量圖示和圖片素材。`bundle` 彙集 frame 的資料、素材和參考渲染圖；`verify` 報告缺漏檔案、字型檢查事項與交接限制。
 - **比對執行中的 UI。** `compare-image` 將截圖與 figlens 的渲染結果比對，並指出差異區域下方的圖層。仍需檢查差異與渲染警告，不保證像素級一致。
-- **追蹤設計變更。** `diff` 比較儲存的版本；`changes` 與 `watch` 報告已追蹤本機範圍的更新。設計改動後需從 Figma 儲存新的 `.fig`，並非與 Figma 即時同步。
+- **追蹤設計變更。** `diff` 比較儲存的版本；`changes` 與 `watch` 報告已追蹤本機範圍的更新；`freshness` 指出已儲存副本是否比線上檔案舊。設計改動後需從 Figma 儲存新的 `.fig`，並非與 Figma 即時同步。
 
-**離線是基礎。** 在 Figma 選擇 **File > Save local copy**，把 `design.fig` 放在程式碼旁邊。之後只要一個 Figma 連結：其中的節點 ID 會選定畫面。沒有存下的副本時，在 Figma 複製圖層（右鍵 > Copy），再執行 `figlens clipboard screen.fig`；複製內容沒有圖片和向量輪廓（[方法](docs/README-zh-TW.md#copy-a-selection)）。一個原生執行檔在本機讀取，不必執行 Figma App、登入或對 Figma 發出網路呼叫。
+**離線是基礎。** 在 Figma 選擇 **File > Save local copy**，把 `design.fig` 放在程式碼旁邊。之後只要一個 Figma 連結：其中的節點 ID 會選定畫面。沒有存下的副本時，在 Figma 複製圖層（右鍵 > Copy），再執行 `figlens clipboard screen.fig`；複製內容沒有圖片和向量輪廓（[方法](docs/README-zh-TW.md#copy-a-selection)）。一個原生執行檔在本機讀取，不必執行 Figma App、登入或對 Figma 發出網路呼叫；只有選用的 `freshness` 檢查會用你的 `FIGMA_TOKEN` 向 Figma 查詢檔案的最後編輯時間。
 
 <a id="start"></a>
 
@@ -249,7 +249,7 @@ GIF 以剪輯版影片的 3 倍速度循環播放；點擊可觀看完整 78 秒
 
 當設計需要以檔案形式傳遞時，用 **figlens**：遠端 agent、CI、離線工作、agent 之間的交接、不限次數的重複讀取。當 agent 必須不經匯出步驟就看到即時設計時，用**官方 Figma MCP**。
 
-讀取 `.fig` 可離線進行。安裝與更新 figlens、`gs://` 輸入、你的模型供應商，以及專案的相依套件仍需要網路。
+讀取 `.fig` 可離線進行。安裝與更新 figlens、`gs://` 輸入、選用的 `freshness` 檢查、你的模型供應商，以及專案的相依套件仍需要網路。
 
 [完整比較](docs/README-zh-TW.md#why)
 

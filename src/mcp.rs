@@ -127,6 +127,8 @@ struct AdmittedCall {
     old: Option<PathBuf>,
     /// A search's local query image: read for the call, never written.
     image: Option<PathBuf>,
+    /// The mapping a freshness call lists.
+    sources: Option<PathBuf>,
     /// Its token in the server's pending calls, removed when the call is dropped; `None` for a
     /// call admitted outside a server.
     live: Option<Live>,
@@ -321,6 +323,11 @@ fn admit_value(req: Value, roots: &[PathBuf]) -> Admission {
                             "only index add takes a gs:// object; other index actions read registered sources or local .fig files",
                         ));
                     }
+                    Some(file) if file.starts_with("gs://") && call.name() == "freshness" => {
+                        return Err(contract::Failure::argument(
+                            "freshness reads a local .fig's saved time; a gs:// object has no mapping",
+                        ));
+                    }
                     Some(file) if file.starts_with("gs://") => {
                         if !roots.is_empty() {
                             return Err(contract::Failure::new(ErrorKind::PermissionDenied,
@@ -342,6 +349,7 @@ fn admit_value(req: Value, roots: &[PathBuf]) -> Admission {
                 let match_dir = call.string("matchDir").map(|path| checked_path(Path::new(path), roots)).transpose()?;
                 let fonts = call.string("fonts").map(|path| checked_path(Path::new(path), roots)).transpose()?;
                 let project = call.string("workspace").map(|path| checked_path(Path::new(path), roots)).transpose()?;
+                let sources = call.string("sources").map(|path| checked_path(Path::new(path), roots)).transpose()?;
                 let old = match call.string("old") {
                     Some(file) if file.starts_with("gs://") => {
                         return Err(contract::Failure::argument(
@@ -356,7 +364,7 @@ fn admit_value(req: Value, roots: &[PathBuf]) -> Admission {
                     }
                     image => image.map(|path| checked_path(Path::new(path), roots)).transpose()?,
                 };
-                Ok(AdmittedCall { id:id.clone(), call, source, output, outputs, input, match_dir, fonts, project, old, image, live: None })
+                Ok(AdmittedCall { id:id.clone(), call, source, output, outputs, input, match_dir, fonts, project, old, image, sources, live: None })
             });
             return match admitted {
                 Ok(call) => Admission::Call(Box::new(call)),
@@ -394,7 +402,15 @@ impl AdmittedCall {
         self.local().filter(|_| {
             !matches!(
                 self.call.name(),
-                "search" | "usages" | "diff" | "index" | "jobs" | "models" | "changes" | "watch"
+                "search"
+                    | "usages"
+                    | "diff"
+                    | "index"
+                    | "jobs"
+                    | "models"
+                    | "changes"
+                    | "watch"
+                    | "freshness"
             )
         })
     }
@@ -472,6 +488,7 @@ impl AdmittedCall {
             .chain(self.project.as_deref())
             .chain(self.old.as_deref())
             .chain(self.image.as_deref())
+            .chain(self.sources.as_deref())
         {
             // Recheck current filesystem state, not raw arguments or a permanent authorization lease.
             checked_path(path, roots)?;
@@ -505,6 +522,22 @@ impl AdmittedCall {
                     value,
                     pretty: false,
                 });
+            }
+            let allowed = |path: &Path| checked_path(path, roots).is_ok();
+            if name == "freshness" {
+                let file = self.local().zip(self.call.string("file"));
+                let request = command::freshness::Request {
+                    sources: self.sources.as_deref(),
+                    file,
+                    url: self.call.string("url"),
+                    start: None,
+                };
+                return command::freshness::report(&request, &allowed, self.cancel())
+                    .map(|value| command::Output::Json {
+                        value,
+                        pretty: false,
+                    })
+                    .map_err(|e| contract::Failure::argument(e.to_string()));
             }
             if name == "diff" {
                 let (old, new) = (self.old.as_deref().unwrap(), self.local().unwrap());
@@ -588,7 +621,12 @@ impl AdmittedCall {
                 if let Some((path, tree, decoded)) = loaded {
                     // A metadata match alone does not prove that a warm source remains readable.
                     std::fs::File::open(path).map_err(|e| contract::source("", e.into()))?;
-                    return run(tree, path, decoded);
+                    return command::freshness::with_hint(
+                        name,
+                        run(tree, path, decoded),
+                        path,
+                        &allowed,
+                    );
                 }
                 let path = match self.source.as_ref().unwrap() {
                     Source::Local(path) => path.clone(),
@@ -602,7 +640,7 @@ impl AdmittedCall {
                 let mut doc = Document::open(&path).map_err(|e| contract::source("", e))?;
                 let message = doc.take_message()?;
                 let tree = Tree::new(&message);
-                run(&tree, &path, decoded)
+                command::freshness::with_hint(name, run(&tree, &path, decoded), &path, &allowed)
             })();
             result.map_err(contract::Failure::from_error)
         }))

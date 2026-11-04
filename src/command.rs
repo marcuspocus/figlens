@@ -17,6 +17,7 @@ use serde_json::{Value, json};
 use crate::USAGE;
 
 mod discover;
+pub mod freshness;
 pub mod index;
 #[cfg(test)]
 mod instance_tests;

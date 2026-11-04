@@ -257,7 +257,7 @@ usage:
   figlens mcp [--root DIR]... [--storage-root DIR]...
                                              serve workflow guidance, tree, find, search, usages, diff, inspect,
                                              nodes, variables, bundle, export, compare_image, index, jobs,
-                                             models, changes and watch as MCP tools; raster export returns an inline image;
+                                             models, changes, watch and freshness as MCP tools; raster export returns an inline image;
                                              with --root, files and outputs must be under one of the folders;
                                              a custom index storage must be under a --storage-root
   figlens workflow <topic>                     print built-in agent guidance, the same text as MCP workflow:
@@ -380,6 +380,21 @@ usage:
                                              warnings}: a copy carries no image bytes or vector
                                              outlines, so exports warn where they draw without them.
                                              With a saved .fig, pass a Figma link as the node instead
+  figlens freshness [<file.fig> [--url URL] | --sources <mapping.json>]
+                                             whether each saved copy is older than its online Figma
+                                             file: the designs in the nearest .figlens/sources.json (a
+                                             list of {name,url,file}, file relative to the project
+                                             root, or to the folder of a mapping outside .figlens/),
+                                             one file, or one file with its URL.
+                                             Saved time is exported_at in the copy's meta.json; online
+                                             time is last_touched_at from the REST file metadata,
+                                             read with curl and a token in FIGMA_TOKEN (scope
+                                             file_metadata:read). Prints {mapping,tokenVar,tokenSet,
+                                             designs:[{name,file,savedAt,onlineModifiedAt,
+                                             onlineVersion,state: stale|current|unknown,reason}]};
+                                             never fails for a missing token or network. With a
+                                             token, a node not found or an empty find in a mapped
+                                             stale copy also says to save a new local copy
   figlens update                               install the latest GitHub release over this binary
   figlens --help | --version
 
@@ -636,6 +651,34 @@ fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
             writeln!(out, "{}", serde_json::to_string_pretty(&report)?)?;
             return Ok(());
         }
+        Some("freshness") => {
+            let (mut file, mut url, mut sources) = (None, None, None);
+            let mut rest = args[1..].iter();
+            while let Some(arg) = rest.next() {
+                match arg.as_str() {
+                    "--url" => url = Some(rest.next().ok_or("--url needs a Figma URL")?.as_str()),
+                    "--sources" => {
+                        sources = Some(Path::new(rest.next().ok_or("--sources needs a path")?))
+                    }
+                    _ if !arg.starts_with('-') && file.is_none() => file = Some(arg.as_str()),
+                    _ => return Err(USAGE.into()),
+                }
+            }
+            let cwd = std::env::current_dir()?;
+            let request = command::freshness::Request {
+                sources,
+                file: file.map(|f| (Path::new(f), f)),
+                url,
+                start: Some(&cwd),
+            };
+            let report = command::freshness::report(
+                &request,
+                &|_| true,
+                &std::sync::atomic::AtomicBool::new(false),
+            )?;
+            writeln!(out, "{}", serde_json::to_string_pretty(&report)?)?;
+            return Ok(());
+        }
         Some("workflow") => {
             let topic = args.get(1).ok_or_else(|| {
                 format!(
@@ -754,8 +797,10 @@ fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
             export_batch(&tree, &path, &args[2..], &mut std::io::stdout().lock())?;
         }
         "tree" | "find" | "inspect" | "node" | "nodes" | "variables" | "bundle" | "export" => {
-            let command = command::Command::from_cli(command, &args[2..], &tree)?.decoded(decoded);
-            out.push_str(&command.execute(&tree, &path)?.text()?);
+            let result = command::Command::from_cli(command, &args[2..], &tree)
+                .and_then(|c| c.decoded(decoded).execute(&tree, &path));
+            let result = command::freshness::with_hint(command, result, &path, &|_| true);
+            out.push_str(&result?.text()?);
         }
         "compare-image" => {
             let (node, shot, diff, opts) = command::compare_image_args(&args[2..])?;

@@ -19,6 +19,7 @@ pub mod compare_image;
 pub mod expand;
 pub mod export;
 pub mod fonts;
+pub mod freshness;
 pub mod images;
 pub mod output;
 mod parse;

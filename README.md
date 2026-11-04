@@ -26,9 +26,9 @@ figlens turns saved Figma files into design context your coding agent can act on
 
 - **Build from the source details.** Read layout, text, styles, variables, Dev Mode annotations and Ready for dev status; export vector icons as SVG and images as assets. `bundle` collects a frame's data, assets and reference render; `verify` reports missing files, font checks and handoff limitations.
 - **Compare the running UI.** `compare-image` compares your screenshot with figlens's render and names the layers under differing regions. Review those differences and rendering warnings; it is not a pixel-perfect guarantee.
-- **Follow design changes.** `diff` compares saved revisions; `changes` and `watch` report updates to tracked local scopes. Save a new `.fig` from Figma to pick up design edits—this is not live Figma sync.
+- **Follow design changes.** `diff` compares saved revisions; `changes` and `watch` report updates to tracked local scopes; `freshness` tells when a saved copy is older than the online file. Save a new `.fig` from Figma to pick up design edits—this is not live Figma sync.
 
-**Offline at the foundation.** In Figma, **File > Save local copy**. Put `design.fig` next to your code. Then a Figma link is enough: its node id picks the frame. With no saved copy, copy the layers in Figma (right-click > Copy) and run `figlens clipboard screen.fig`; a copy has no images or vector outlines ([how](docs/README.md#copy-a-selection)). One native binary reads it locally, without a running Figma app, login or network calls to Figma.
+**Offline at the foundation.** In Figma, **File > Save local copy**. Put `design.fig` next to your code. Then a Figma link is enough: its node id picks the frame. With no saved copy, copy the layers in Figma (right-click > Copy) and run `figlens clipboard screen.fig`; a copy has no images or vector outlines ([how](docs/README.md#copy-a-selection)). One native binary reads it locally, without a running Figma app, login or network calls to Figma; only the opt-in `freshness` check, with your `FIGMA_TOKEN`, asks Figma when a file was last edited.
 
 <a id="start"></a>
 
@@ -249,7 +249,7 @@ Looping GIF at 3× the edited video’s playback speed. Click it for the full 78
 
 Use **figlens** when the design should travel as a file: remote agents, CI, offline work, handoff between agents, unlimited repeated reads. Use the **official Figma MCP** when the agent must see the live design without an export step.
 
-Reading a `.fig` is offline. Installing and updating figlens, `gs://` inputs, your model provider and your project's dependencies still need a network.
+Reading a `.fig` is offline. Installing and updating figlens, `gs://` inputs, the opt-in `freshness` check, your model provider and your project's dependencies still need a network.
 
 [Full comparison](docs/README.md#why)
 

@@ -54,6 +54,14 @@
         }
       ]
     },
+    "freshness": {
+      "description": "Changing freshness, the .figlens/sources.json mapping or the stale hint on a missing node.",
+      "sources": [
+        {
+          "path": "wiki/freshness.md"
+        }
+      ]
+    },
     "performance": {
       "description": "Measuring load time and memory, reading the perf baseline, changing cache or decode cost.",
       "sources": [
