@@ -899,8 +899,13 @@ fn mcp_in_a_herdr_terminal_journals_successful_node_reads_but_not_searches() {
     mcp.call("search", json!({"file": fig, "query": "first"}));
     mcp.call("inspect", json!({"file": fig, "node": "99:99"}));
     drop(mcp);
-    let dir = env.home.join(".local/state/figlens/activity");
-    let lines: Vec<Value> = std::fs::read_dir(dir)
+    // The default state folder: Windows keeps it under %LOCALAPPDATA%, which Env points at home.
+    let state = if cfg!(windows) {
+        env.home.join("figlens").join("state")
+    } else {
+        env.home.join(".local/state/figlens")
+    };
+    let lines: Vec<Value> = std::fs::read_dir(state.join("activity"))
         .unwrap()
         .flat_map(|entry| {
             std::fs::read_to_string(entry.unwrap().path())
