@@ -61,8 +61,6 @@ The tool requires only an enumerated `topic`, accepts no file/path argument and 
 
 ## Shared sources and runtime behavior
 
-Inside a Herdr terminal, a successful call that read nodes also writes the [activity journal](herdr.md#activity-journal).
-
 CLI and MCP index calls share action execution and option applicability in `src/command/index.rs`. MCP retains schema preflight, admitted paths, storage confinement and background job scheduling; CLI retains its positional syntax, directory dry-run/manifest flags and foreground job completion. Pi, OpenCode and OMP use the same MCP contract without host-specific changes. Workspace search, library and source usages share published rows and readiness checks in `src/workspace/readiness.rs`, after visibility filtering within the same read transaction. Reader-specific schema gates, cursors and recovery/result policies remain separate; only search reports interrupted jobs beside current publications. New focused tests live in adjacent `index/tests.rs` and `readiness/tests.rs` files.
 
 Stdio request lines are capped at 1 MiB including line endings before JSON parsing or admission. Oversized lines are drained through their newline and return JSON-RPC `-32600` with a null ID; invalid UTF-8 returns `-32700`. The next request still runs, warm document included. This is a byte limit, not an elapsed-time limit on a peer that never finishes a line.
