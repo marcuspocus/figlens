@@ -76,6 +76,23 @@ npx -y @runkids/figlens bundle design.fig 12:345 frame.zip        # 上記の zi
 
 SVG エクスポートは元の画像フィルを埋め込み、テキストをグリフにアウトライン化するため、フォントは不要です。MCP 経由では、ラスターエクスポートもインライン画像として返るので、エージェントはファイルを開かずにデザインを確認できます。
 
+<a id="copy-a-selection"></a>
+
+### 保存した .fig がない場合: 選択範囲をコピーする
+
+1. Figma でフレームまたはレイヤーを選択してコピーします。右クリック > **Copy**、または Cmd+C（Windows と Linux は Ctrl+C）。
+2. `figlens clipboard screen.fig` を実行するか、エージェントに「いまコピーした画面」を作るよう頼みます。クリップボードを読み取り、全コマンドが読める `.fig` を書き出します。
+3. `screen.fig` を他のファイルと同じように渡します: `figlens bundle screen.fig <node> frame.zip`。
+
+コピーをテキストフィールドに貼り付けても得られるのはそのテキストだけです。figlens はレイヤーを含むコピーの HTML を読み取ります。macOS は実際のコピーで確認済みで、Windows（PowerShell 5.1）と Linux（`wl-paste` または `xclip`）は未検証です。
+
+| | **File > Save local copy** | コピーした選択範囲 |
+|---|---|---|
+| 範囲 | ファイル全体 | コピーしたレイヤーと、それらが使うコンポーネント |
+| 画像フィルとベクターのアウトライン | 含まれる | 含まれない。export はそれらなしで描いた箇所を警告する |
+| Figma リンクでノードが見つかる | はい | はい、コピーしたレイヤーなら可能。ID は元ファイルと一致する |
+| 向いている場面 | コードの隣に置いたデザインから作る | 保存したコピーがないときに、1 画面をさっと確認する |
+
 <a id="accuracy"></a>
 
 ### Figma にどこまで近いか
@@ -245,7 +262,7 @@ Pi、OpenCode、OMP は、それぞれのオプトイン用エントリから同
 | `compare <file> <nodes.json> <node>` | 同じ frame の REST エクスポートとの差分 |
 | `compare-image <file> <node> <screenshot.png>` | 実装した画面のスクリーンショットを、そのスケールで描画した node と比較（`--scale`、`--limit`、`--out diff.png`、frame より短いフルページキャプチャには `--full-page`、データ由来のコンテンツのレイヤーには `--ignore`、薄い枠線を見るには `--threshold`、`image: true` は画像塗りの領域、MCP `compare_image`）。`mismatch`、`nonTextMismatch` と、差分の大きい領域を node のピクセル座標で出力し、各領域の下にある最も深いレイヤーを示します。`text: true` はテキスト上の領域です（多くはフォント代替。各領域を確認してください） |
 | `node <file> <node>` | `.fig` の生ノード 1 つ |
-| `clipboard <copied.html> <out.fig>` | Figma でコピーした選択範囲（Cmd/Ctrl+C）をクリップボードの HTML として保存し、Save local copy なしで全コマンドが読める `.fig` に変換。ノード ID は元ファイルと同じで、使用中のコンポーネントも含む。`missingImages`、`missingComponents`、`layersWithoutOutlines` を報告: コピーには画像バイトもベクターのアウトラインも含まれないため、export と bundle はそれらなしで描いた箇所を警告する。既存ファイルは置き換えない |
+| `clipboard [copied.html] <out.fig>` | 保存した `.fig` がないとき向け: Figma でレイヤーを選択してコピー（右クリック > Copy、または Cmd/Ctrl+C）し、これを実行してクリップボードを全コマンドが読める `.fig` に変換する。ほかの場所に貼り付けても得られるのはレイヤーのテキストだけ。システムのクリップボード（macOS。Windows PowerShell 5.1 と Linux の `wl-paste`/`xclip` は未検証）か、保存したクリップボードの HTML ファイルを読む。ノード ID は元ファイルと同じで、使用中のコンポーネントも含む。`missingImages`、`missingComponents`、`layersWithoutOutlines` を報告: コピーには画像バイトもベクターのアウトラインも含まれないため、export と bundle はそれらなしで描いた箇所を警告する。既存ファイルは置き換えない。保存した `.fig` がある場合は、代わりに Figma リンクをノードとして渡す。画像とベクターが残る |
 | `index prepare\|refresh\|rebuild\|clear\|status\|add\|remove\|relocate\|reset\|track\|untrack\|embed\|visual` | ユーザーごとの figlens state ディレクトリ、または workspace が以後記憶する `--storage DIR` の下にあるローカル workspace。`prepare <file> --scope NODE` でその範囲の検索インデックスを一度だけ作成し、以後 `search --file <file>`（または `--workspace DIR`）は再解析せず、workspace の全ソースをまとめてランク付けして答えます。`refresh` は変更されたファイル、`rebuild` はすべて（または `--source`/`--scope` の一つ）を再作成し、`clear` は使われていないインデックスを削除します。新しいインデックスができるまで以前のものが使われます。`reset` は workspace データベースだけを削除し、デザイン、エクスポート、記憶された場所には触れません。`track --scope NODE` は baseline ビルドからそのスコープの変更を記録し、`untrack` は履歴を残したまま停止します。 `embed` は公開済みスコープを設定済みモデルで埋め込みます（CPU とメモリを使用）。workspace のセマンティック検索が必要なときだけ実行してください。 `visual --scope NODE` は公開済みスコープの画面とコンポーネントを画像検索用にレンダリングし、ビジョンプロファイル設定時は埋め込みも行います。workspace の画像検索が必要なときだけ実行してください。 |
 | `jobs status\|cancel <jobId>` | インデックス作成の状態表示または取り消し。`cancel` は作成が止まってから戻ります |
 | `changes --file <file>\|--id ID\|--workspace DIR [--source ID] [--scope NODE] [--consumer NAME\|--subscription ID\|--cursor C] [--revision R] [--limit N]` | 追跡中のスコープで記録された変更を古い順に返します。公開されたビルドごとに 1 リビジョン（baseline または changes）で、カバレッジと変更種別・ファセットごとの件数を含みます。changes リビジョンには変更が及ぶレイヤーの `impact` 要約があります（スキーマ 7 より前は null）。`--revision` でそのリビジョンの変更ノード、続いて impact が列挙するレイヤーをページングします（`entry` がどちらかを示します）。`tracking` は変更を記録するために `index refresh` が必要なスコープを示します。読み取りのみ |

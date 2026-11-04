@@ -28,7 +28,7 @@ figlens macht aus gespeicherten Figma-Dateien Designkontext, mit dem dein Coding
 - **Die laufende UI vergleichen.** `compare-image` vergleicht deinen Screenshot mit dem Rendering von figlens und nennt die Ebenen unter abweichenden Bereichen. Prüfe diese Unterschiede und Rendering-Warnungen; das ist keine Garantie für Pixelgenauigkeit.
 - **Designänderungen verfolgen.** `diff` vergleicht gespeicherte Versionen; `changes` und `watch` melden Aktualisierungen verfolgter lokaler Bereiche. Speichere eine neue `.fig` aus Figma, um Designänderungen zu übernehmen—keine Live-Synchronisierung mit Figma.
 
-**Offline als Grundlage.** Wähle in Figma **File > Save local copy**. Lege `design.fig` neben deinen Code. Für einen einzelnen Screen kannst du stattdessen die Auswahl in Figma kopieren und das gespeicherte Zwischenablage-HTML mit `figlens clipboard` in eine `.fig` umwandeln. Ein natives Binary liest die Datei lokal, ohne laufende Figma-App, Login oder Netzwerkaufrufe an Figma.
+**Offline als Grundlage.** Wähle in Figma **File > Save local copy**. Lege `design.fig` neben deinen Code. Dann genügt ein Figma-Link: Seine Node-ID wählt den Frame. Ohne gespeicherte Kopie kopierst du die Ebenen in Figma (Rechtsklick > Copy) und führst `figlens clipboard screen.fig` aus; eine Kopie enthält keine Bilder oder Vektorumrisse ([so geht's](docs/README-de.md#copy-a-selection)). Ein natives Binary liest die Datei lokal, ohne laufende Figma-App, Login oder Netzwerkaufrufe an Figma.
 
 <a id="start"></a>
 

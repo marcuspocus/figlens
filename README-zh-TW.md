@@ -28,7 +28,7 @@ figlens 把儲存的 Figma 檔案轉成 coding agent 可用的設計上下文，
 - **比對執行中的 UI。** `compare-image` 將截圖與 figlens 的渲染結果比對，並指出差異區域下方的圖層。仍需檢查差異與渲染警告，不保證像素級一致。
 - **追蹤設計變更。** `diff` 比較儲存的版本；`changes` 與 `watch` 報告已追蹤本機範圍的更新。設計改動後需從 Figma 儲存新的 `.fig`，並非與 Figma 即時同步。
 
-**離線是基礎。** 在 Figma 選擇 **File > Save local copy**，把 `design.fig` 放在程式碼旁邊。只需要一個畫面時，也可以在 Figma 複製選取範圍，再用 `figlens clipboard` 把存下的剪貼簿 HTML 轉成 `.fig`。一個原生執行檔在本機讀取，不必執行 Figma App、登入或對 Figma 發出網路呼叫。
+**離線是基礎。** 在 Figma 選擇 **File > Save local copy**，把 `design.fig` 放在程式碼旁邊。之後只要一個 Figma 連結：其中的節點 ID 會選定畫面。沒有存下的副本時，在 Figma 複製圖層（右鍵 > Copy），再執行 `figlens clipboard screen.fig`；複製內容沒有圖片和向量輪廓（[方法](docs/README-zh-TW.md#copy-a-selection)）。一個原生執行檔在本機讀取，不必執行 Figma App、登入或對 Figma 發出網路呼叫。
 
 <a id="start"></a>
 

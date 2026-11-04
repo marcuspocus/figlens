@@ -76,6 +76,23 @@ npx -y @runkids/figlens bundle design.fig 12:345 frame.zip        # the zip abov
 
 SVG exports embed original image fills and outline text as glyphs, so no fonts are needed. Through MCP, raster exports also come back as inline images, so the agent sees the design without opening a file.
 
+<a id="copy-a-selection"></a>
+
+### No saved .fig? Copy a selection
+
+1. In Figma, select the frame or layers and copy them: right-click > **Copy**, or Cmd+C (Ctrl+C on Windows and Linux).
+2. Run `figlens clipboard screen.fig`, or ask your agent to build "the screen I just copied". It reads the clipboard and writes a `.fig` every command reads.
+3. Pass `screen.fig` like any other file: `figlens bundle screen.fig <node> frame.zip`.
+
+Pasting the copy into a text field gives only its text; figlens reads the copy's HTML, which holds the layers. macOS is checked against real copies; Windows (PowerShell 5.1) and Linux (`wl-paste` or `xclip`) are not yet.
+
+| | **File > Save local copy** | Copied selection |
+|---|---|---|
+| Scope | The whole file | The layers you copied, plus the components they use |
+| Image fills and vector outlines | Included | Missing; exports warn where they draw without them |
+| A Figma link finds the node | Yes | Yes, for copied layers: ids match the source file |
+| Fits | Building from a design you keep beside the code | A quick look at one screen when no saved copy exists |
+
 <a id="accuracy"></a>
 
 ### How close is it to Figma?
@@ -243,7 +260,7 @@ Experimental. `figlens search <file> <query> --mode semantic|hybrid` ranks layer
 | `compare <file> <nodes.json> <node>` | Diff against a REST export of the same frame |
 | `compare-image <file> <node> <screenshot.png>` | Compare a screenshot of the built screen with the node rendered at its scale (`--scale`, `--limit`, `--out diff.png`, `--full-page` for a whole-page capture shorter than the frame, `--ignore` for layers whose content comes from data, `--threshold` to see light borders; `image: true` marks image fills; MCP `compare_image`). Prints `mismatch`, `nonTextMismatch` and the largest differing regions in node pixels, each with the deepest layers under it; `text: true` marks regions over text (often font fallback; review each) |
 | `node <file> <node>` | One raw `.fig` node |
-| `clipboard <copied.html> <out.fig>` | A selection copied in Figma (Cmd/Ctrl+C), saved from the clipboard's HTML, as a `.fig` every command reads, without Save local copy: same node ids, used components included. Reports `missingImages`, `missingComponents` and `layersWithoutOutlines`: a copy carries no image bytes or vector outlines, so exports and bundles warn where they draw without them. Never replaces an existing file |
+| `clipboard [copied.html] <out.fig>` | For when there is no saved `.fig`: select layers in Figma, copy them (right-click > Copy, or Cmd/Ctrl+C), then run this to turn the clipboard into a `.fig` every command reads; pasting elsewhere gives only the layers' text. Reads the system clipboard (macOS; Windows PowerShell 5.1 and Linux `wl-paste`/`xclip` unverified) or a saved clipboard HTML file. Same node ids, used components included. Reports `missingImages`, `missingComponents` and `layersWithoutOutlines`: a copy carries no image bytes or vector outlines, so exports and bundles warn where they draw without them. Never replaces an existing file. With a saved `.fig`, pass the Figma link as the node instead: it keeps images and vectors |
 | `index prepare\|refresh\|rebuild\|clear\|status\|add\|remove\|relocate\|reset\|track\|untrack\|embed\|visual` | Local workspace in the per-user figlens state directory, or under a `--storage DIR` that the workspace then remembers. `prepare <file> --scope NODE` builds that scope's search index once; then `search --file <file>` (or `--workspace DIR`) answers without parsing, ranked across the workspace's sources. `refresh` rebuilds changed files, `rebuild` all or one `--source`/`--scope`, `clear` drops unused indexes; the previous index serves until a new one is ready. `reset` removes only the workspace database, never designs, exports or the remembered location. `track --scope NODE` records that scope's changes from a baseline build; `untrack` stops, keeping its history. `embed` embeds published scopes with the configured model, using CPU and memory; run it only when you want semantic workspace search. `visual --scope NODE` renders that published scope's screens and components for image search, embedding them when a vision profile is configured; run it only when you want visual workspace search. |
 | `jobs status\|cancel <jobId>` | Show or cancel an index build; cancel returns after the build stopped |
 | `changes --file <file>\|--id ID\|--workspace DIR [--source ID] [--scope NODE] [--consumer NAME\|--subscription ID\|--cursor C] [--revision R] [--limit N]` | Recorded changes of tracked scopes, oldest first: one revision per published build (baseline or changes) with coverage and counts per change kind and facet; each changes revision has an `impact` summary of the layers its changes reach (null before schema 7); `--revision` pages that revision's changed nodes, then the layers its impact lists (`entry` says which); `tracking` says when a scope needs `index refresh` to record a change. Reads only |

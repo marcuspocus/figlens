@@ -18,7 +18,7 @@ Restart Pi or run `/reload`. Run Pi from the project you want to build in. The e
 
 ## Ask for the screen
 
-In Figma, **File > Save local copy** → `design.fig` in your project. For one screen, a selection copied in Figma (Cmd/Ctrl+C) also works: save the clipboard's HTML and run `npx @runkids/figlens clipboard copied.html copied.fig`. The copy keeps node IDs and used components but carries no images or vector outlines, which figlens reports as missing. Then:
+In Figma, **File > Save local copy** → `design.fig` in your project. With no saved copy, copy the layers in Figma (right-click > Copy) and run `npx @runkids/figlens clipboard copied.fig`. The copy keeps node IDs and used components but carries no images or vector outlines, which figlens reports as missing. Then:
 
 ```text
 Build the task board from ./design.fig.

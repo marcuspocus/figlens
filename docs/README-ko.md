@@ -76,6 +76,23 @@ npx -y @runkids/figlens bundle design.fig 12:345 frame.zip        # 위의 zip
 
 SVG 내보내기는 원본 이미지 채우기를 포함하고 텍스트를 글리프 윤곽선으로 변환하므로 글꼴이 필요 없습니다. MCP에서는 래스터 내보내기도 인라인 이미지로 반환되어 에이전트가 파일을 열지 않고 디자인을 볼 수 있습니다.
 
+<a id="copy-a-selection"></a>
+
+### 저장한 .fig가 없다면? 선택 영역 복사
+
+1. Figma에서 프레임이나 레이어를 선택해 복사합니다: 마우스 오른쪽 클릭 > **Copy** 또는 Cmd+C(Windows와 Linux는 Ctrl+C).
+2. `figlens clipboard screen.fig`를 실행하거나, 에이전트에게 "방금 복사한 화면"을 만들어 달라고 요청하세요. 클립보드를 읽어 모든 명령이 읽는 `.fig`를 씁니다.
+3. `screen.fig`를 다른 파일처럼 전달합니다: `figlens bundle screen.fig <node> frame.zip`.
+
+복사본을 텍스트 필드에 붙여넣으면 텍스트만 나옵니다. figlens는 레이어가 들어 있는 복사본의 HTML을 읽습니다. macOS는 실제 복사본으로 확인했고, Windows(PowerShell 5.1)와 Linux(`wl-paste` 또는 `xclip`)는 아직 확인하지 않았습니다.
+
+| | **File > Save local copy** | 복사한 선택 영역 |
+|---|---|---|
+| 범위 | 파일 전체 | 복사한 레이어와 그 레이어가 쓰는 컴포넌트 |
+| 이미지 채우기와 벡터 윤곽선 | 포함됨 | 없음. export는 그것 없이 그린 곳을 경고함 |
+| Figma 링크로 노드를 찾을 수 있음 | 예 | 예, 복사한 레이어는 가능. ID가 원본 파일과 일치함 |
+| 적합한 경우 | 코드 옆에 두는 디자인으로 구현할 때 | 저장한 복사본이 없을 때 화면 하나를 빠르게 볼 때 |
+
 <a id="accuracy"></a>
 
 ### Figma와 얼마나 가깝나요?
@@ -245,7 +262,7 @@ Pi, OpenCode, OMP는 각자의 opt-in 진입점으로 같은 인덱스를 쓰며
 | `compare <file> <nodes.json> <node>` | 같은 frame의 REST 내보내기와 차이 비교 |
 | `compare-image <file> <node> <screenshot.png>` | 구현한 화면의 스크린샷을 그 배율로 렌더링한 node와 비교 (`--scale`, `--limit`, `--out diff.png`, frame보다 짧은 전체 페이지 캡처에는 `--full-page`, 데이터에서 오는 콘텐츠 레이어에는 `--ignore`, 옅은 테두리를 보려면 `--threshold`; `image: true`는 이미지 채우기 영역; MCP `compare_image`). `mismatch`, `nonTextMismatch`와 가장 큰 차이 영역을 node 픽셀 좌표로 출력하고 각 영역 아래의 가장 깊은 레이어를 표시합니다. `text: true`는 텍스트 위의 영역입니다(대개 대체 글꼴이지만 각각 확인하세요) |
 | `node <file> <node>` | 원시 `.fig` 노드 하나 |
-| `clipboard <copied.html> <out.fig>` | Figma에서 복사한 선택 영역(Cmd/Ctrl+C)을 클립보드 HTML로 저장한 뒤, Save local copy 없이 모든 명령이 읽는 `.fig`로 변환: 노드 ID는 원본과 같고 사용된 컴포넌트도 포함. `missingImages`, `missingComponents`, `layersWithoutOutlines`를 보고: 복사본에는 이미지 바이트와 벡터 윤곽선이 없으므로 export와 bundle은 그것 없이 그린 곳을 경고. 기존 파일은 덮어쓰지 않음 |
+| `clipboard [copied.html] <out.fig>` | 저장한 `.fig`가 없을 때 사용: Figma에서 레이어를 선택해 복사(마우스 오른쪽 클릭 > Copy 또는 Cmd/Ctrl+C)한 뒤 이 명령을 실행하면 클립보드가 모든 명령이 읽는 `.fig`로 변환됨. 다른 곳에 붙여넣으면 레이어의 텍스트만 나옴. 시스템 클립보드(macOS, Windows PowerShell 5.1과 Linux `wl-paste`/`xclip`은 미검증) 또는 저장한 클립보드 HTML 파일을 읽음. 노드 ID는 원본과 같고 사용된 컴포넌트도 포함. `missingImages`, `missingComponents`, `layersWithoutOutlines`를 보고: 복사본에는 이미지 바이트와 벡터 윤곽선이 없으므로 export와 bundle은 그것 없이 그린 곳을 경고. 기존 파일은 덮어쓰지 않음. 저장한 `.fig`가 있으면 대신 Figma 링크를 노드로 전달: 이미지와 벡터가 유지됨 |
 | `index prepare\|refresh\|rebuild\|clear\|status\|add\|remove\|relocate\|reset\|track\|untrack\|embed\|visual` | 사용자별 figlens state 디렉터리 또는 workspace가 이후 기억하는 `--storage DIR` 아래의 로컬 workspace. `prepare <file> --scope NODE`로 해당 범위의 검색 인덱스를 한 번 만들면, 이후 `search --file <file>`(또는 `--workspace DIR`)은 다시 파싱하지 않고 workspace의 모든 소스를 함께 순위 매겨 답합니다. `refresh`는 변경된 파일을, `rebuild`는 전부(또는 `--source`/`--scope` 하나)를 다시 만들고, `clear`는 쓰지 않는 인덱스를 지웁니다. 새 인덱스가 준비될 때까지 이전 인덱스가 계속 쓰입니다. `reset`은 workspace 데이터베이스만 지우며 디자인, 내보내기, 기억된 위치는 건드리지 않습니다. `track --scope NODE`는 baseline 빌드부터 그 스코프의 변경을 기록하고, `untrack`은 기록을 남긴 채 중단합니다. `embed`는 게시된 스코프를 설정된 모델로 임베딩합니다(CPU와 메모리 사용). workspace 시맨틱 검색이 필요할 때만 실행하세요. `visual --scope NODE`는 게시된 스코프의 화면과 컴포넌트를 이미지 검색용으로 렌더링하고, 비전 프로필이 설정되면 임베딩도 합니다. workspace 이미지 검색이 필요할 때만 실행하세요. |
 | `jobs status\|cancel <jobId>` | 인덱스 빌드 상태 확인 또는 취소. `cancel`은 빌드가 멈춘 뒤에 반환합니다 |
 | `changes --file <file>\|--id ID\|--workspace DIR [--source ID] [--scope NODE] [--consumer NAME\|--subscription ID\|--cursor C] [--revision R] [--limit N]` | 추적 중인 스코프에 기록된 변경을 오래된 순으로 반환합니다. 게시된 빌드마다 리비전 하나(baseline 또는 changes)와 커버리지, 변경 종류·facet별 개수를 포함합니다. changes 리비전마다 변경이 닿는 레이어의 `impact` 요약이 있습니다(스키마 7 이전은 null). `--revision`은 그 리비전의 변경된 노드와 이어서 impact가 나열한 레이어를 페이지로 나눕니다(`entry`가 어느 쪽인지 알려 줍니다). `tracking`은 변경을 기록하려면 `index refresh`가 필요한 스코프를 알려 줍니다. 읽기 전용 |

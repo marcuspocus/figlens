@@ -28,7 +28,7 @@ O figlens transforma arquivos salvos do Figma em contexto de design que seu codi
 - **Comparar a UI em execução.** `compare-image` compara sua captura com a renderização do figlens e identifica as camadas sob as regiões diferentes. Revise essas diferenças e os avisos de renderização; não é uma garantia de fidelidade pixel a pixel.
 - **Acompanhar mudanças no design.** `diff` compara revisões salvas; `changes` e `watch` informam atualizações em escopos locais monitorados. Salve um novo `.fig` no Figma para incorporar alterações; não é sincronização em tempo real com o Figma.
 
-**Offline como base.** No Figma, **File > Save local copy**. Coloque `design.fig` ao lado do seu código. Para uma única tela, copie a seleção no Figma e converta o HTML salvo da área de transferência em um `.fig` com `figlens clipboard`. Um binário nativo o lê localmente, sem app do Figma em execução, login ou chamadas de rede ao Figma.
+**Offline como base.** No Figma, **File > Save local copy**. Coloque `design.fig` ao lado do seu código. Depois disso, um link do Figma basta: o id do nó escolhe o frame. Sem uma cópia salva, copie as camadas no Figma (clique direito > Copy) e execute `figlens clipboard screen.fig`; uma cópia não traz imagens nem contornos vetoriais ([como](docs/README-pt-BR.md#copy-a-selection)). Um binário nativo o lê localmente, sem app do Figma em execução, login ou chamadas de rede ao Figma.
 
 <a id="start"></a>
 
