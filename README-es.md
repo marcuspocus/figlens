@@ -45,6 +45,7 @@ Pon `design.fig` en tu proyecto y elige **una** configuración. Cada una le da a
 | [Pi](#setup-pi) | Pi 1.3.0+ | el paquete, que incluye el skill |
 | [OpenCode V2](#setup-opencode) | OpenCode V2 2.2.0 | el skill incluido en el paquete |
 | [OMP](#setup-omp) | OMP 18.13.2 | el skill incluido en el paquete |
+| [Herdr](herdr/README.md) | un panel junto a tus agentes en Herdr 0.1.12+: encuentra una pantalla y pásala | la configuración del agente que la recibe |
 | [CLI](#setup-cli) | agents que solo ejecutan comandos de shell, scripts y CI, o tú | `figlens workflow <topic>`, o el [skill](#setup-skill) opcional |
 
 **Ordinario vs. avanzado.** El uso ordinario no requiere configuración: `figlens search design.fig "query"` lee el `.fig` y no crea nada. Un índice local opcional solo se crea cuando lo pides (`figlens index prepare design.fig --scope 0:0`) y luego se reutiliza entre reinicios y hosts. Consulta [Búsqueda ordinaria e índice local opcional](docs/README-es.md#local-index). Opcional y experimental: `--mode semantic` o `hybrid` ordena por significado con un modelo local que configuras tú; consulta [Búsqueda semántica opcional](docs/README-es.md#semantic-search).

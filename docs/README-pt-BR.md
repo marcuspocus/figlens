@@ -10,6 +10,7 @@
 - [Por que figlens em vez do MCP oficial do Figma?](#why)
 - [O que o agent recebe](#bundle)
 - [Extensão do Pi](#pi)
+- [Painel para o Herdr](#herdr)
 - [Explore um design sem o Figma](#viewer)
 - [Servidor MCP e skill para agents](#mcp-and-skill)
 - [Referência da CLI](#commands)
@@ -130,6 +131,12 @@ Pedir um texto ou uma tela busca direto no `.fig` e não salva nada. Para buscas
 ![Peça uma tela ao Pi, deixe que ele encontre o design, construa com a sua stack e confira o resultado](https://raw.githubusercontent.com/runkids/figlens/v0.10.1/assets/pi-workflow.svg)
 
 Passo a passo completo, comandos e limites: [pi/README.md](../pi/README.md).
+
+<a id="herdr"></a>
+
+## Painel para o Herdr
+
+Um painel do [Herdr](https://herdr.dev) para o design ao lado dos seus agentes: abra um `.fig`, encontre uma tela ou camada por nome, texto, ID de nó ou link do Figma, veja em tamanho real e entregue ao agente da esquerda como Build, Plan ou YOLO depois de um diálogo de confirmação que mostra a mensagem exata. Não precisa instalar o figlens e lê designs de máquinas remotas do Herdr no próprio lugar. Peça ao agente no Herdr: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`. Detalhes: [herdr/README.md](../herdr/README.md).
 
 <a id="viewer"></a>
 

@@ -200,6 +200,10 @@
         }
       ]
     },
+    "herdr": {
+      "description": "Changing the figlens mod or layout for Herdr under herdr/.",
+      "sources": [{ "path": "wiki/herdr.md" }, { "path": "herdr/AGENTS.md" }]
+    },
     "integrations": {
       "description": "Changing OpenCode V2/OMP entries, shared host packaging, permissions or ownership.",
       "sources": [

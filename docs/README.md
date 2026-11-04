@@ -10,6 +10,7 @@
 - [Why figlens instead of the official Figma MCP?](#why)
 - [What the agent gets](#bundle)
 - [Pi extension](#pi)
+- [Herdr panel](#herdr)
 - [Browse a design without Figma](#viewer)
 - [MCP server and agent skill](#mcp-and-skill)
 - [CLI reference](#commands)
@@ -130,6 +131,12 @@ Asking to find copy or a screen in a design searches the `.fig` directly and sto
 ![Ask Pi for a screen, let it find the design, build with your stack, and check the result](https://raw.githubusercontent.com/runkids/figlens/v0.10.1/assets/pi-workflow.svg)
 
 Full walkthrough, commands and limits: [pi/README.md](../pi/README.md).
+
+<a id="herdr"></a>
+
+## Herdr panel
+
+A [Herdr](https://herdr.dev) panel for the design beside your agents: open a `.fig`, find a screen or layer by name, text, node ID or Figma link, look at it full size, and hand it to the agent on the left as Build, Plan or YOLO after a confirm dialog that shows the exact message. It needs no figlens install and reads designs on remote Herdr machines in place. Ask the agent in Herdr: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`. Details: [herdr/README.md](../herdr/README.md).
 
 <a id="viewer"></a>
 

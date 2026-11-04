@@ -61,7 +61,7 @@ const fmt = (n: number) => n.toLocaleString('en-US');
         <a class="button" href="#install">Install figlens <svg class="button-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.5 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
         <a class="textlink" href="#how">How it works</a>
       </div>
-      <p class="hosts-line">Plugins for Claude Code, Codex and Pi. Also Cursor, OpenCode, OMP and any MCP client.</p>
+      <p class="hosts-line">Plugins for Claude Code, Codex and Pi. Also Cursor, OpenCode, OMP, a Herdr panel and any MCP client.</p>
     </div>
 
     <figure class="hero-figure">
@@ -194,7 +194,7 @@ const fmt = (n: number) => n.toLocaleString('en-US');
         </ul>
 
         <details class="more">
-          <summary>More hosts: Cursor, OpenCode, OMP, Antigravity, Kimi Code, skillshare, any MCP client</summary>
+          <summary>More hosts: Cursor, OpenCode, OMP, Herdr, Antigravity, Kimi Code, skillshare, any MCP client</summary>
           <ul class="options">
             {moreHosts.map((h) => (
               <li><span class="option-label">{h.label}</span><Command lines={h.lines} />{h.note && <p class="note">{h.note}</p>}</li>

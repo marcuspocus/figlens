@@ -45,6 +45,7 @@ figlens 把儲存的 Figma 檔案轉成 coding agent 可用的設計上下文，
 | [Pi](#setup-pi) | Pi 1.3.0+ | 套件內附的 skill |
 | [OpenCode V2](#setup-opencode) | OpenCode V2 2.2.0 | 套件內附的 skill |
 | [OMP](#setup-omp) | OMP 18.13.2 | 套件內附的 skill |
+| [Herdr](herdr/README.md) | Herdr 0.1.12+ 中放在代理旁的面板：找到畫面並交給代理 | 接收方代理自己的設定 |
 | [CLI](#setup-cli) | 只會執行 shell 指令的 agent、腳本與 CI，或你自己 | `figlens workflow <topic>`，或選用的 [skill](#setup-skill) |
 
 **一般與進階。** 一般使用不需要任何設定：`figlens search design.fig "query"` 只讀取 `.fig`，不會建立任何東西。選用的本機索引只在你要求時建立（`figlens index prepare design.fig --scope 0:0`），之後跨重啟和宿主重複使用。請見[一般搜尋與選用的本機索引](docs/README-zh-TW.md#local-index)。 選用且屬實驗性功能：`--mode semantic` 或 `hybrid` 使用你自行設定的本機模型依語意排序，請見[選用的語意搜尋](docs/README-zh-TW.md#semantic-search)。

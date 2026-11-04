@@ -45,6 +45,7 @@ Put `design.fig` in your project, then choose **one** setup. Each gives your age
 | [Pi](#setup-pi) | Pi 1.3.0+ | the package, which ships the skill |
 | [OpenCode V2](#setup-opencode) | OpenCode V2 2.2.0 | the package skill |
 | [OMP](#setup-omp) | OMP 18.13.2 | the package skill |
+| [Herdr](herdr/README.md) | a panel beside your agents in Herdr 0.1.12+: find a screen, hand it to one | the receiving agent's own setup |
 | [CLI](#setup-cli) | agents that only run shell commands, scripts and CI, or you | `figlens workflow <topic>`, or the optional [skill](#setup-skill) |
 
 **Ordinary vs advanced.** Ordinary use needs no setup: `figlens search design.fig "query"` reads the `.fig` and creates nothing. An optional local index is created only when you ask for one (`figlens index prepare design.fig --scope 0:0`), then reused across restarts and hosts. See [Ordinary search and the optional local index](docs/README.md#local-index). Optional and experimental: `--mode semantic` or `hybrid` ranks by meaning with a local model you set up yourself; see [Optional semantic search](docs/README.md#semantic-search).

@@ -10,6 +10,7 @@
 - [公式 Figma MCP ではなく figlens を使う理由](#why)
 - [エージェントが受け取るもの](#bundle)
 - [Pi 拡張](#pi)
+- [Herdr パネル](#herdr)
 - [Figma なしでデザインを閲覧する](#viewer)
 - [MCP サーバーとエージェント skill](#mcp-and-skill)
 - [CLI リファレンス](#commands)
@@ -130,6 +131,12 @@ Pi を再起動するか `/reload` を実行し、普通の言葉で画面を依
 ![Ask Pi for a screen, let it find the design, build with your stack, and check the result](https://raw.githubusercontent.com/runkids/figlens/v0.10.1/assets/pi-workflow.svg)
 
 詳しい手順、コマンド、制限：[pi/README.md](../pi/README.md)。
+
+<a id="herdr"></a>
+
+## Herdr パネル
+
+エージェントの隣でデザインを扱う [Herdr](https://herdr.dev) パネルです。`.fig` を開き、名前・テキスト・ノード ID・Figma リンクで画面やレイヤーを探し、フルサイズで確認して、送信内容をそのまま表示する確認ダイアログのあと、左のエージェントに Build・Plan・YOLO として渡せます。figlens のインストールは不要で、リモートの Herdr マシンにあるデザインもその場で読みます。Herdr 内のエージェントに次のように頼んでください: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`。詳細: [herdr/README.md](../herdr/README.md)。
 
 <a id="viewer"></a>
 

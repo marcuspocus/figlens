@@ -28,7 +28,7 @@ Requested version: with the user's authorization for a direct push, push an empt
 ## 2. Review the Release PR
 
 - The version follows the policy in the `release` topic; a breaking change needs migration notes in the CHANGELOG.
-- `Cargo.toml`, `Cargo.lock`, `npm/package.json` and the host plugin manifests carry the same version (`python3 -B -m unittest scripts/host_plugins_test.py`).
+- `Cargo.toml`, `Cargo.lock`, `npm/package.json`, the host plugin manifests and the Herdr mod's engine `VERSION` carry the same version (`python3 -B -m unittest scripts/host_plugins_test.py`, `node --test herdr/tests/*.test.mjs`).
 - The tracking manifest agrees with that version.
 - Every user-visible change in `<last tag>..origin/main` has a CHANGELOG entry and is described in the user-facing docs. Follow the [Release PR checklist](../../../wiki/review.md#release-pr) (`python3 scripts/ai-context.py review`): skipped commits and their recovery, the docs to check, and approving the PR's waiting CI run.
 - CI on `main` and the exact Release PR head is green.

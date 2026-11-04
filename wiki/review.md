@@ -12,6 +12,7 @@ For every feature or optimization, check CLI, MCP and each host integration befo
 | MCP | `src/contract.rs` discovery, input/output schemas and preflight; `src/mcp.rs` routing, permissions and warm-process behavior |
 | OpenCode V2 | Server/TUI/RPC entry, MCP transforms, permissions and per-session ownership; see [integrations](integrations.md) |
 | OMP | Native SDK/tool approval, descriptor/bridge discovery and per-session ownership; see [integrations](integrations.md) |
+| Herdr | `herdr/figlens/mods/figlens` reads the CLI's `tree`, `find`, `inspect`, `export`, `preview` and `cache` output and sends Pi/OpenCode `/figlens plan|yolo`; see [herdr](herdr.md) |
 | Pi | `pi/index.ts` MCP registration and tools/commands, `pi/workflow.mjs`, `pi/viewer.mjs` and `pi/stale.mjs` consumers (the last also used by OMP and OpenCode), shared skill guidance, and the actual launcher/package used |
 
 1. Complete affected behavior, callers, contracts, help, wiki/README locales, shared skill and relevant tests in the same change. Optimizations need the same sweep: they can change output, limits, caching or long-running behavior even when no option is added.

@@ -89,6 +89,8 @@ Then `/figlens review` lists every pending proposal in the project with its sour
 
 <a id="source-checkout"></a>
 
+In [Herdr](https://herdr.dev), the [figlens panel](../herdr/README.md) sends these `/figlens plan` and `/figlens yolo` commands to the Pi pane on the left, after a confirm dialog that shows the exact command.
+
 ## Advanced
 
 **Source checkout.** Install a native `figlens` binary or set `FIGLENS_BIN`, then:

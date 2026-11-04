@@ -10,6 +10,7 @@
 - [공식 Figma MCP 대신 figlens를 쓰는 이유](#why)
 - [에이전트가 받는 것](#bundle)
 - [Pi 확장](#pi)
+- [Herdr 패널](#herdr)
 - [Figma 없이 디자인 둘러보기](#viewer)
 - [MCP 서버와 에이전트 skill](#mcp-and-skill)
 - [CLI 레퍼런스](#commands)
@@ -130,6 +131,12 @@ Pi를 다시 시작하거나 `/reload`를 실행한 뒤 평소 말로 화면을 
 ![Pi에게 화면을 요청하면 디자인을 찾고, 기술 스택으로 구현하고, 결과를 확인합니다](https://raw.githubusercontent.com/runkids/figlens/v0.10.1/assets/pi-workflow.svg)
 
 전체 안내, 명령어, 제한: [pi/README.md](../pi/README.md).
+
+<a id="herdr"></a>
+
+## Herdr 패널
+
+에이전트 옆에서 디자인을 다루는 [Herdr](https://herdr.dev) 패널입니다. `.fig`를 열고 이름, 텍스트, 노드 ID, Figma 링크로 화면이나 레이어를 찾아 전체 크기로 본 뒤, 보낼 메시지를 그대로 보여 주는 확인 대화상자를 거쳐 왼쪽 에이전트에게 Build, Plan, YOLO로 넘깁니다. figlens 설치가 필요 없고, 원격 Herdr 머신의 디자인도 그 자리에서 읽습니다. Herdr 안의 에이전트에게 이렇게 요청하세요: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`. 자세한 내용: [herdr/README.md](../herdr/README.md).
 
 <a id="viewer"></a>
 

@@ -41,6 +41,7 @@ export const moreHosts: Host[] = [
   { id: 'cursor', label: 'Cursor', lines: ['git clone --depth 1 https://github.com/runkids/figlens ~/.cursor/plugins/local/figlens'], note: 'Then reload the window.' },
   { id: 'opencode', label: 'OpenCode V2', lines: ['opencode plugin add @runkids/figlens'], note: 'Restart, then run /figlens help.' },
   { id: 'omp', label: 'OMP', lines: ['omp plugin install @runkids/figlens'], note: 'Restart, then run /figlens help.' },
+  { id: 'herdr', label: 'Herdr', lines: ['Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout'], note: 'Ask the agent running in Herdr. It adds a figlens panel beside Files and Changes; no figlens install needed.' },
   { id: 'agy', label: 'Antigravity', lines: ['agy plugin install https://github.com/runkids/figlens/tree/main'] },
   { id: 'kimi', label: 'Kimi Code', lines: ['/plugins install https://github.com/runkids/figlens/tree/main'], note: 'Run it in a session, then /reload.' },
   { id: 'skillshare', label: 'skillshare', lines: ['skillshare plugin add https://github.com/runkids/figlens.git --target claude --target codex --target cursor -g'], note: 'Installs the same plugin on several hosts at once.' },

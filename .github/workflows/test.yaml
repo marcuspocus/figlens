@@ -64,7 +64,7 @@ jobs:
           node --check omp/index.ts
           node --check opencode/index.mjs
           node --check opencode/tui.mjs
-          node --test pi/*.test.mjs opencode/*.test.mjs omp/*.test.mjs scripts/preview.test.cjs scripts/dist-package.test.cjs scripts/e2e-fixture-plugin.test.mjs scripts/e2e-pilot-images.test.mjs
+          node --test pi/*.test.mjs opencode/*.test.mjs omp/*.test.mjs herdr/tests/*.test.mjs scripts/preview.test.cjs scripts/dist-package.test.cjs scripts/e2e-fixture-plugin.test.mjs scripts/e2e-pilot-images.test.mjs
           python3 -B -m unittest discover -s scripts -p '*_test.py'
           python3 -B scripts/e2e-owned-pilot.test.py
           node scripts/prepare-npm.cjs

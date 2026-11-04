@@ -73,7 +73,8 @@ class HostPluginsTest(unittest.TestCase):
         for path in DOC_FILES:
             for number, line in enumerate((ROOT / path).read_text().split('\n'), 1):
                 self.assertIsNone(pinned.search(line), f'{path}:{number} pins a version')
-        self.assertFalse([e for e in self.extra if e['type'] == 'generic'])
+        # generic rewrites a marked line: only code may carry one (the Herdr mod's engine.js), never a doc.
+        self.assertFalse([e for e in self.extra if e['type'] == 'generic' and not e['path'].endswith('.js')])
 
 
 if __name__ == '__main__':

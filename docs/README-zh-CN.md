@@ -10,6 +10,7 @@
 - [为什么用 figlens，而不是官方 Figma MCP？](#why)
 - [agent 能拿到什么](#bundle)
 - [Pi 扩展](#pi)
+- [Herdr 面板](#herdr)
 - [无需 Figma 浏览设计](#viewer)
 - [MCP server 与 agent skill](#mcp-and-skill)
 - [CLI 参考](#commands)
@@ -130,6 +131,12 @@ pi install npm:@runkids/figlens
 ![向 Pi 要一个画面，让它找到设计、用你的技术栈构建并检查结果](https://raw.githubusercontent.com/runkids/figlens/v0.10.1/assets/pi-workflow.svg)
 
 完整流程、命令和限制：[pi/README.md](../pi/README.md)。
+
+<a id="herdr"></a>
+
+## Herdr 面板
+
+在智能体旁边查看设计的 [Herdr](https://herdr.dev) 面板：打开 `.fig`，按名称、文字、节点 ID 或 Figma 链接找到画面或图层，查看完整尺寸，并在显示完整消息的确认对话框之后，以 Build、Plan 或 YOLO 交给左侧的智能体。无需安装 figlens，远程 Herdr 机器上的设计也在原处读取。在 Herdr 中让智能体执行：`Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`。详情：[herdr/README.md](../herdr/README.md)。
 
 <a id="viewer"></a>
 
