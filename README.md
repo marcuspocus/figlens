@@ -28,7 +28,7 @@ figlens turns saved Figma files into design context your coding agent can act on
 - **Compare the running UI.** `compare-image` compares your screenshot with figlens's render and names the layers under differing regions. Review those differences and rendering warnings; it is not a pixel-perfect guarantee.
 - **Follow design changes.** `diff` compares saved revisions; `changes` and `watch` report updates to tracked local scopes. Save a new `.fig` from Figma to pick up design edits—this is not live Figma sync.
 
-**Offline at the foundation.** In Figma, **File > Save local copy**. Put `design.fig` next to your code. For one screen, copy the selection in Figma instead and turn the saved clipboard HTML into a `.fig` with `figlens clipboard`. One native binary reads it locally, without a running Figma app, login or network calls to Figma.
+**Offline at the foundation.** In Figma, **File > Save local copy**. Put `design.fig` next to your code. Then a Figma link is enough: its node id picks the frame. With no saved copy, copy the layers in Figma (right-click > Copy) and run `figlens clipboard screen.fig`; a copy has no images or vector outlines ([how](docs/README.md#copy-a-selection)). One native binary reads it locally, without a running Figma app, login or network calls to Figma.
 
 <a id="start"></a>
 

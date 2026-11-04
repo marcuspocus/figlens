@@ -244,6 +244,19 @@ fn cli_workflow_prints_the_mcp_guidance_with_cli_directions() {
 }
 
 #[test]
+fn clipboard_takes_one_or_two_paths() {
+    for args in [vec![], vec!["a.html", "b.fig", "c"]] {
+        let mut argv = vec!["clipboard".to_string()];
+        argv.extend(args.into_iter().map(String::from));
+        let error = run(argv, &mut String::new()).unwrap_err().to_string();
+        assert!(
+            error.contains("figlens clipboard [copied.html] <out.fig>"),
+            "{error}"
+        );
+    }
+}
+
+#[test]
 fn image_budget_reaches_cli_mcp_and_offline_preview_without_writing_output() {
     let dir = TestDir::new();
     let file = dir

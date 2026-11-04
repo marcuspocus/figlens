@@ -76,6 +76,23 @@ npx -y @runkids/figlens bundle design.fig 12:345 frame.zip        # die Zip von 
 
 SVG-Exporte betten originale Bildfüllungen ein und wandeln Text in Glyphen-Umrisse um, daher werden keine Schriften benötigt. Über MCP kommen Raster-Exporte außerdem als Inline-Bilder zurück, sodass der Agent das Design sieht, ohne eine Datei zu öffnen.
 
+<a id="copy-a-selection"></a>
+
+### Keine gespeicherte .fig? Eine Auswahl kopieren
+
+1. Wähle in Figma den Frame oder die Ebenen aus und kopiere sie: Rechtsklick > **Copy** oder Cmd+C (Ctrl+C unter Windows und Linux).
+2. Führe `figlens clipboard screen.fig` aus oder bitte deinen Agenten, „den Screen, den ich gerade kopiert habe“ zu bauen. Der Befehl liest die Zwischenablage und schreibt eine `.fig`, die jeder Befehl liest.
+3. Übergib `screen.fig` wie jede andere Datei: `figlens bundle screen.fig <node> frame.zip`.
+
+Beim Einfügen der Kopie in ein Textfeld erhältst du nur ihren Text; figlens liest das HTML der Kopie, das die Ebenen enthält. macOS ist an echten Kopien geprüft; Windows (PowerShell 5.1) und Linux (`wl-paste` oder `xclip`) noch nicht.
+
+| | **File > Save local copy** | Kopierte Auswahl |
+|---|---|---|
+| Umfang | Die ganze Datei | Die kopierten Ebenen plus die Komponenten, die sie verwenden |
+| Bildfüllungen und Vektorumrisse | Enthalten | Fehlen; Exporte warnen, wo sie ohne sie zeichnen |
+| Ein Figma-Link findet den Node | Ja | Ja, für kopierte Ebenen: Die IDs stimmen mit der Quelldatei überein |
+| Geeignet für | Bauen nach einem Design, das du neben dem Code behältst | Ein schneller Blick auf einen Screen, wenn keine gespeicherte Kopie existiert |
+
 <a id="accuracy"></a>
 
 ### Wie nah ist es an Figma?
@@ -245,7 +262,7 @@ Experimentell. `figlens search <file> <query> --mode semantic|hybrid` sortiert L
 | `compare <file> <nodes.json> <node>` | Diff gegen einen REST-Export desselben Frames |
 | `compare-image <file> <node> <screenshot.png>` | Vergleicht einen Screenshot der gebauten Oberfläche mit dem in seinem Maßstab gerenderten Node (`--scale`, `--limit`, `--out diff.png`, `--full-page` für eine ganzseitige Aufnahme, die kürzer als der Frame ist, `--ignore` für Ebenen mit Inhalten aus Daten, `--threshold` für helle Rahmen; `image: true` markiert Bildfüllungen; MCP `compare_image`). Gibt `mismatch`, `nonTextMismatch` und die größten abweichenden Bereiche in Node-Pixeln aus, je mit den tiefsten Ebenen darunter; `text: true` markiert Bereiche über Text (oft Schrift-Fallback; jeden prüfen) |
 | `node <file> <node>` | Ein roher `.fig`-Node |
-| `clipboard <copied.html> <out.fig>` | Eine in Figma kopierte Auswahl (Cmd/Ctrl+C), aus dem HTML der Zwischenablage gespeichert, als `.fig`, die jeder Befehl liest, ohne Save local copy: gleiche Node-IDs, verwendete Komponenten enthalten. Meldet `missingImages`, `missingComponents` und `layersWithoutOutlines`: Eine Kopie enthält keine Bildbytes und keine Vektorumrisse, daher warnen Exporte und Bundles, wo sie ohne diese zeichnen. Ersetzt nie eine vorhandene Datei |
+| `clipboard [copied.html] <out.fig>` | Für den Fall ohne gespeicherte `.fig`: Ebenen in Figma auswählen, kopieren (Rechtsklick > Copy oder Cmd/Ctrl+C) und dann dies ausführen, um die Zwischenablage in eine `.fig` umzuwandeln, die jeder Befehl liest; an anderer Stelle eingefügt erscheint nur der Text der Ebenen. Liest die System-Zwischenablage (macOS; Windows PowerShell 5.1 und Linux `wl-paste`/`xclip` ungeprüft) oder eine gespeicherte Zwischenablage-HTML-Datei. Gleiche Node-IDs, verwendete Komponenten enthalten. Meldet `missingImages`, `missingComponents` und `layersWithoutOutlines`: Eine Kopie enthält keine Bildbytes und keine Vektorumrisse, daher warnen Exporte und Bundles, wo sie ohne diese zeichnen. Ersetzt nie eine vorhandene Datei. Mit einer gespeicherten `.fig` übergib stattdessen den Figma-Link als Node: Er behält Bilder und Vektoren |
 | `index prepare\|refresh\|rebuild\|clear\|status\|add\|remove\|relocate\|reset\|track\|untrack\|embed\|visual` | Lokaler Workspace im figlens-Statusverzeichnis des Benutzers oder unter einem `--storage DIR`, das sich der Workspace danach merkt. `prepare <file> --scope NODE` baut den Suchindex dieses Bereichs einmal; danach antwortet `search --file <file>` (oder `--workspace DIR`) ohne erneutes Parsen, über alle Quellen des Workspaces gerankt. `refresh` baut geänderte Dateien neu, `rebuild` alle oder eine `--source`/`--scope`, `clear` entfernt ungenutzte Indizes; der bisherige Index bleibt nutzbar, bis ein neuer fertig ist. `reset` entfernt nur die Workspace-Datenbank, nie Designs, Exporte oder den gemerkten Ort. `track --scope NODE` zeichnet die Änderungen dieses Scopes ab einem Baseline-Build auf; `untrack` beendet das und behält den Verlauf. `embed` bettet veröffentlichte Bereiche mit dem konfigurierten Modell ein (CPU und Speicher); nur ausführen, wenn Sie semantische Workspace-Suche wollen. `visual --scope NODE` rendert die Bildschirme und Komponenten dieses veröffentlichten Bereichs für die Bildsuche und bettet sie mit einem konfigurierten Bildprofil ein; nur ausführen, wenn Sie visuelle Workspace-Suche wollen. |
 | `jobs status\|cancel <jobId>` | Status eines Index-Builds anzeigen oder ihn abbrechen; `cancel` kehrt erst zurück, wenn der Build gestoppt ist |
 | `changes --file <file>\|--id ID\|--workspace DIR [--source ID] [--scope NODE] [--consumer NAME\|--subscription ID\|--cursor C] [--revision R] [--limit N]` | Aufgezeichnete Änderungen verfolgter Scopes, älteste zuerst: eine Revision pro veröffentlichtem Build (baseline oder changes) mit Abdeckung und Zählungen pro Änderungsart und Facette; jede changes-Revision hat eine `impact`-Zusammenfassung der Layer, die ihre Änderungen erreichen (null vor Schema 7); `--revision` blättert die geänderten Nodes dieser Revision, dann die von `impact` gelisteten Layer (`entry` sagt, welche); `tracking` zeigt, wann ein Scope `index refresh` braucht, damit eine Änderung aufgezeichnet wird. Nur lesend |

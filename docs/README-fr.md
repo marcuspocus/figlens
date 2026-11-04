@@ -76,6 +76,23 @@ npx -y @runkids/figlens bundle design.fig 12:345 frame.zip        # le zip ci-de
 
 Les exports SVG intègrent les image fills d’origine et convertissent le texte en glyphes vectoriels, donc aucune police n’est nécessaire. Via MCP, les exports raster reviennent aussi en images inline : l’agent voit le design sans ouvrir de fichier.
 
+<a id="copy-a-selection"></a>
+
+### Pas de .fig enregistré ? Copiez une sélection
+
+1. Dans Figma, sélectionnez le frame ou les calques et copiez-les : clic droit > **Copy**, ou Cmd+C (Ctrl+C sous Windows et Linux).
+2. Lancez `figlens clipboard screen.fig`, ou demandez à votre agent de construire « l'écran que je viens de copier ». Il lit le presse-papiers et écrit un `.fig` que toutes les commandes lisent.
+3. Passez `screen.fig` comme n'importe quel autre fichier : `figlens bundle screen.fig <node> frame.zip`.
+
+Coller la copie dans un champ de texte ne donne que son texte ; figlens lit le HTML de la copie, qui contient les calques. macOS est vérifié sur de vraies copies ; Windows (PowerShell 5.1) et Linux (`wl-paste` ou `xclip`) ne le sont pas encore.
+
+| | **File > Save local copy** | Sélection copiée |
+|---|---|---|
+| Portée | Le fichier entier | Les calques copiés, plus les composants qu'ils utilisent |
+| Remplissages d'image et contours vectoriels | Inclus | Absents ; les exports avertissent là où ils dessinent sans eux |
+| Un lien Figma trouve le nœud | Oui | Oui, pour les calques copiés : les ids correspondent au fichier source |
+| Convient pour | Construire à partir d'un design conservé à côté du code | Un coup d'œil rapide à un écran quand il n'existe pas de copie enregistrée |
+
 <a id="accuracy"></a>
 
 ### Quelle est la proximité avec Figma ?
@@ -245,7 +262,7 @@ Expérimental. `figlens search <file> <query> --mode semantic|hybrid` classe les
 | `compare <file> <nodes.json> <node>` | Diff par rapport à un export REST de la même frame |
 | `compare-image <file> <node> <screenshot.png>` | Compare une capture de l’écran construit au node rendu à son échelle (`--scale`, `--limit`, `--out diff.png`, `--full-page` pour une capture pleine page plus courte que la frame, `--ignore` pour les calques dont le contenu vient des données, `--threshold` pour voir les bordures claires ; `image: true` marque les remplissages d’image ; MCP `compare_image`). Affiche `mismatch`, `nonTextMismatch` et les plus grandes régions différentes en pixels du node, chacune avec les calques les plus profonds dessous ; `text: true` signale une région sur du texte (souvent une police de substitution ; vérifiez chacune) |
 | `node <file> <node>` | Un node `.fig` brut |
-| `clipboard <copied.html> <out.fig>` | Une sélection copiée dans Figma (Cmd/Ctrl+C), enregistrée depuis le HTML du presse-papiers, en `.fig` que toutes les commandes lisent, sans Save local copy : mêmes ids de nœud, composants utilisés inclus. Signale `missingImages`, `missingComponents` et `layersWithoutOutlines` : une copie ne contient ni octets d'image ni contours vectoriels, donc exports et bundles avertissent là où ils dessinent sans eux. Ne remplace jamais un fichier existant |
+| `clipboard [copied.html] <out.fig>` | Quand il n'y a pas de `.fig` enregistré : sélectionnez des calques dans Figma, copiez-les (clic droit > Copy, ou Cmd/Ctrl+C), puis lancez ceci pour transformer le presse-papiers en `.fig` que toutes les commandes lisent ; collé ailleurs, il ne donne que le texte des calques. Lit le presse-papiers du système (macOS ; Windows PowerShell 5.1 et Linux `wl-paste`/`xclip` non vérifiés) ou un fichier HTML de presse-papiers enregistré. Mêmes ids de nœud, composants utilisés inclus. Signale `missingImages`, `missingComponents` et `layersWithoutOutlines` : une copie ne contient ni octets d'image ni contours vectoriels, donc exports et bundles avertissent là où ils dessinent sans eux. Ne remplace jamais un fichier existant. Avec un `.fig` enregistré, passez plutôt le lien Figma comme nœud : il conserve images et vecteurs |
 | `index prepare\|refresh\|rebuild\|clear\|status\|add\|remove\|relocate\|reset\|track\|untrack\|embed\|visual` | Workspace local dans le répertoire d'état figlens de l'utilisateur, ou sous un `--storage DIR` que le workspace mémorise ensuite. `prepare <file> --scope NODE` construit une fois l'index de recherche de cette portée ; ensuite `search --file <file>` (ou `--workspace DIR`) répond sans réanalyser, avec un classement commun aux sources du workspace. `refresh` reconstruit les fichiers modifiés, `rebuild` tous ou une `--source`/`--scope`, `clear` supprime les index inutilisés ; l'index précédent sert jusqu'à ce que le nouveau soit prêt. `reset` supprime uniquement la base de données du workspace, jamais les designs, les exports ni l'emplacement mémorisé. `track --scope NODE` enregistre les modifications de ce scope à partir d'un build baseline ; `untrack` l'arrête en gardant l'historique. `embed` encode les portées publiées avec le modèle configuré (CPU et mémoire) ; ne le lancez que pour une recherche sémantique de workspace. `visual --scope NODE` rend les écrans et composants de cette portée publiée pour la recherche par image et les encode si un profil de vision est configuré ; ne le lancez que pour une recherche visuelle de workspace. |
 | `jobs status\|cancel <jobId>` | Afficher ou annuler une construction d'index ; `cancel` rend la main une fois la construction arrêtée |
 | `changes --file <file>\|--id ID\|--workspace DIR [--source ID] [--scope NODE] [--consumer NAME\|--subscription ID\|--cursor C] [--revision R] [--limit N]` | Modifications enregistrées des scopes suivis, de la plus ancienne à la plus récente : une révision par build publié (baseline ou changes) avec couverture et comptes par type de changement et facette ; chaque révision changes a un résumé `impact` des calques que ses changements atteignent (null avant le schéma 7) ; `--revision` pagine les nodes modifiés de cette révision, puis les calques que liste son impact (`entry` indique lequel) ; `tracking` indique quand un scope a besoin de `index refresh` pour enregistrer un changement. Lecture seule |

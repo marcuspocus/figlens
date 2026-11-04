@@ -76,6 +76,23 @@ npx -y @runkids/figlens bundle design.fig 12:345 frame.zip        # 上面的 zi
 
 SVG 匯出會內嵌原始圖片填色，並將文字轉為 glyph 外框，因此不需要字型。透過 MCP 時，點陣圖匯出也會以內嵌圖片回傳，agent 不必開啟檔案就能看到設計。
 
+<a id="copy-a-selection"></a>
+
+### 沒有已存的 .fig？複製一個選取範圍
+
+1. 在 Figma 選取畫面或圖層並複製：右鍵 > **Copy**，或 Cmd+C（Windows 與 Linux 用 Ctrl+C）。
+2. 執行 `figlens clipboard screen.fig`，或請你的 agent 建置「我剛複製的那個畫面」。它會讀取剪貼簿，並寫出每個指令都能讀取的 `.fig`。
+3. 像其他檔案一樣傳入 `screen.fig`：`figlens bundle screen.fig <node> frame.zip`。
+
+把複製內容貼到文字欄位只會得到其中的文字；figlens 讀取的是複製內容的 HTML，其中包含圖層。macOS 已用真實複製內容驗證；Windows（PowerShell 5.1）與 Linux（`wl-paste` 或 `xclip`）尚未驗證。
+
+| | **File > Save local copy** | 複製的選取範圍 |
+|---|---|---|
+| 範圍 | 整個檔案 | 你複製的圖層，加上它們用到的元件 |
+| 圖片填色與向量輪廓 | 包含 | 缺少；export 會在缺少它們的地方發出警告 |
+| Figma 連結能找到節點 | 能 | 能，限複製的圖層：ID 與來源檔案一致 |
+| 適用於 | 根據放在程式碼旁邊的設計來建置 | 沒有已存的副本時，快速查看一個畫面 |
+
 <a id="accuracy"></a>
 
 ### 與 Figma 有多接近？
@@ -245,7 +262,7 @@ Pi、OpenCode 和 OMP 透過各自的 opt-in 入口使用同一個索引，works
 | `compare <file> <nodes.json> <node>` | 與同一 frame 的 REST 匯出做差異比對 |
 | `compare-image <file> <node> <screenshot.png>` | 將實作畫面的截圖與依其縮放渲染的 node 比對（`--scale`、`--limit`、`--out diff.png`、`--full-page` 用於比 frame 短的整頁截圖，`--ignore` 用於內容來自資料的圖層，`--threshold` 用於看出淺色邊框；`image: true` 標記圖片填充；MCP `compare_image`）。輸出 `mismatch`、`nonTextMismatch` 與差異最大的區域（node 像素座標），每個區域附上其下最深的圖層；`text: true` 表示區域位於文字上（多為字型替代，需逐一檢查） |
 | `node <file> <node>` | 單一原始 `.fig` 節點 |
-| `clipboard <copied.html> <out.fig>` | 把在 Figma 複製的選取範圍（Cmd/Ctrl+C）從剪貼簿 HTML 存下後，轉成每個指令都能讀取的 `.fig`，不需要 Save local copy：節點 ID 與來源檔案相同，並包含用到的元件。回報 `missingImages`、`missingComponents` 和 `layersWithoutOutlines`：複製內容沒有圖片位元組和向量輪廓，因此 export 和 bundle 會在缺少它們的地方發出警告。不會覆寫既有檔案 |
+| `clipboard [copied.html] <out.fig>` | 用於沒有已存 `.fig` 的情況：在 Figma 選取圖層並複製（右鍵 > Copy，或 Cmd/Ctrl+C），再執行此指令，把剪貼簿轉成每個指令都能讀取的 `.fig`；貼到其他地方只會得到圖層的文字。讀取系統剪貼簿（macOS；Windows PowerShell 5.1 與 Linux `wl-paste`/`xclip` 未驗證）或已存的剪貼簿 HTML 檔。節點 ID 與來源檔案相同，並包含用到的元件。回報 `missingImages`、`missingComponents` 和 `layersWithoutOutlines`：複製內容沒有圖片位元組和向量輪廓，因此 export 和 bundle 會在缺少它們的地方發出警告。不會覆寫既有檔案。有已存的 `.fig` 時，改為把 Figma 連結當作節點傳入：可保留圖片和向量 |
 | `index prepare\|refresh\|rebuild\|clear\|status\|add\|remove\|relocate\|reset\|track\|untrack\|embed\|visual` | 使用者 figlens state 目錄中的本機 workspace，或位於 workspace 之後會記住的 `--storage DIR` 下。`prepare <file> --scope NODE` 為該範圍建立一次搜尋索引；之後 `search --file <file>`（或 `--workspace DIR`）不再解析檔案，跨 workspace 的所有來源統一排序作答。`refresh` 重建有變更的檔案，`rebuild` 重建全部或單一 `--source`/`--scope`，`clear` 刪除未使用的索引；新索引就緒前繼續使用舊索引。`reset` 只刪除 workspace 資料庫，不會刪除設計、匯出或記住的位置。`track --scope NODE` 從 baseline 建置開始記錄該範圍的變更；`untrack` 停止記錄並保留歷史。 `embed` 用已設定的模型嵌入已發布的範圍（使用 CPU 與記憶體）；僅在需要 workspace 語意搜尋時執行。 `visual --scope NODE` 為圖片搜尋渲染該已發布範圍的畫面與元件，設定視覺模型時一併嵌入；僅在需要 workspace 視覺搜尋時執行。 |
 | `jobs status\|cancel <jobId>` | 查看或取消索引建置；`cancel` 在建置停止後才返回 |
 | `changes --file <file>\|--id ID\|--workspace DIR [--source ID] [--scope NODE] [--consumer NAME\|--subscription ID\|--cursor C] [--revision R] [--limit N]` | 已追蹤範圍記錄的變更，從最舊開始：每次發布的建置一個修訂（baseline 或 changes），含涵蓋狀況及依變更類型與 facet 的計數；每個 changes 修訂都有 `impact` 摘要，說明變更波及的圖層（schema 7 之前為 null）；`--revision` 分頁列出該修訂變更的節點，再列出 impact 列出的圖層（`entry` 標明是哪一種）；`tracking` 指出哪些範圍需要 `index refresh` 才能記錄變更。唯讀 |

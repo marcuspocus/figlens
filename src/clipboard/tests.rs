@@ -23,7 +23,7 @@ fn copied(dir: &TestDir) -> std::path::PathBuf {
 fn a_saved_copy_becomes_a_fig_the_commands_read() {
     let dir = TestDir::new();
     let out = dir.join("copied.fig");
-    let report = convert(&copied(&dir), &out).unwrap();
+    let report = convert(Source::File(&copied(&dir)), &out).unwrap();
     let mut doc = Document::open(&out).unwrap();
     let message = doc.take_message().unwrap();
     assert!(Tree::new(&message).nodes.contains_key("0:6"));
@@ -34,7 +34,7 @@ fn a_saved_copy_becomes_a_fig_the_commands_read() {
 fn the_report_and_export_name_images_the_copy_lacks() {
     let dir = TestDir::new();
     let out = dir.join("copied.fig");
-    let report = convert(&copied(&dir), &out).unwrap();
+    let report = convert(Source::File(&copied(&dir)), &out).unwrap();
     assert_eq!(report["missingImages"], json!(["first-success-tile"]));
     let mut doc = Document::open(&out).unwrap();
     let message = doc.take_message().unwrap();
@@ -63,7 +63,7 @@ fn html_without_figma_data_is_refused_before_writing() {
     let input = dir.join("text.html");
     std::fs::write(&input, "<span>Cloth</span>").unwrap();
     let out = dir.join("copied.fig");
-    let error = convert(&input, &out).unwrap_err().to_string();
+    let error = convert(Source::File(&input), &out).unwrap_err().to_string();
     assert!(error.starts_with("no Figma selection"), "{error}");
     assert!(!out.exists());
 }
@@ -73,12 +73,94 @@ fn an_existing_output_is_never_replaced() {
     let dir = TestDir::new();
     let out = dir.join("design.fig");
     std::fs::write(&out, "a full design").unwrap();
-    let error = convert(&copied(&dir), &out).unwrap_err().to_string();
+    let error = convert(Source::File(&copied(&dir)), &out)
+        .unwrap_err()
+        .to_string();
     assert!(
         error.ends_with("exists; choose a new path for the copied selection"),
         "{error}"
     );
     assert_eq!(std::fs::read(&out).unwrap(), b"a full design");
+}
+
+#[test]
+fn applescript_hex_output_decodes_to_the_html() {
+    let decode = |text: &str| applescript_data(text.as_bytes().to_vec());
+    assert_eq!(decode("«data HTML3C623E»\n"), Some(b"<b>".to_vec()));
+    assert_eq!(decode("«data HTML3C6»"), None);
+    assert_eq!(decode("«data HTML+A»"), None);
+    assert_eq!(decode("plain text"), None);
+}
+
+#[test]
+fn a_missing_clipboard_tool_is_named() {
+    let error = run(&[("figlens-no-such-reader", &[])], 16)
+        .unwrap_err()
+        .to_string();
+    assert_eq!(
+        error,
+        "cannot read the clipboard: install figlens-no-such-reader"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_reader_that_fails_means_no_layers_and_the_next_reader_is_tried() {
+    assert_eq!(
+        run(&[("false", &[]), ("echo", &["html"])], 16).unwrap(),
+        b"html\n".to_vec()
+    );
+    assert_eq!(
+        run(&[("false", &[])], 16).unwrap_err().to_string(),
+        NO_LAYERS
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_failed_reader_beside_a_missing_one_names_the_missing_tool() {
+    let error = run(&[("false", &[]), ("figlens-no-such-reader", &[])], 16)
+        .unwrap_err()
+        .to_string();
+    assert!(error.starts_with(NO_LAYERS), "{error}");
+    assert!(
+        error.ends_with("if layers are copied, install figlens-no-such-reader"),
+        "{error}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn reader_output_past_the_limit_is_refused() {
+    assert!(run(&[("echo", &["0123456789"])], 4).is_err());
+}
+
+#[test]
+fn windows_cf_html_keeps_its_header_before_the_markers() {
+    let html = format!(
+        "Version:0.9\r\nStartHTML:00000097\r\nEndHTML:00000200\r\n<html><!--(figma){}(/figma)--></html>",
+        crate::render::base64(b"kiwi")
+    );
+    assert_eq!(
+        canvas(html.as_bytes(), NO_LAYERS).unwrap(),
+        b"kiwi".to_vec()
+    );
+}
+
+#[test]
+fn clipboard_html_without_figma_layers_says_to_copy_them() {
+    let error = canvas(b"<span>text</span>", NO_LAYERS)
+        .unwrap_err()
+        .to_string();
+    assert_eq!(error, NO_LAYERS);
+}
+
+#[test]
+fn a_clipboard_read_has_no_source_file_to_protect() {
+    let dir = TestDir::new();
+    let out = dir.join("copied.fig");
+    crate::output::write(Path::new(""), &out, |file| Ok(file.write_all(b"x")?)).unwrap();
+    assert_eq!(std::fs::read(&out).unwrap(), b"x");
 }
 
 #[test]

@@ -28,7 +28,7 @@ figlens convierte archivos de Figma guardados en contexto de diseño con el que 
 - **Comparar la UI en ejecución.** `compare-image` compara tu captura con el render de figlens e identifica las capas bajo las regiones que difieren. Revisa esas diferencias y las advertencias de renderizado; no es una garantía de fidelidad píxel a píxel.
 - **Seguir los cambios del diseño.** `diff` compara revisiones guardadas; `changes` y `watch` informan de actualizaciones en ámbitos locales bajo seguimiento. Guarda una nueva `.fig` desde Figma para incorporar cambios; no es sincronización en vivo con Figma.
 
-**Offline como base.** En Figma, **File > Save local copy**. Coloca `design.fig` junto a tu código. Para una sola pantalla, copia la selección en Figma y convierte el HTML guardado del portapapeles en un `.fig` con `figlens clipboard`. Un binario nativo lo lee en local, sin una app de Figma en ejecución, login ni llamadas de red a Figma.
+**Offline como base.** En Figma, **File > Save local copy**. Coloca `design.fig` junto a tu código. Entonces basta un enlace de Figma: su id de nodo elige el frame. Sin una copia guardada, copia las capas en Figma (clic derecho > Copy) y ejecuta `figlens clipboard screen.fig`; una copia no trae imágenes ni contornos vectoriales ([cómo](docs/README-es.md#copy-a-selection)). Un binario nativo lo lee en local, sin una app de Figma en ejecución, login ni llamadas de red a Figma.
 
 <a id="start"></a>
 

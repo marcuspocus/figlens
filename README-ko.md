@@ -28,7 +28,7 @@ figlens는 저장한 Figma 파일을 코딩 에이전트가 활용할 수 있는
 - **실행 중인 UI 비교.** `compare-image`는 스크린샷을 figlens의 렌더링과 비교하고 차이가 있는 영역 아래의 레이어 이름을 알려줍니다. 차이와 렌더링 경고를 검토하세요. 픽셀 단위의 일치를 보장하지는 않습니다.
 - **디자인 변경 추적.** `diff`는 저장된 리비전을 비교하고, `changes`와 `watch`는 추적 중인 로컬 범위의 업데이트를 보고합니다. 디자인 변경을 반영하려면 Figma에서 새 `.fig`를 저장하세요. Figma와의 실시간 동기화가 아닙니다.
 
-**기반은 오프라인.** Figma에서 **File > Save local copy**를 선택하고 `design.fig`를 코드 옆에 두세요. 화면 하나만 필요하면 Figma에서 선택 영역을 복사하고, 저장한 클립보드 HTML을 `figlens clipboard`로 `.fig`로 변환할 수도 있습니다. 네이티브 바이너리 하나로 로컬에서 읽으며, 실행 중인 Figma 앱이나 로그인, Figma에 대한 네트워크 호출이 필요 없습니다.
+**기반은 오프라인.** Figma에서 **File > Save local copy**를 선택하고 `design.fig`를 코드 옆에 두세요. 그러면 Figma 링크만 있으면 되고, 노드 ID가 프레임을 정합니다. 저장한 복사본이 없으면 Figma에서 레이어를 복사(마우스 오른쪽 클릭 > Copy)한 뒤 `figlens clipboard screen.fig`를 실행하세요. 복사본에는 이미지나 벡터 윤곽선이 없습니다 ([방법](docs/README-ko.md#copy-a-selection)). 네이티브 바이너리 하나로 로컬에서 읽으며, 실행 중인 Figma 앱이나 로그인, Figma에 대한 네트워크 호출이 필요 없습니다.
 
 <a id="start"></a>
 

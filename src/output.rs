@@ -57,6 +57,10 @@ pub fn destination(out: &Path) -> io::Result<PathBuf> {
 }
 
 fn distinct(source: &Path, out: &Path) -> Result<(), Box<dyn Error>> {
+    // An empty source means none, such as a selection read from the clipboard.
+    if source.as_os_str().is_empty() {
+        return Ok(());
+    }
     match fs::canonicalize(source) {
         Ok(source) if source == out => Err(FigError::new(
             ErrorKind::InvalidArguments,

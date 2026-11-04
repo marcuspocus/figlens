@@ -28,7 +28,7 @@ figlens transforme les fichiers Figma sauvegardés en contexte de design exploit
 - **Comparer l’UI en cours d’exécution.** `compare-image` compare votre capture au rendu de figlens et nomme les calques sous les régions qui diffèrent. Examinez ces écarts et les avertissements de rendu ; ce n’est pas une garantie de fidélité au pixel près.
 - **Suivre les changements du design.** `diff` compare les révisions sauvegardées ; `changes` et `watch` signalent les mises à jour des périmètres locaux suivis. Sauvegardez un nouveau `.fig` depuis Figma pour récupérer les modifications : ce n’est pas une synchronisation en direct avec Figma.
 
-**Le fonctionnement hors ligne comme base.** Dans Figma, **File > Save local copy**. Placez `design.fig` à côté de votre code. Pour un seul écran, copiez plutôt la sélection dans Figma et convertissez le HTML du presse-papiers enregistré en `.fig` avec `figlens clipboard`. Un binaire natif le lit en local, sans app Figma ouverte, connexion au compte ni appel réseau vers Figma.
+**Le fonctionnement hors ligne comme base.** Dans Figma, **File > Save local copy**. Placez `design.fig` à côté de votre code. Ensuite, un lien Figma suffit : son id de nœud choisit le frame. Sans copie enregistrée, copiez les calques dans Figma (clic droit > Copy) et lancez `figlens clipboard screen.fig` ; une copie ne contient ni images ni contours vectoriels ([comment](docs/README-fr.md#copy-a-selection)). Un binaire natif le lit en local, sans app Figma ouverte, connexion au compte ni appel réseau vers Figma.
 
 <a id="start"></a>
 

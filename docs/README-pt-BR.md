@@ -76,6 +76,23 @@ npx -y @runkids/figlens bundle design.fig 12:345 frame.zip        # o zip acima
 
 Exportações SVG incorporam os preenchimentos de imagem originais e convertem o texto em contornos de glifos, então nenhuma fonte é necessária. Via MCP, exportações raster também voltam como imagens inline, e o agent vê o design sem abrir um arquivo.
 
+<a id="copy-a-selection"></a>
+
+### Sem um .fig salvo? Copie uma seleção
+
+1. No Figma, selecione o frame ou as camadas e copie: clique direito > **Copy**, ou Cmd+C (Ctrl+C no Windows e no Linux).
+2. Execute `figlens clipboard screen.fig`, ou peça ao seu agente para construir "a tela que acabei de copiar". Ele lê a área de transferência e grava um `.fig` que todos os comandos leem.
+3. Passe `screen.fig` como qualquer outro arquivo: `figlens bundle screen.fig <node> frame.zip`.
+
+Colar a cópia em um campo de texto traz só o texto dela; o figlens lê o HTML da cópia, que contém as camadas. O macOS foi verificado com cópias reais; Windows (PowerShell 5.1) e Linux (`wl-paste` ou `xclip`) ainda não.
+
+| | **File > Save local copy** | Seleção copiada |
+|---|---|---|
+| Escopo | O arquivo inteiro | As camadas que você copiou, mais os componentes que elas usam |
+| Preenchimentos de imagem e contornos vetoriais | Incluídos | Ausentes; os exports avisam onde desenham sem eles |
+| Um link do Figma encontra o nó | Sim | Sim, para camadas copiadas: os ids coincidem com o arquivo de origem |
+| Serve para | Construir a partir de um design que você mantém ao lado do código | Uma olhada rápida em uma tela quando não existe cópia salva |
+
 <a id="accuracy"></a>
 
 ### Qual é a proximidade com o Figma?
@@ -245,7 +262,7 @@ Experimental. `figlens search <file> <query> --mode semantic|hybrid` ordena as c
 | `compare <file> <nodes.json> <node>` | Diferenças em relação a uma exportação REST do mesmo frame |
 | `compare-image <file> <node> <screenshot.png>` | Compara uma captura da tela construída com o node renderizado na escala dela (`--scale`, `--limit`, `--out diff.png`, `--full-page` para uma captura de página inteira mais curta que o frame, `--ignore` para camadas cujo conteúdo vem de dados, `--threshold` para ver bordas claras; `image: true` marca preenchimentos de imagem; MCP `compare_image`). Imprime `mismatch`, `nonTextMismatch` e as maiores regiões diferentes em pixels do node, cada uma com as camadas mais profundas sob ela; `text: true` indica regiões sobre texto (muitas vezes fonte substituta; revise cada uma) |
 | `node <file> <node>` | Um nó `.fig` bruto |
-| `clipboard <copied.html> <out.fig>` | Uma seleção copiada no Figma (Cmd/Ctrl+C), salva a partir do HTML da área de transferência, como um `.fig` que todos os comandos leem, sem Save local copy: mesmos ids de nó, componentes usados incluídos. Informa `missingImages`, `missingComponents` e `layersWithoutOutlines`: uma cópia não traz bytes de imagem nem contornos vetoriais, então exports e bundles avisam onde desenham sem eles. Nunca substitui um arquivo existente |
+| `clipboard [copied.html] <out.fig>` | Para quando não há um `.fig` salvo: selecione camadas no Figma, copie-as (clique direito > Copy, ou Cmd/Ctrl+C) e execute isto para converter a área de transferência em um `.fig` que todos os comandos leem; colar em outro lugar traz só o texto das camadas. Lê a área de transferência do sistema (macOS; Windows PowerShell 5.1 e Linux `wl-paste`/`xclip` não verificados) ou um arquivo HTML da área de transferência salvo. Mesmos ids de nó, componentes usados incluídos. Informa `missingImages`, `missingComponents` e `layersWithoutOutlines`: uma cópia não traz bytes de imagem nem contornos vetoriais, então exports e bundles avisam onde desenham sem eles. Nunca substitui um arquivo existente. Com um `.fig` salvo, passe o link do Figma como nó: ele mantém imagens e vetores |
 | `index prepare\|refresh\|rebuild\|clear\|status\|add\|remove\|relocate\|reset\|track\|untrack\|embed\|visual` | Workspace local no diretório de estado do figlens do usuário, ou em um `--storage DIR` que o workspace passa a lembrar. `prepare <file> --scope NODE` cria uma vez o índice de busca desse escopo; depois `search --file <file>` (ou `--workspace DIR`) responde sem reanalisar, com ranking conjunto das fontes do workspace. `refresh` recria os arquivos alterados, `rebuild` todos ou uma `--source`/`--scope`, `clear` remove índices sem uso; o índice anterior continua servindo até o novo ficar pronto. `reset` remove apenas o banco de dados do workspace, nunca designs, exportações ou o local lembrado. `track --scope NODE` registra as mudanças desse scope a partir de um build baseline; `untrack` para e mantém o histórico. `embed` incorpora os escopos publicados com o modelo configurado (CPU e memória); execute só se quiser busca semântica no workspace. `visual --scope NODE` renderiza as telas e componentes desse escopo publicado para busca por imagem e os incorpora se houver um perfil de visão configurado; execute só se quiser busca visual no workspace. |
 | `jobs status\|cancel <jobId>` | Ver ou cancelar a criação de um índice; `cancel` retorna depois que a criação parou |
 | `changes --file <file>\|--id ID\|--workspace DIR [--source ID] [--scope NODE] [--consumer NAME\|--subscription ID\|--cursor C] [--revision R] [--limit N]` | Mudanças registradas dos scopes acompanhados, da mais antiga para a mais recente: uma revisão por build publicado (baseline ou changes) com cobertura e contagens por tipo de mudança e faceta; cada revisão changes tem um resumo `impact` das camadas que suas mudanças alcançam (null antes do schema 7); `--revision` pagina os nodes alterados dessa revisão e depois as camadas que seu impacto lista (`entry` diz qual); `tracking` informa quando um scope precisa de `index refresh` para registrar uma mudança. Somente leitura |
