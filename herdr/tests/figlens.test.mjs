@@ -13,7 +13,7 @@ const HERE = path.dirname(new URL(import.meta.url).pathname);
 const MOD = path.join(HERE, "../figlens/mods/figlens");
 const LAYOUT = path.join(HERE, "../figlens-layout");
 const { VERSION, asset, cacheDir, INSTALL } = await import(path.join(MOD, "engine.js"));
-const { groupFrames, thumbFile, fitBox, clean, handoff, nodeRef, intentText, appOf } = await import(path.join(MOD, "frames.js"));
+const { groupFrames, thumbFile, fitBox, clean, handoff, nodeRef, intentText, appOf, latestActivity, ago, ACTIVITY } = await import(path.join(MOD, "frames.js"));
 
 test("asset names the release archive for Herdr's platform and either arch spelling", () => {
   assert.equal(asset("macos", "arm64"), `figlens-${VERSION}-aarch64-apple-darwin.tar.gz`);
@@ -188,4 +188,52 @@ test("STAT prints modified time and size on this platform", () => {
   fs.writeFileSync(file, "12345");
   const out = spawnSync("sh", ["-c", STAT, "figlens", file], { encoding: "utf8" }).stdout.trim();
   assert.match(out, /^\d+ 5$/);
+});
+
+const line = (o) => JSON.stringify({ v: 1, tool: "inspect", nodes: ["0:4"], ...o });
+
+test("latestActivity keeps each terminal's newest line and skips old or broken ones", () => {
+  const text = [line({ at: 1000, terminal: "t7" }), line({ at: 2000, terminal: "t7", tool: "export" }),
+    "not json", line({ at: 10, terminal: "t2" })].join("\n");
+  const got = latestActivity(text, null, 3000, 1500);
+  assert.deepEqual([...got.keys()], ["t7"]);
+  assert.equal(got.get("t7").tool, "export");
+});
+
+test("latestActivity addresses another machine's terminals through that machine", () => {
+  const got = latestActivity(line({ at: 5, terminal: "t1r", screen: "0:1", box: [1, 2, 3, 4] }), "mac-mini", 5);
+  assert.deepEqual(got.get("mac-mini/t1r"), { address: "mac-mini/t1r", at: 5, tool: "inspect", box: [1, 2, 3, 4], nodes: ["0:4"], screen: "0:1" });
+});
+
+test("ago reads at a glance", () => {
+  assert.deepEqual([ago(4000), ago(12500), ago(185000)], ["now", "12s", "3m"]);
+});
+
+test("ACTIVITY reads the journal figlens names by the design's canonical path", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "figlens-activity-"));
+  const design = path.join(dir, "design.fig");
+  fs.writeFileSync(design, "");
+  fs.symlinkSync(design, path.join(dir, "link.fig"));
+  const key = createHash("sha256").update(fs.realpathSync(design)).digest("hex").slice(0, 16);
+  fs.mkdirSync(path.join(dir, "state/figlens/activity"), { recursive: true });
+  fs.writeFileSync(path.join(dir, "state/figlens/activity", `${key}.jsonl`), line({ at: 1, terminal: "t7" }) + "\n");
+  const out = spawnSync("sh", ["-c", ACTIVITY, "figlens", path.join(dir, "link.fig")],
+    { encoding: "utf8", env: { ...process.env, XDG_STATE_HOME: path.join(dir, "state") } });
+  assert.equal(out.stdout.trim(), line({ at: 1, terminal: "t7" }));
+});
+
+test("ACTIVITY keeps every terminal's newest line, however busy another one is", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "figlens-activity-"));
+  const design = path.join(dir, "design.fig");
+  fs.writeFileSync(design, "");
+  const key = createHash("sha256").update(fs.realpathSync(design)).digest("hex").slice(0, 16);
+  const journal = path.join(dir, "state/figlens/activity");
+  fs.mkdirSync(journal, { recursive: true });
+  fs.writeFileSync(path.join(journal, `${key}.1.jsonl`), line({ at: 1, terminal: "t9" }) + "\n");
+  const busy = Array.from({ length: 500 }, (_, i) => line({ at: 10 + i, terminal: "t7" }));
+  fs.writeFileSync(path.join(journal, `${key}.jsonl`), [line({ at: 2, terminal: "t2" }), ...busy].join("\n") + "\n");
+  const out = spawnSync("sh", ["-c", ACTIVITY, "figlens", design],
+    { encoding: "utf8", env: { ...process.env, XDG_STATE_HOME: path.join(dir, "state") } }).stdout;
+  const got = latestActivity(out, null, 1000);
+  assert.deepEqual([...got.keys()].sort().map((k) => [k, got.get(k).at]), [["t2", 2], ["t7", 509], ["t9", 1]]);
 });

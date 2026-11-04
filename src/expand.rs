@@ -359,7 +359,8 @@ fn list_len(v: Option<&Value>) -> usize {
     }
 }
 
-fn vec2(v: &Value) -> Vec2 {
+/// A stored `{x, y}` vector; a missing field is 0.
+pub fn vec2(v: &Value) -> Vec2 {
     let f = |name: &str| v.get(name).map_or(0.0, |x| x.as_float() as f64);
     Vec2 {
         x: f("x"),
@@ -568,7 +569,8 @@ fn resized(from: Option<Vec2>, to: Option<Vec2>) -> Resize {
     }
 }
 
-pub(crate) fn parent_of(node: &Value) -> Option<String> {
+/// The id of `node`'s stored parent.
+pub fn parent_of(node: &Value) -> Option<String> {
     node.get("parentIndex")?.get("guid").and_then(guid_key)
 }
 

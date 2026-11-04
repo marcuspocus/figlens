@@ -46,7 +46,9 @@ impl Env {
             .env_remove("XDG_STATE_HOME")
             .env_remove("XDG_CACHE_HOME")
             .env_remove("XDG_DATA_HOME")
-            .env_remove("FIGLENS_TEST_HOLD");
+            .env_remove("FIGLENS_TEST_HOLD")
+            // Run inside a Herdr terminal, `figlens mcp` would write its activity journal.
+            .env_remove("HC_TERMINAL_ID");
         // A `gcloud` stand-in, when a test writes one, comes before the host's own.
         let path = std::env::var_os("PATH").unwrap_or_default();
         let dirs = std::iter::once(self.dir.join("bin")).chain(std::env::split_paths(&path));
@@ -447,8 +449,18 @@ impl Mcp {
     }
 
     fn held(env: &Env, args: &[&str], hold: Option<(&str, &Path)>) -> Self {
-        let mut child = env
-            .command(&[&["mcp"], args].concat(), hold)
+        Self::spawn(env.command(&[&["mcp"], args].concat(), hold))
+    }
+
+    /// A server started in Herdr terminal `t7`, so it writes the activity journal.
+    fn in_herdr(env: &Env) -> Self {
+        let mut command = env.command(&["mcp"], None);
+        command.env("HC_TERMINAL_ID", "t7");
+        Self::spawn(command)
+    }
+
+    fn spawn(mut command: Command) -> Self {
+        let mut child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
@@ -869,6 +881,47 @@ fn listing_tools_and_stateless_calls_create_no_database() {
     );
     drop(mcp);
     assert!(!env.home.join(".local/state/figlens").exists());
+}
+
+#[test]
+fn mcp_in_a_herdr_terminal_journals_successful_node_reads_but_not_searches() {
+    let env = Env::new();
+    let fig = env.fig("a.fig");
+    let out = |name: &str| env.dir.join(name).to_str().unwrap().to_owned();
+    let mut mcp = Mcp::in_herdr(&env);
+    let link = "https://www.figma.com/design/KEY/Private-Name?node-id=0-4";
+    mcp.call("inspect", json!({"file": fig, "node": link}));
+    mcp.call(
+        "export_batch",
+        json!({"file": fig, "items": [{"node": "0:3", "out": out("a.svg")}, {"node": "0:5", "out": out("b.svg")}]}),
+    );
+    mcp.call("find", json!({"file": fig, "query": "first"}));
+    mcp.call("search", json!({"file": fig, "query": "first"}));
+    mcp.call("inspect", json!({"file": fig, "node": "99:99"}));
+    drop(mcp);
+    let dir = env.home.join(".local/state/figlens/activity");
+    let lines: Vec<Value> = std::fs::read_dir(dir)
+        .unwrap()
+        .flat_map(|entry| {
+            std::fs::read_to_string(entry.unwrap().path())
+                .unwrap()
+                .lines()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        })
+        .map(|line| serde_json::from_str(&line).unwrap())
+        .collect();
+    let seen: Vec<(Value, Value)> = lines
+        .iter()
+        .map(|l| (l["tool"].clone(), l["nodes"].clone()))
+        .collect();
+    assert_eq!(
+        seen,
+        [
+            (json!("inspect"), json!(["0:4"])),
+            (json!("export_batch"), json!(["0:3", "0:5"]))
+        ]
+    );
 }
 
 #[test]

@@ -78,3 +78,40 @@ export function intentText(o) {
   if (claude) return `Using figlens workflow(topic=build): ${ask}. ${DATA}`;
   return handoff(o);
 }
+
+// Each terminal's newest line in a design's activity journal on this machine (its rotated half
+// first, so a busy agent never hides another). figlens names the journal by the SHA-256 of the
+// design's canonical path, under an absolute XDG_STATE_HOME or ~/.local/state. A path not
+// starting with / is under $HOME (a design copy).
+export const ACTIVITY = `case "$1" in /*) p="$1" ;; *) p="$HOME/$1" ;; esac
+[ -e "$p" ] || exit 0
+p=$(realpath "$p" 2>/dev/null) || p="$(cd "\${p%/*}" && pwd -P)/\${p##*/}"
+case "$XDG_STATE_HOME" in /*) s="$XDG_STATE_HOME" ;; *) s="$HOME/.local/state" ;; esac
+k=$(printf %s "$p" | { sha256sum 2>/dev/null || shasum -a 256; } | cut -c1-16)
+for f in "$s/figlens/activity/$k.1.jsonl" "$s/figlens/activity/$k.jsonl"; do [ -f "$f" ] && cat "$f"; done |
+  awk 'match($0, /"terminal":"[^"]*"/) { last[substr($0, RSTART, RLENGTH)] = $0 } END { for (t in last) print last[t] }'
+exit 0`;
+export const ACTIVE_MS = 10 * 60 * 1000;
+
+// What agents read lately: the newest line per terminal of a figlens activity journal
+// (`<state>/activity/<key>.jsonl`, written by `figlens mcp` inside Herdr), read on machine `on`
+// (null: this computer), added to `out`. A terminal there is addressed as `<machine>/<id>` here.
+export function latestActivity(text, on, now, maxAge = ACTIVE_MS, out = new Map()) {
+  for (const line of String(text ?? "").split("\n")) {
+    let e;
+    try { e = JSON.parse(line); } catch { continue; }
+    if (e?.v !== 1 || typeof e.terminal !== "string" || !(now - e.at <= maxAge)) continue;
+    const address = on && !e.terminal.includes("/") ? `${on}/${e.terminal}` : e.terminal;
+    if ((out.get(address)?.at ?? -Infinity) > e.at) continue;
+    const box = Array.isArray(e.box) && e.box.length === 4 && e.box.every(Number.isFinite) ? e.box : null;
+    out.set(address, {
+      address, at: e.at, tool: clean(e.tool, 40), box,
+      nodes: Array.isArray(e.nodes) ? e.nodes.map((n) => clean(n, 80)) : [],
+      screen: typeof e.screen === "string" ? clean(e.screen, 80) : null,
+    });
+  }
+  return out;
+}
+
+// How long ago, for a glance: now, 12s, 3m.
+export const ago = (ms) => (ms < 10000 ? "now" : ms < 60000 ? `${Math.floor(ms / 1000)}s` : `${Math.floor(ms / 60000)}m`);

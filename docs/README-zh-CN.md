@@ -136,7 +136,7 @@ pi install npm:@runkids/figlens
 
 ## Herdr 面板
 
-在智能体旁边查看设计的 [Herdr](https://herdr.dev) 面板：打开 `.fig`，按名称、文字、节点 ID 或 Figma 链接找到画面或图层，查看完整尺寸，并在显示完整消息的确认对话框之后，以 Build、Plan 或 YOLO 交给左侧的智能体。无需安装 figlens，远程 Herdr 机器上的设计也在原处读取。在 Herdr 中让智能体执行：`Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`。详情：[herdr/README.md](../herdr/README.md)。
+在智能体旁边查看设计的 [Herdr](https://herdr.dev) 面板：打开 `.fig`，按名称、文字、节点 ID 或 Figma 链接找到画面或图层，查看完整尺寸，并在显示完整消息的确认对话框之后，以 Build、Plan 或 YOLO 交给左侧的智能体。无需安装 figlens，远程 Herdr 机器上的设计也在原处读取。在 Herdr 中让智能体执行：`Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`。详情：[herdr/README.md](../herdr/README.md)。智能体的 figlens MCP 服务器在 Herdr 终端中运行时，面板会显示每个智能体正在读取的画面。
 
 <a id="viewer"></a>
 

@@ -11,7 +11,7 @@ import { writeFile, mkdir, readdir } from "fs/promises";
 import { Buffer } from "buffer";
 import { createHash, randomUUID } from "crypto";
 import { VERSION, asset, releaseBase, cacheDir, INSTALL } from "./engine.js";
-import { groupFrames, thumbFile, fitBox, clean, nodeRef, intentText, appOf } from "./frames.js";
+import { groupFrames, thumbFile, fitBox, clean, nodeRef, intentText, appOf, latestActivity, ago, ACTIVITY } from "./frames.js";
 
 const FILES = "figlens.files.v1"; // { [space id]: { path, on } }: each space keeps its own design
 const NOTICE = "figlens.notice.v1"; // { kind, text, at }: dialogs report to the panel
@@ -34,7 +34,7 @@ const REMOTE_EXPORT = `set -e
 bin=$1; file=$2; max=$3; scale=$4; shift 4
 d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
 mkdir "$d/out"; printf '%s\\n' "$@" > "$d/list"
-"$bin" export "$file" --frames "$d/list" --out-dir "$d/out" --format png --scale "$scale" --max-size "$max" >/dev/null 2>&1 || true
+"$bin" export "$file" --frames "$d/list" --out-dir "$d/out" --format png --bounds layout --scale "$scale" --max-size "$max" >/dev/null 2>&1 || true
 tar -czf - -C "$d/out" . | base64`;
 // sh -c SNAP_MAKE <name> <bin> <file> <node>: a one-screen offline viewer, gzipped into a temp
 // folder there; prints "<folder> <bytes>". Snapshots embed original images and can be tens of
@@ -48,6 +48,7 @@ printf '%s %s' "$d" "$(wc -c < "$d/s.gz" | tr -d ' ')"`;
 // sh -c FETCH_PART <name> <machine> <remote file> <skip MB> <count MB> <local file>: prints its size.
 const FETCH_PART = 'h=$(command -v hc || echo "$HOME/.local/bin/hc"); "$h" exec --on "$1" dd if="$2" bs=1048576 skip="$3" count="$4" 2>/dev/null >> "$5"; wc -c < "$5"';
 const PART_MB = 4;
+const ACTIVITY_POLL = 5000;
 const PRUNE = 'cd "$1" && ls -1t | tail -n +$2 | while IFS= read -r d; do rm -rf "./$d"; done';
 const KIND = { Darwin: "macos", Linux: "linux" };
 const STATUS_ICON = { done: "check", info: "copy", working: "ring", error: "alert" };
@@ -79,6 +80,7 @@ function S() {
 
 const icon = (name, size, color) => svg(`mods/figlens/icons/${name}.svg`).size(size).flex_none().text_color(color);
 const stop = (_e, cx) => cx.stop_propagation();
+const dot = (color, size) => div().w(size).h(size).flex_none().rounded_full().bg(color);
 
 // The agent's icon from Herdr's program table, drawn as the agents list draws it.
 function programIcon(p, size, color) {
@@ -153,7 +155,8 @@ async function renderNode(bin, file, id, dir, max, size) {
     const r = await sh(REMOTE_EXPORT, [bin, file.path, String(max), scale, id], file.on);
     if (r.code === 0 && r.stdout.trim()) await unpackImages(r.stdout, dir);
   } else {
-    await exec(bin, ["export", file.path, id, `${dir}/${name}`, "--scale", scale, "--max-size", String(max)]);
+    // The node's own box, not its shadows or overflow: agent boxes are drawn in that space.
+    await exec(bin, ["export", file.path, id, `${dir}/${name}`, "--bounds", "layout", "--scale", scale, "--max-size", String(max)]);
   }
   return (await readdir(dir)).includes(name);
 }
@@ -234,10 +237,13 @@ async function copyParts(script, args, total, step, say) {
 }
 
 // The path the agent on agentOn (null: this computer) reads the design at, copying it there if needed.
+// A design copy's folder name under COPIES, the same on every machine: one per saved version.
+const copyKey = (design) => hash(`${design.on ?? ""}:${design.path}:${design.stamp}`);
+
 async function designOn(design, agentOn, progress) {
   const from = design.on ?? null, to = agentOn ?? null;
   if (from === to) return design.path;
-  const key = hash(`${from ?? ""}:${design.path}:${design.stamp}`), name = base(design.path), size = design.size;
+  const key = copyKey(design), name = base(design.path), size = design.size;
   let local = design.path;
   if (from) {
     const dir = `${home()}/${COPIES}/${key}`;
@@ -444,6 +450,7 @@ export default class Figlens extends View {
     this.found = []; this.foundKey = null; this.picked = null; this.queue = []; this.tried = new Set(); this.drawing = false;
     this.kind = "screens"; this.query = ""; this.fold = new Map(); this.previews = new Map(); this.width = 368;
     this.raw = ""; this.hit = null; this.layers = null; this.lookToken = 0; this.looking = false;
+    this.activity = new Map();
     this.filter = InputState.new({ placeholder: "Filter by name, text, node ID or Figma link" });
     this.filter.on("change", (_e, cx) => {
       this.raw = this.filter.value().trim(); this.query = this.raw.toLowerCase();
@@ -803,6 +810,7 @@ export default class Figlens extends View {
   // Called from render: state set here shows in this pass, so it must not notify.
   load(file, cx) {
     const token = ++this.token;
+    if (!same(file, this.file)) this.activity = new Map();
     this.file = file; this.groups = []; this.thumbs = new Set(); this.selected = null;
     this.error = null; this.gone = false; this.queue = []; this.drawing = false; this.fold = new Map(); this.previews = new Map();
     this.lookToken += 1; this.hit = null; this.layers = null; this.looking = false;
@@ -834,6 +842,7 @@ export default class Figlens extends View {
         const q = shared(QL);
         if (q && same(q.file, file) && q.key !== key) setShared(QL, { ...q, key, design: this.design() });
         this.watch(file, stamp, cx);
+        this.follow(file, cx);
         if (this.raw) this.lookup(cx);
       } catch (e) {
         if (token === this.token) {
@@ -890,7 +899,7 @@ export default class Figlens extends View {
             for (const id of chunk) if (now.has(thumbFile(id))) this.thumbs.add(id);
           } else {
             await writeFile(`${dir}/.frames`, chunk.join("\n"));
-            const out = await exec(bin, ["export", file.path, "--frames", `${dir}/.frames`, "--out-dir", dir, "--format", "png", "--scale", String(THUMB_SCALE), "--max-size", max]);
+            const out = await exec(bin, ["export", file.path, "--frames", `${dir}/.frames`, "--out-dir", dir, "--format", "png", "--bounds", "layout", "--scale", String(THUMB_SCALE), "--max-size", max]);
             if (token !== this.token) return;
             for (const line of out.stdout.split("\n")) {
               try { const r = JSON.parse(line); if (r.nodeId && !r.error) this.thumbs.add(r.nodeId); } catch { /* not a result line */ }
@@ -933,6 +942,77 @@ export default class Figlens extends View {
       } catch { /* the watch ends; reopening the file starts another */ }
       finally { if (this.watching === id) this.watching = null; }
     });
+  }
+
+  // What agents read in this design: the figlens activity journal on the design's machine, and
+  // for its copy on each other agent machine. Polled; redraws while anyone is active.
+  follow(file, cx) {
+    const id = `${file.on ?? ""}:${file.path}`;
+    if (this.following === id) return;
+    // A generation, not the id: reopening a file while an older loop for it sleeps must not
+    // leave two loops polling.
+    const gen = (this.followGen ?? 0) + 1;
+    this.followGen = gen; this.following = id;
+    const still = () => this.followGen === gen && same(this.file, file);
+    cx.spawn(async (cx) => {
+      try {
+        while (still()) {
+          // Only machines with agents: lines from terminals that are not agents never show.
+          const from = file.on ?? null, copy = `${COPIES}/${copyKey(this.design())}/${base(file.path)}`;
+          const machines = new Set(agents().map((a) => machineOf(a.address)));
+          const all = new Map(), now = Date.now();
+          const reads = await Promise.all([...machines].map((m) => sh(ACTIVITY, [m === from ? file.path : copy], m).catch(() => null)));
+          if (!still()) return;
+          [...machines].forEach((m, i) => latestActivity(reads[i]?.stdout, m, now, undefined, all));
+          // Redraw while anyone is active (the "12s ago" moves) and once more when the last one goes.
+          if (all.size || this.activity.size) { this.activity = all; cx.notify(); }
+          await cx.sleep(ACTIVITY_POLL);
+        }
+      } catch { /* the follow ends; reopening the file starts another */ }
+      finally { if (this.followGen === gen) this.following = null; }
+    });
+  }
+
+  // Live agents with recent reads in this design, newest first, each with its color.
+  readers(t) {
+    const colors = [t.ansi4, t.ansi5, t.ansi6, t.ansi3, t.ansi2, t.ansi1];
+    const live = agents();
+    return [...this.activity.values()]
+      .map((e) => ({ e, agent: live.find((a) => a.address === e.address) }))
+      .filter((r) => r.agent)
+      // Colors follow terminal order, so an agent keeps its color while others come and go less often.
+      .sort((a, b) => a.e.address.localeCompare(b.e.address))
+      .map((r, i) => ({ ...r, color: colors[i % colors.length] }))
+      .sort((a, b) => b.e.at - a.e.at);
+  }
+
+  // Shows the screen an agent is reading as the filter's node card: the one card, its preview
+  // and the agent's box, however long the list. Clearing the filter brings the list back.
+  reveal(r, cx) {
+    const id = r.e.screen;
+    if (!id || !this.topIndex().has(id)) return;
+    this.filter.set_value(id);
+    this.raw = id; this.query = id.toLowerCase();
+    this.lookup(cx);
+  }
+
+  // One line per agent reading this design: who, which tool, which screen, how long ago.
+  readersStrip(t) {
+    const list = this.reading ?? [];
+    if (!list.length) return null;
+    const top = this.topIndex(), now = Date.now();
+    return v_flex().gap(1).children(list.map((r) => {
+      const place = r.e.screen && top.get(r.e.screen);
+      // A big design repeats screen names: the page tells them apart.
+      const what = place ? `${clean(place.frame.name, 60)} · ${clean(place.page.name, 40)}`
+        : r.e.nodes[0] && r.e.nodes[0] !== "0:0" ? `node ${r.e.nodes[0]}` : "the file";
+      return h_flex().id(`reader-${r.e.address}`).h(24).px(6).gap(7).items_center().rounded(5).text_size(S().secondary)
+        .when(Boolean(place), (el) => el.cursor_pointer().hover((s) => s.bg(t.hover)).on_click((_e, cx) => { this.reveal(r, cx); cx.notify(); }))
+        .child(dot(r.color, 8))
+        .child(div().flex_none().font_semibold().child(r.agent.program?.name ?? r.e.address))
+        .child(div().flex_1().min_w(0).truncate().text_color(t.muted).child(`${r.e.tool} · ${what}`))
+        .child(div().flex_none().text_size(S().label).text_color(t.muted).child(ago(now - r.e.at)));
+    }));
   }
 
   // .fig files under a folder (the picked one, else where the person is working).
@@ -1082,9 +1162,20 @@ export default class Figlens extends View {
 
   previewBox(target, t) {
     const width = Math.max(160, this.width - 34), box = fitBox(target.size, width, PREVIEW_H), state = this.previews.get(target.id);
+    // Where agents read inside this screen: a box in each agent's color.
+    const scale = box.w / (target.size?.[0] || box.w);
+    // Only the part inside the screen is drawn; a box wholly outside it is not.
+    const marks = (this.reading ?? []).filter((r) => r.e.screen === target.id && r.e.box).flatMap((r) => {
+      const [x, y, w, h] = r.e.box.map((v) => v * scale);
+      const left = Math.max(0, x), top = Math.max(0, y);
+      const width = Math.min(box.w, x + w) - left, height = Math.min(box.h, y + h) - top;
+      if (!(width >= 1 && height >= 1)) return [];
+      return [div().absolute().left(left).top(top).w(Math.max(4, width)).h(Math.max(4, height))
+        .border_2().border_color(r.color).rounded(2)];
+    });
     return h_flex().h(box.h + 16).flex_none().items_center().justify_center().rounded(6).bg(t.chrome)
       .child(state === "ready"
-        ? image(`${CACHE}/${this.key}/preview/${thumbFile(target.id)}`).w(box.w).h(box.h)
+        ? div().relative().w(box.w).h(box.h).child(image(`${CACHE}/${this.key}/preview/${thumbFile(target.id)}`).w(box.w).h(box.h)).children(marks)
         : state === "error"
           ? div().text_size(S().secondary).text_color(t.muted).child("Preview unavailable for this layer")
           : working(t, "Rendering preview…"));
@@ -1156,7 +1247,9 @@ export default class Figlens extends View {
           ? image(`${CACHE}/${this.key}/${thumbFile(frame.id)}`).w(box.w).h(box.h)
           : div().w(box.w).h(box.h).rounded(2).border_1().border_dashed().border_color(t.border)))
       .child(v_flex().flex_1().min_w(0).gap(3)
-        .child(div().truncate().text_size(S().body).when(on, (el) => el.font_semibold()).child(clean(frame.name)))
+        .child(h_flex().gap(6).items_center()
+          .child(div().min_w(0).truncate().text_size(S().body).when(on, (el) => el.font_semibold()).child(clean(frame.name)))
+          .children((this.reading ?? []).filter((r) => r.e.screen === frame.id).map((r) => dot(r.color, 7))))
         .child(div().truncate().text_size(S().secondary).text_color(t.muted)
           .child([w > 0 ? `${Math.round(w)}×${Math.round(h)}` : null, clean(frame.firstText, 60) || null].filter(Boolean).join(" · "))));
     if (!on) return row;
@@ -1372,6 +1465,8 @@ export default class Figlens extends View {
             .on_click((_e, cx) => { if (!q) { this.fold.set(page.id, !open); cx.notify(); } })
             .child(icon(open ? "chevron-down" : "chevron-right", 12, t.muted))
             .child(div().flex_1().min_w(0).truncate().child(clean(page.name)))
+            // Agents reading a screen on this page, seen even while it is folded.
+            .children((this.reading ?? []).filter((r) => page.frames.some((f) => f.id === r.e.screen)).map((r) => dot(r.color, 7)))
             .child(div().font_normal().child(String(page.shown.length))))
           .when(open, (el) => el.children(page.shown.map((f) => this.frameRow(f, page, t))));
       }))
@@ -1385,7 +1480,7 @@ export default class Figlens extends View {
     for (const f of all) count[isComponent(f) ? "components" : "screens"] += 1;
     // Fold-all: opens every page while any is closed, else closes them all. A filter opens them anyway.
     const pages = view?.pages ?? [], canFold = Boolean(view && !view.q && pages.length);
-    const allOpen = canFold && pages.every((g) => view.isOpen(g));
+    const allOpen = canFold && pages.every((g) => view.isOpen(g)), strip = this.readersStrip(t);
     return v_flex().flex_none().px(12).pt(10).pb(8).gap(8).border_b(1).border_color(t.border).bg(t.background)
       .child(h_flex().p(2).gap(2).rounded(7).bg(t.chrome).children(KINDS.map(([id, label]) => {
         const on = this.kind === id;
@@ -1408,7 +1503,8 @@ export default class Figlens extends View {
         .child(h_flex().id("fold-all").w(30).h(30).flex_none().items_center().justify_center().rounded(7).border_1().border_color(t.border)
           .when(canFold, (el) => el.cursor_pointer().hover((s) => s.bg(t.hover)).on_mouse_down("left", stop)
             .on_click((_e, cx) => { for (const g of pages) this.fold.set(g.id, !allOpen); cx.notify(); }))
-          .child(icon(allOpen ? "fold" : "unfold", 14, canFold ? t.muted : t.border))));
+          .child(icon(allOpen ? "fold" : "unfold", 14, canFold ? t.muted : t.border))))
+      .when(Boolean(strip), (el) => el.child(strip));
   }
 
   // Empties the filter and drops any lookup still running.
@@ -1465,6 +1561,7 @@ export default class Figlens extends View {
     if (cleared !== this.cleared) { this.cleared = cleared; this.cacheBytes = null; this.renders = null; if (this.file) this.file = undefined; }
     if (this.file === undefined || !same(file, this.file)) this.load(file, cx);
     this.receiver(); // remembers the agent focused on the left while it is
+    this.reading = this.readers(t); // once per frame: rows, pages, the strip and the preview read it
     const status = this.status();
     const view = this.listReady() && !nodeRef(this.raw) ? this.listing() : null;
     return v_flex().id("figlens").track_focus(this.handle).size_full().min_h(0).rounded(10).overflow_hidden().bg(t.background)

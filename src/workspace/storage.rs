@@ -98,6 +98,12 @@ impl Storage {
         .into())
     }
 
+    /// figlens's state folder for this user (`$XDG_STATE_HOME/figlens`, `~/.local/state/figlens`
+    /// or `%LOCALAPPDATA%\\figlens\\state`); nothing is created.
+    pub fn state_dir(&self) -> &Path {
+        &self.defaults.state.path
+    }
+
     /// Limits every report, search and job to sources under `roots` (canonical paths).
     pub fn confined(mut self, roots: &[PathBuf]) -> Self {
         if !roots.is_empty() {

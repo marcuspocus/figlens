@@ -12,6 +12,7 @@ use figlens::{Document, Tree, normalize_id};
 #[path = "test_support.rs"]
 mod test_support;
 
+mod activity;
 mod command;
 mod contract;
 mod mcp;
@@ -259,7 +260,9 @@ usage:
                                              nodes, variables, bundle, export, compare_image, index, jobs,
                                              models, changes and watch as MCP tools; raster export returns an inline image;
                                              with --root, files and outputs must be under one of the folders;
-                                             a custom index storage must be under a --storage-root
+                                             a custom index storage must be under a --storage-root;
+                                             inside a Herdr terminal (HC_TERMINAL_ID) it records the node ids
+                                             each call read in the state folder's activity/ for the Herdr panel
   figlens workflow <topic>                     print built-in agent guidance, the same text as MCP workflow:
                                              build, audit, images, search, plan, planning-details or
                                              yolo; a workflow:<topic> link means `figlens workflow <topic>`
