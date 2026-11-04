@@ -27,11 +27,12 @@ body { margin: 0; }
 .muted { color: var(--muted); }
 header { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 8px 0 14px; background: var(--panel); border-bottom: 1px solid var(--border); }
 header strong { font-size: 13px; }
-#fileStatus:not(:empty) { display: inline-flex; align-items: center; gap: 6px; height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11px; background: var(--ok-bg); color: var(--ok); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
-#fileStatus:not(:empty)::before { content: ""; width: 6px; height: 6px; border-radius: 3px; background: currentColor; flex: none; }
+#fileStatus:not(:empty) { display: block; flex: 0 1 auto; min-width: 0; height: 20px; line-height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11px; background: var(--ok-bg); color: var(--ok); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
+#fileStatus:not(:empty)::before { content: ""; display: inline-block; vertical-align: 1px; width: 6px; height: 6px; margin-right: 6px; border-radius: 3px; background: currentColor; }
 #fileStatus[data-state=stale] { background: var(--warn-bg); color: var(--warn); }
 #fileStatus[data-state=offline] { background: var(--field); color: var(--muted); }
-#status { margin-left: auto; min-width: 0; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#status { flex: 1 1 0; text-align: right; min-width: 0; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#theme, .menu-anchor { flex: none; }
 #theme { width: 28px; height: 28px; padding: 0; text-align: center; background: transparent; }
 .menu-anchor { position: relative; }
 #menuButton { width: 28px; padding: 0; text-align: center; background: transparent; font-size: 16px; }
@@ -274,8 +275,9 @@ pre { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 11p
     main { display: block; }
     main > aside:first-child { height: 60vh; border-right: 0; border-bottom: 1px solid var(--border); }
     header { flex-wrap: wrap; height: auto; min-height: 40px; padding: 6px 8px 6px 14px; }
-    #status { order: 9; flex-basis: 100%; margin: 0; white-space: normal; }
-    #fileStatus:not(:empty) { max-width: 60%; }
+    #status { order: 9; flex-basis: 100%; text-align: left; white-space: normal; }
+    #fileStatus:not(:empty) { max-width: calc(100% - 190px); }
+    #theme { margin-left: auto; }
     #workspace { height: 80vh; }
 }
 
