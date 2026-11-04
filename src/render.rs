@@ -69,6 +69,22 @@ pub(crate) fn find<'j>(n: &'j Json, id: &str) -> Option<&'j Json> {
     n["children"].as_array()?.iter().find_map(|c| find(c, id))
 }
 
+/// Like `find`, but leaves the nodes from `n` down to the match in `path`.
+pub(crate) fn find_path<'j>(n: &'j Json, id: &str, path: &mut Vec<&'j Json>) -> bool {
+    path.push(n);
+    if n["id"] == id
+        || n["children"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|c| find_path(c, id, path))
+    {
+        return true;
+    }
+    path.pop();
+    false
+}
+
 pub(crate) fn find_mut<'j>(n: &'j mut Json, id: &str) -> Option<&'j mut Json> {
     if n["id"] == id {
         return Some(n);

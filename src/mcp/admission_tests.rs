@@ -21,6 +21,16 @@ fn response_budget_counts_escaped_bytes_and_preserves_output_paths_on_failure() 
     );
     assert_eq!(error["result"]["_meta"]["figlens"]["outputPath"], "out.png");
     assert!(serde_json::to_vec(&error).unwrap().len() < 1024);
+    // inspect's path lists ancestors, not a written file.
+    let ancestors = response(
+        &json!(9),
+        json!({"content":[{"type":"text","text":"\0".repeat(MAX_RESPONSE_BYTES/6+1)}],"isError":false,"structuredContent":{"path":[{"id":"0:0","name":"Document"}]}}),
+    );
+    assert!(
+        bounded_response(ancestors)["result"]["_meta"]["figlens"]
+            .get("outputPath")
+            .is_none()
+    );
     let mut exact = ResponseSize(MAX_RESPONSE_BYTES - 1);
     assert_eq!(std::io::Write::write(&mut exact, b"x").unwrap(), 1);
     assert!(std::io::Write::write(&mut exact, b"x").is_err());

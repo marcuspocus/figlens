@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::path::Path;
 
+use figlens::Tree;
 use figlens::expand::{plugin_type, subtree};
-use figlens::{Tree, guid_key};
 use serde_json::{Value, json};
 
 const MAX_NODES: usize = 200;
@@ -184,21 +184,7 @@ pub fn find(
             truncated = true;
             break;
         }
-        let mut path = Vec::new();
-        let mut ancestor = Some(id.clone());
-        while let Some(id) = ancestor {
-            let Some(node) = tree.nodes.get(&id) else {
-                break;
-            };
-            path.push(
-                json!({"id": id, "name": node.get("name").map(|v| v.as_string()).unwrap_or("")}),
-            );
-            ancestor = node
-                .get("parentIndex")
-                .and_then(|p| p.get("guid"))
-                .and_then(guid_key);
-        }
-        path.reverse();
+        let path = figlens::rest::ancestor_path(tree, &id);
         let mut summary = json!({
             "id": id, "type": node_type, "name": name, "path": path,
             "childCount": tree.children.get(&id).map_or(0, Vec::len),
@@ -240,13 +226,10 @@ pub fn inspect(
     let comparison = compare_variant
         .map(|other| figlens::states::compare_variants(tree, id, other, fig))
         .transpose()?;
-    let doc = if images {
-        figlens::rest::resolve_render_nodes(tree, id)?
-    } else {
-        figlens::rest::resolve_nodes(tree, id)?
-    };
+    let (doc, path) = figlens::rest::resolve_nodes_with_path(tree, id, images)?;
     let detail = Detail::new(tree, &doc["document"], full_text, colors);
     let mut result = inspect_document(&doc["document"], depth, &detail);
+    result["path"] = path;
     if let Some(semantics) = doc["_figlens"].get("semantics") {
         result["_figlens"] = json!({"semantics":semantics});
     }
@@ -1121,8 +1104,50 @@ mod tests {
                     "Button instance",
                     vec![("symbolData", obj(vec![("symbolID", guid(7))]))],
                 ),
+                node(10, Some(1), "SECTION", "Flows", vec![]),
+                node(11, Some(10), "FRAME", "Checkout", vec![]),
             ]),
         )])
+    }
+
+    #[test]
+    fn inspect_reports_the_ancestor_path_of_stored_and_expanded_nodes() {
+        let message = message();
+        let tree = Tree::new(&message);
+        let path = |id| {
+            let result = inspect(
+                &tree,
+                id,
+                0,
+                Path::new("test.fig"),
+                false,
+                false,
+                None,
+                None,
+                false,
+                false,
+            )
+            .unwrap();
+            result["path"].clone()
+        };
+        let doc = json!({"id": "0:0", "name": "Document"});
+        let page = json!({"id": "0:1", "name": "Page"});
+        let login = json!({"id": "0:2", "name": "Login"});
+        assert_eq!(
+            path("0:3"),
+            json!([doc, page, login, {"id": "0:3", "name": "Label"}])
+        );
+        assert_eq!(
+            path("0:11"),
+            json!([doc, page, {"id": "0:10", "name": "Flows"}, {"id": "0:11", "name": "Checkout"}])
+        );
+        assert_eq!(
+            path("I0:9;0:8"),
+            json!([doc, page, login, {"id": "0:9", "name": "Button instance"}, {"id": "I0:9;0:8", "name": "Button label"}])
+        );
+        // The same shape find returns.
+        let found = find(&tree, "checkout", "0:0", None, 1).unwrap();
+        assert_eq!(found["results"][0]["path"], path("0:11"));
     }
 
     #[test]

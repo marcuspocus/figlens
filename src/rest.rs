@@ -37,7 +37,37 @@ pub fn render_nodes(tree: &Tree, root: &str) -> Json {
 
 /// Select an exact stored or expanded ID, retaining its instance overrides and geometry.
 pub fn resolve_nodes(tree: &Tree, id: &str) -> Result<Json, Box<dyn std::error::Error>> {
-    resolve_target(tree, id, false, None, false)
+    resolve_target(tree, id, false, None, false, None)
+}
+
+/// `resolve_nodes`, or `resolve_render_nodes` when `render`, plus the node's `ancestor_path`;
+/// an instance sublayer's path continues through its expanded parents.
+pub fn resolve_nodes_with_path(
+    tree: &Tree,
+    id: &str,
+    render: bool,
+) -> Result<(Json, Json), Box<dyn std::error::Error>> {
+    let mut expanded = Vec::new();
+    let doc = resolve_target(tree, id, render, None, false, Some(&mut expanded))?;
+    let mut path = ancestor_path(tree, crate::export::root_of(id));
+    path.extend(expanded);
+    Ok((doc, Json::Array(path)))
+}
+
+/// A stored node's ancestors from the document down to the node itself, as `[{id, name}]`.
+pub fn ancestor_path(tree: &Tree, id: &str) -> Vec<Json> {
+    let mut path = Vec::new();
+    let mut at = Some(id.to_owned());
+    while let Some(id) = at {
+        let Some(node) = tree.nodes.get(&id) else {
+            break;
+        };
+        let name = node.get("name").map(|v| v.as_string()).unwrap_or("");
+        path.push(json!({"id": id, "name": name}));
+        at = parent_id(tree, &id);
+    }
+    path.reverse();
+    path
 }
 
 /// `resolve_nodes` that stops building, with `ResponseBudget`, once the selection's JSON exceeds `bytes`.
@@ -46,12 +76,12 @@ pub fn resolve_nodes_within(
     id: &str,
     bytes: usize,
 ) -> Result<Json, Box<dyn std::error::Error>> {
-    resolve_target(tree, id, false, Some(bytes), false)
+    resolve_target(tree, id, false, Some(bytes), false, None)
 }
 
 /// `resolve_nodes` with renderer input, for selected-node image inspection and export.
 pub fn resolve_render_nodes(tree: &Tree, id: &str) -> Result<Json, Box<dyn std::error::Error>> {
-    resolve_target(tree, id, true, None, false)
+    resolve_target(tree, id, true, None, false, None)
 }
 
 /// Opt-in lossless sharing, with a separate finite construction guard before encoding.
@@ -62,7 +92,7 @@ pub fn resolve_compact_nodes(
     subtrees: bool,
     bytes: Option<usize>,
 ) -> Result<Json, Box<dyn std::error::Error>> {
-    let data = resolve_target(tree, id, false, Some(64 * 1024 * 1024), true)?;
+    let data = resolve_target(tree, id, false, Some(64 * 1024 * 1024), true, None)?;
     let result = compact::encode(data, subtrees);
     if bytes.is_some_and(|limit| compact::serialized_size(&result, limit) > limit) {
         return Err(crate::FigError::new(
@@ -80,6 +110,7 @@ fn resolve_target(
     render: bool,
     bytes: Option<usize>,
     compact: bool,
+    path: Option<&mut Vec<Json>>,
 ) -> Result<Json, Box<dyn std::error::Error>> {
     let root = crate::export::root_of(id);
     if !tree.nodes.contains_key(root) {
@@ -112,11 +143,22 @@ fn resolve_target(
     }
     if root != id {
         // Expand the outer instance first; selecting the component's raw child loses context.
-        doc["document"] = render::find(&doc["document"], id).cloned().ok_or_else(|| {
-            crate::FigError::new(crate::ErrorKind::NodeNotFound, format!(
+        let mut chain = Vec::new();
+        if !render::find_path(&doc["document"], id, &mut chain) {
+            return Err(crate::FigError::new(crate::ErrorKind::NodeNotFound, format!(
                 "node {id} not found in expanded instance {root}; inspect {root} for available sublayer IDs"
             ))
-        })?;
+            .into());
+        }
+        if let Some(path) = path {
+            path.extend(
+                chain[1..]
+                    .iter()
+                    .map(|n| json!({"id": n["id"], "name": n["name"].as_str().unwrap_or("")})),
+            );
+        }
+        let selected = chain[chain.len() - 1].clone();
+        doc["document"] = selected;
         handoff::select(&mut doc);
     }
     Ok(doc)

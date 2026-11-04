@@ -47,7 +47,11 @@ fn bounded_response(value: Value) -> Value {
             "",
             Err(contract::Failure::new(ErrorKind::ResponseBudget, message)),
         );
-        if let Some(path) = value["result"]["structuredContent"].get("path") {
+        // Only a written file's path; inspect's `path` is an ancestor list.
+        if let Some(path) = value["result"]["structuredContent"]
+            .get("path")
+            .filter(|p| p.is_string())
+        {
             error["_meta"]["figlens"]["outputPath"] = path.clone();
         }
         response(&value["id"], error)
