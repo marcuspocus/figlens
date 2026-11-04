@@ -15,7 +15,8 @@ Two shareable folders:
   another agent can build it from, and `preview.png`.
 - [`figlens-layout/`](figlens-layout/), the "Herdr + figlens" layout: Herdr's
   default window with a figlens button in the tab bar that opens the panel
-  where Files and Changes open ([`RECIPE.md`](figlens-layout/RECIPE.md)).
+  where Files and Changes open; the button or the close button at the panel's
+  top right hides it ([`RECIPE.md`](figlens-layout/RECIPE.md)).
 
 ## Install
 

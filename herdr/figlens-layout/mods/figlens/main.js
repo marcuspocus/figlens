@@ -2034,7 +2034,14 @@ export default class Figlens extends View {
         .when(Boolean(this.file?.on), (el) => el.child(pill(this.file.on, t)))
         .when(Boolean(this.file), (el) => el.child(h_flex().id("close-file").w(24).h(24).flex_none().items_center().justify_center()
           .rounded(6).cursor_pointer().hover((s) => s.bg(t.hover)).on_mouse_down("left", stop).on_click(() => this.open(null))
-          .child(icon("close", 14, t.muted)))))
+          .tooltip("Close design").accessibility_label("Close design").child(icon("close", 14, t.muted))))
+        // Hides the side panel, as the tab-bar button does; only where the layout has one.
+        .when(Boolean(find(layout(), "panel")), (el) => el
+          .when(Boolean(this.file), (el) => el.child(div().w(1).h(16).flex_none().bg(t.border)))
+          .child(h_flex().id("hide-panel").w(24).h(24).flex_none().items_center().justify_center()
+            .rounded(6).cursor_pointer().hover((s) => s.bg(t.hover)).on_mouse_down("left", stop)
+            .on_click(() => run("layout.hide", { id: "panel" }))
+            .tooltip("Hide panel").accessibility_label("Hide panel").child(icon("close", 14, t.muted)))))
       .when(this.listReady(), (el) => el.child(this.toolbar(t, view)))
       .when(this.listReady(), (el) => { const b = this.changeBanner(t); return b ? el.child(b) : el; })
       .child(v_flex().id("figlens-body").flex_1().min_h(0).overflow_y_scrollbar().child(this.body(t, cx, view)))

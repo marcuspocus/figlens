@@ -15,7 +15,7 @@ Left to right, everything as in Herdr's `main` layout ("Herdr"), plus two blocks
 ## How it behaves
 
 - Agent status shows as in Herdr's default window; figlens hands a design to the agent focused on the left.
-- The figlens button opens the side panel on figlens (`layout.select {stack: "panel-body", child: "figlens"}`, `layout.show {id: "panel"}`) and closes it when it is already showing, exactly as Files and Changes do. Drag the boundary to resize the panel.
+- The figlens button opens the side panel on figlens (`layout.select {stack: "panel-body", child: "figlens"}`, `layout.show {id: "panel"}`) and closes it when it is already showing, exactly as Files and Changes do; the close button at the panel header's right end hides it too. Drag the boundary to resize the panel.
 - The panel behaves as its recipe says.
 
 ## Built from
@@ -39,5 +39,5 @@ Left to right, everything as in Herdr's `main` layout ("Herdr"), plus two blocks
 
 - With figlens open in one space, switching to another space and back shows figlens again.
 - `herdr-app check mods/figlens` passes and `layout.switch {name: "herdr-figlens"}` shows the layout with no `herdr-figlens.error`.
-- The tab bar shows Files, Changes and figlens; figlens opens the panel there and a second click closes it.
+- The tab bar shows Files, Changes and figlens; figlens opens the panel there and a second click, or the panel's close button, closes it.
 - `ctrl-shift-l` cycles back to the person's own layout.
