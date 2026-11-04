@@ -20,7 +20,7 @@ A card in the theme's `background`, `border` outline, radius 10. Every size is r
 - **Dialogs** (Herdr's confirm look: `popover`, 18 padding, 32 px buttons, radius 8, `Esc` hint): the confirm dialog (`Send “X” to Codex?`, `Plan “X” with Pi?`, `Let Claude Code build “X” on its own?` with a `working` bolt note), the receiver card with its status pill, the message in the terminal font, then Cancel and the action. The new-tab dialog lists installed agents, `Plan / Build / YOLO`, the exact first message, and `Open tab with <agent>`. The clear-cache dialog lists what goes and `Clear n MB`.
 - **Handoff menu**: a popup under the caret in Herdr's menu style (31 px rows, 14 px icons): `Plan with <agent>…`, `YOLO with <agent>…`, a rule, `Start in a new tab…`, `Copy prompt`.
 - **Quick Look**: a floating window, 920×660: name, `w×h · page · file`, the browser button, the split button and close; the screen at up to 1600 px on `chrome`; `‹ prev`, `next ›`, `n of N · Space or Esc closes · ← → moves`, or progress and errors.
-- **Toggle** (`props: { role: "toggle" }`): `mark.svg` and `figlens` in the tab bar, styled as the tabs mod's Files and Changes; `selected` while the panel shows.
+- **Toggle** (`props: { role: "toggle" }`): `mark.svg` and `figlens` in the tab bar, styled as the tabs mod's Files and Changes; `selected` while the panel shows. It adds `figlens` to Herdr's shared `workspace.panels` once, so the tabs mod restores the panel per space like Files and Changes.
 
 ## How it behaves
 
@@ -46,7 +46,7 @@ A card in the theme's `background`, `border` outline, radius 10. Every size is r
 - `engine.js` (no Herdr imports): `VERSION` (Release Please bumps it), the release asset per platform, the npm cache folder, and the install script.
 - `frames.js` (no Herdr imports): pages and screens, thumbnail names, fitting, one-line design strings, `nodeRef` for IDs and Figma links, the message for each intent and agent, and the activity journal's `ACTIVITY` script, `latestActivity` and `ago`.
 - `mark.svg` (the figlens mark, full color via `image`), `icons/*.svg` (stroke icons tinted with `svg`).
-- **Storage**: `shared` keys `figlens.files.v1` (design per space), `figlens.notice.v1`, `figlens.quicklook.v1`, `figlens.viewers.v1`, `figlens.cleared.v1`; images under `~/.config/herdr-app/mods/figlens/.cache/`; design copies under `~/.cache/figlens/herdr-designs/`.
+- **Storage**: `shared` keys `figlens.files.v1` (design per space), `figlens.notice.v1`, `figlens.quicklook.v1`, `figlens.viewers.v1`, `figlens.cleared.v1`, and `figlens` added to Herdr's `workspace.panels`; images under `~/.config/herdr-app/mods/figlens/.cache/`; design copies under `~/.cache/figlens/herdr-designs/`.
 - **Herdr functions**: `exec` (with `on` for other machines), `hc`, `run` (`layout.select`, `layout.show`, `layout.hide`, `agent.focus`, `tab.new`, `terminal.kill`), `agents`, `focused`, `spaces`, `panes`, `knownAgents`, `pickFolder`, `watchFolder`, `openOverlay`, `closeOverlay`, `shared`, `setShared`, `nextCommand`, `theme`, `settings`, `layout`, `window`, `appHome`, `home`, `props`.
 - **Programs**: `figlens`, `hc`, `sh`, `curl`, `tar`, `gzip`, `stat`, `find`, `du`, `dd`, `realpath`, `sha256sum` or `shasum`, `tail`, the file picker, `open`/`xdg-open`.
 

@@ -237,3 +237,8 @@ test("ACTIVITY keeps every terminal's newest line, however busy another one is",
   const got = latestActivity(out, null, 1000);
   assert.deepEqual([...got.keys()].sort().map((k) => [k, got.get(k).at]), [["t2", 2], ["t7", 509], ["t9", 1]]);
 });
+
+test("the toggle lists figlens among the panels Herdr's tabs mod restores per space", () => {
+  const main = fs.readFileSync(path.join(MOD, "main.js"), "utf8");
+  assert.match(main, /if \(!panels\.includes\("figlens"\)\) setShared\(PANELS, \[\.\.\.panels, "figlens"\]\)/);
+});

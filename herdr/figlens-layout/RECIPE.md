@@ -32,11 +32,12 @@ Left to right, everything as in Herdr's `main` layout ("Herdr"), plus two blocks
 
 - The figlens mod reaches the network only to download its engine from GitHub Releases, and runs `figlens` and `hc`; see its recipe. The rest of the layout is Herdr's own.
 - A layout clone is never updated: a later Herdr may change `main`. Rebuild from this recipe on a new version rather than keeping an old clone.
-- The shipped tabs mod remembers Files or Changes per space, not figlens: switching spaces while figlens shows may close the panel.
+- The shipped tabs mod remembers each space's side panel but restores only those in shared `workspace.panels`: the toggle adds `figlens` there once, so switching spaces keeps the panel (no extra button appears; the tabs mod draws only Files and Changes). The tabs mod's memory is shared by every layout: in Herdr's `main`, which has no figlens panel, a space last left on figlens opens its panel on the previous child. Removing this layout leaves `figlens` in the list, which does nothing without the panel; take it out with `setShared("workspace.panels", ["files", "changes"])` from any mod.
 - If a `figlens` mod is already installed, rename this one and the `mod` names in the layout.
 
 ## Done when
 
+- With figlens open in one space, switching to another space and back shows figlens again.
 - `herdr-app check mods/figlens` passes and `layout.switch {name: "herdr-figlens"}` shows the layout with no `herdr-figlens.error`.
 - The tab bar shows Files, Changes and figlens; figlens opens the panel there and a second click closes it.
 - `ctrl-shift-l` cycles back to the person's own layout.

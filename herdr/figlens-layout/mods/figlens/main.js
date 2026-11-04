@@ -18,6 +18,7 @@ const NOTICE = "figlens.notice.v1"; // { kind, text, at }: dialogs report to the
 const QL = "figlens.quicklook.v1"; // what the Quick Look window shows and where it is in the list
 const CLEARED = "figlens.cleared.v1"; // when the image cache was last cleared: every panel reloads
 const VIEWERS = "figlens.viewers.v1"; // { "<machine>:<path>": { terminal, url } }: browser viewers
+const PANELS = "workspace.panels"; // Herdr's: the side panels its tabs mod restores per space
 const CACHE = "mods/figlens/.cache"; // hidden: writing images does not reload the mod
 const CHUNK = 12, REMOTE_CHUNK = 40, THUMB_W = 72, THUMB_H = 48, POLL = 10000, KEEP_REVISIONS = 12;
 const FOLD_OVER = 40, PREVIEW_MAX = 960, PREVIEW_H = 360, LOOK_MAX = 1600, THUMB_SCALE = 3;
@@ -432,7 +433,14 @@ function handoffButton(t, key, agent, build, menuProps, newTab, inRow = false) {
 export default class Figlens extends View {
   init(_props, cx) {
     this.role = blockProps()?.role ?? "panel";
-    if (this.role === "toggle") return;
+    if (this.role === "toggle") {
+      // Herdr's tabs mod remembers each space's side panel, but restores only the panels named
+      // in shared "workspace.panels" (it draws buttons for files and changes alone): listing
+      // figlens there keeps the panel when you switch spaces and come back.
+      const panels = shared(PANELS) ?? ["files", "changes"];
+      if (!panels.includes("figlens")) setShared(PANELS, [...panels, "figlens"]);
+      return;
+    }
     if (this.role !== "panel") {
       this.handle = cx.focus_handle(); this.handle.focus();
       if (this.role === "confirm") { this.sending = false; this.failed = null; this.progress = null; }
