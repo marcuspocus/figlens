@@ -1,6 +1,6 @@
 # Herdr + figlens
 
-Herdr's default window with a figlens button in the tab bar beside Files and Changes. It opens the figlens panel where those panels open, so a design sits beside your agents: find a screen or layer and hand it to the agent on the left.
+Herdr's default window with a figlens button in the tab bar beside Files and Changes. It opens the figlens panel for local Figma `.fig` designs where those panels open, so a Figma design sits beside your agents: find a screen or layer and hand it to the agent on the left.
 
 ![Herdr + figlens](preview.png)
 
