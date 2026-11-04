@@ -64,7 +64,8 @@ For the layout, also copy `figlens-layout/layouts/herdr-figlens.json` and
 - **Hand over**: the split button builds with the agent focused on the left;
   its menu holds Plan, YOLO, Start in a new tab and Copy prompt. Pi and
   OpenCode receive their own `/figlens plan` and `/figlens yolo` commands,
-  Claude Code the plugin's workflow, any other agent a plain prompt naming the
+  Claude Code the figlens MCP `workflow` guide (or `figlens workflow` when
+  its session has no figlens MCP), any other agent a plain prompt naming the
   skill's reference. A shell is never a receiver. YOLO confirms only by click.
 - **Agents**: when an agent's figlens MCP server runs in a Herdr terminal, a
   line under the filter shows what each agent read last (tool, screen, page,

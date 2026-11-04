@@ -119,8 +119,9 @@ test("intentText runs YOLO through OpenCode's own /figlens command", () => {
   assert.match(intentText({ ...ask, intent: "yolo", app: "opencode" }), /^\/figlens yolo Implement the frame "Login"/);
 });
 
-test("intentText plans through Claude Code's workflow tool", () => {
-  assert.match(intentText({ ...ask, intent: "plan", app: "claude-code" }), /^Plan only, using figlens workflow\(topic=plan\):/);
+test("intentText plans through figlens's workflow tool, with the CLI when Claude Code has no figlens MCP", () => {
+  assert.match(intentText({ ...ask, intent: "plan", app: "claude-code", cli: "/c/figlens" }),
+    /^Plan only: Implement the frame "Login".* call the figlens MCP tool `workflow` with topic "plan" \(not Claude Code's own Workflow tool\), or, with no figlens MCP tool loaded, run `\/c\/figlens workflow plan`/);
 });
 
 test("intentText gives other agents the skill's yolo reference", () => {
@@ -160,8 +161,8 @@ test("the mod's engine version is the release version", () => {
   assert.equal(VERSION, cargo);
 });
 
-test("intentText builds through Claude Code's workflow tool", () => {
-  assert.match(intentText({ ...ask, intent: "build", app: "claude-code" }), /^Using figlens workflow\(topic=build\): Implement the frame "Login"/);
+test("intentText builds through figlens's workflow tool, not Claude Code's own", () => {
+  assert.match(intentText({ ...ask, intent: "build", app: "claude-code" }), /^Implement the frame "Login".* figlens MCP tool `workflow` with topic "build" .*run `figlens workflow build`/);
 });
 
 // engine.js re-implements the npm launcher's asset and cache naming (QuickJS cannot import it).
@@ -241,4 +242,9 @@ test("ACTIVITY keeps every terminal's newest line, however busy another one is",
 test("the toggle lists figlens among the panels Herdr's tabs mod restores per space", () => {
   const main = fs.readFileSync(path.join(MOD, "main.js"), "utf8");
   assert.match(main, /if \(!panels\.includes\("figlens"\)\) setShared\(PANELS, \[\.\.\.panels, "figlens"\]\)/);
+});
+
+test("intentText runs YOLO through figlens's workflow tool, with npx when figlens may not be on PATH", () => {
+  assert.match(intentText({ ...ask, intent: "yolo", app: "claude-code" }),
+    /^Implement the frame "Login".* topic "yolo" .*run `figlens workflow yolo` \(or `npx -y @runkids\/figlens workflow yolo` without figlens on PATH\)/);
 });

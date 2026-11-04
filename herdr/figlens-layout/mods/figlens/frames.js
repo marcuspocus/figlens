@@ -49,6 +49,10 @@ function request({ file, frame, page, screen }) {
   return `Implement ${what} from the Figma design ${file}`;
 }
 
+// Claude Code reads figlens's guides with the figlens MCP tool `workflow`, which is not its own
+// Workflow tool; a session without the figlens MCP server gets the same guide from the CLI.
+const guide = (topic, cli) => `Read figlens's ${topic} guide first: call the figlens MCP tool \`workflow\` with topic "${topic}" (not Claude Code's own Workflow tool), or, with no figlens MCP tool loaded, run \`${cli ?? "figlens"} workflow ${topic}\`${cli ? "" : ` (or \`npx -y @runkids/figlens workflow ${topic}\` without figlens on PATH)`}`;
+
 const reader = (cli) => (cli
   ? `Read it with figlens (its MCP tools, or the CLI at ${cli})`
   : "Read it with figlens (its MCP tools or the figlens CLI)");
@@ -67,15 +71,15 @@ export function intentText(o) {
   const ask = request(o), native = o.app === "pi" || o.app === "opencode", claude = o.app === "claude-code";
   if (o.intent === "plan") {
     if (native) return `/figlens plan ${ask}`;
-    if (claude) return `Plan only, using figlens workflow(topic=plan): ${ask}. Do not edit code until I approve the plan. ${DATA}`;
+    if (claude) return `Plan only: ${ask}. ${guide("plan", o.cli)}. ${reader(o.cli)}. Do not edit code until I approve the plan. ${DATA}`;
     return `Plan only: ${ask}. ${reader(o.cli)} and follow the figlens skill's planning reference (references/planning.md). Do not edit code until I approve the plan. ${DATA}`;
   }
   if (o.intent === "yolo") {
     if (native) return `/figlens yolo ${ask}`;
-    if (claude) return `Using figlens workflow(topic=yolo): ${ask}. Plan, implement, verify, then clean up only what this run created. ${DATA}`;
+    if (claude) return `${ask}. ${guide("yolo", o.cli)}. ${reader(o.cli)}. Plan, implement, verify, then clean up only what this run created. ${DATA}`;
     return `${ask}. ${reader(o.cli)} and follow the figlens skill's yolo reference (references/yolo.md): plan, implement, verify, then clean up only what this run created. ${DATA}`;
   }
-  if (claude) return `Using figlens workflow(topic=build): ${ask}. ${DATA}`;
+  if (claude) return `${ask}. ${guide("build", o.cli)}. ${reader(o.cli)}. ${DATA}`;
   return handoff(o);
 }
 

@@ -1035,11 +1035,13 @@ export default class Figlens extends View {
   discover(place, cx) {
     this.foundKey = JSON.stringify(place); this.found = [];
     if (!place) return;
-    const key = this.foundKey;
+    // A scan number, not the place: a refresh while a scan runs must win over it.
+    const scan = (this.scan ?? 0) + 1;
+    this.scan = scan; this.scanning = true;
     cx.spawn(async (cx) => {
       const r = await sh(FIND, [place.cwd], place.on).catch(() => null);
-      if (this.foundKey !== key) return;
-      this.found = (r?.stdout ?? "").split("\n").filter(Boolean);
+      if (this.scan !== scan) return;
+      this.found = (r?.stdout ?? "").split("\n").filter(Boolean); this.scanning = false;
       cx.notify();
     });
   }
@@ -1344,11 +1346,15 @@ export default class Figlens extends View {
         .child(h_flex().h(26).px(8).gap(6).items_center().text_size(S().label).font_semibold().text_color(t.muted)
           .child(div().min_w(0).truncate().child(label))
           .when(Boolean(place?.on), (el) => el.child(pill(place.on, t)))
+          // Files saved there since the last look show on a refresh.
+          .child(h_flex().id("rescan").w(22).h(22).flex_none().items_center().justify_center().rounded(6).cursor_pointer()
+            .hover((s) => s.bg(t.hover)).on_click((_e, cx) => { this.foundKey = null; cx.notify(); })
+            .child(icon("refresh", 12, t.muted)))
           .when(Boolean(this.picked), (el) => el.child(div().flex_1()).child(h_flex().id("unpick").h(22).px(6).gap(4).items_center().rounded(6)
             .text_size(S().secondary).text_color(t.foreground).cursor_pointer().hover((s) => s.bg(t.hover))
             .on_click((_e, cx) => { this.picked = null; cx.notify(); })
             .child(icon("crosshair", 12, t.foreground)).child("Follow focus"))))
-        .when(!this.found.length, (el) => el.child(div().px(8).py(4).text_size(S().secondary).text_color(t.muted).child("No .fig files here")))
+        .when(!this.found.length, (el) => el.child(div().px(8).py(4).text_size(S().secondary).text_color(t.muted).child(this.scanning ? "Looking…" : "No .fig files here")))
         .children(this.found.map((p, i) => {
           const rel = p.startsWith(`${place.cwd}/`) ? p.slice(place.cwd.length + 1) : p;
           const cut = rel.lastIndexOf("/");
