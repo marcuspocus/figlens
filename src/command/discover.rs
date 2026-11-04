@@ -12,6 +12,9 @@ const MAX_NODES: usize = 200;
 const TEXT_CHARS: usize = 200;
 /// Per-text cap with `fullText`; a longer text still sets `textTruncated`.
 const FULL_TEXT_CHARS: usize = 10_000;
+/// Items kept from each list on an inspected node (annotations and their properties, component
+/// property definitions, render diagnostics); a longer list sets `truncated`.
+const LIST_ITEMS: usize = 20;
 
 /// Opt-in extras for `inspect` and `inspect --flat`.
 #[derive(Default)]
@@ -60,7 +63,7 @@ fn text_preview(summary: &mut Value, text: &str, limit: usize) {
     }
 }
 
-/// An annotation with its plain `label` cut like a text preview and at most 20 `properties`;
+/// An annotation with its plain `label` cut like a text preview and at most `LIST_ITEMS` `properties`;
 /// `labelMarkdown` stays in nodes.
 fn annotation_preview(annotation: &Value, limit: usize, truncated: &mut bool) -> Value {
     let mut preview = json!({});
@@ -72,8 +75,8 @@ fn annotation_preview(annotation: &Value, limit: usize, truncated: &mut bool) ->
         }
     }
     if let Some(list) = annotation["properties"].as_array() {
-        preview["properties"] = list.iter().take(20).cloned().collect();
-        *truncated |= list.len() > 20;
+        preview["properties"] = list.iter().take(LIST_ITEMS).cloned().collect();
+        *truncated |= list.len() > LIST_ITEMS;
     }
     if let Some(id) = annotation.get("categoryId") {
         preview["categoryId"] = id.clone();
@@ -669,10 +672,10 @@ fn summarize(
         if let Some(definitions) = semantics.get("componentPropertyDefinitions") {
             let mut compact = json!({"source":definitions["source"], "state":definitions["state"]});
             if let Some(entries) = definitions["entries"].as_array() {
-                compact["entries"] = entries.iter().take(20).cloned().collect();
+                compact["entries"] = entries.iter().take(LIST_ITEMS).cloned().collect();
                 compact["count"] = json!(entries.len());
-                compact["truncated"] = json!(entries.len() > 20);
-                *truncated |= entries.len() > 20;
+                compact["truncated"] = json!(entries.len() > LIST_ITEMS);
+                *truncated |= entries.len() > LIST_ITEMS;
             }
             evidence.insert("componentPropertyDefinitions".into(), compact);
         }
@@ -684,20 +687,21 @@ fn summarize(
     if let Some(definitions) = node["componentPropertyDefinitions"].as_object() {
         let compact: serde_json::Map<String, Value> = definitions
             .iter()
-            .take(20)
+            .take(LIST_ITEMS)
             .map(|(name, definition)| (name.clone(), json!({"type":definition["type"]})))
             .collect();
         summary["componentPropertyDefinitions"] = compact.into();
         summary["componentPropertyDefinitionCount"] = json!(definitions.len());
-        *truncated |= definitions.len() > 20;
+        *truncated |= definitions.len() > LIST_ITEMS;
     }
     if let Some(items) = node["_figlens"]["renderDiagnostics"].as_array() {
         if summary.get("_figlens").is_none() {
             summary["_figlens"] = json!({});
         }
-        summary["_figlens"]["renderDiagnostics"] = json!(items.iter().take(20).collect::<Vec<_>>());
-        summary["_figlens"]["renderDiagnosticsTruncated"] = json!(items.len() > 20);
-        *truncated |= items.len() > 20;
+        summary["_figlens"]["renderDiagnostics"] =
+            json!(items.iter().take(LIST_ITEMS).collect::<Vec<_>>());
+        summary["_figlens"]["renderDiagnosticsTruncated"] = json!(items.len() > LIST_ITEMS);
+        *truncated |= items.len() > LIST_ITEMS;
     }
     if let Some(text) = node["characters"].as_str() {
         text_preview(&mut summary, text, detail.text_chars());
@@ -715,10 +719,10 @@ fn summarize(
     if let Some(list) = node["annotations"].as_array() {
         summary["annotations"] = list
             .iter()
-            .take(20)
+            .take(LIST_ITEMS)
             .map(|a| annotation_preview(a, detail.text_chars(), truncated))
             .collect();
-        *truncated |= list.len() > 20;
+        *truncated |= list.len() > LIST_ITEMS;
     }
     if detail.colors.is_some() {
         let fills = solid_fills(node, detail);
