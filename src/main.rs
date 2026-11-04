@@ -433,38 +433,46 @@ fn main() -> ExitCode {
     }
 }
 
+/// `USAGE`'s entries for one command, continuation lines included, and a pointer to the rest;
+/// `None` for a command it does not list.
+fn command_usage(command: &str) -> Option<String> {
+    if command.starts_with('-') {
+        return None;
+    }
+    let mut section = String::new();
+    let mut inside = false;
+    for line in USAGE.lines() {
+        if let Some(rest) = line.strip_prefix("  figlens ") {
+            inside = rest.split_whitespace().next() == Some(command);
+        } else if !line.starts_with(' ') {
+            // A blank line or a heading ends the command list.
+            inside = false;
+        }
+        if inside {
+            section.push_str(line);
+            section.push('\n');
+        }
+    }
+    (!section.is_empty())
+        .then(|| format!("{section}\nfiglens --help lists every command and explains <file.fig>, <node> and <out>"))
+}
+
 fn run(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
+    let command = args.first().cloned();
+    dispatch(args, out).map_err(|error| {
+        // A usage error shows only the command that was mistyped.
+        match command.as_deref().and_then(command_usage) {
+            Some(usage) if error.to_string() == USAGE => usage.into(),
+            _ => error,
+        }
+    })
+}
+
+fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
     if matches!(args.get(1).map(String::as_str), Some("-h" | "--help"))
-        && matches!(
-            args.first().map(String::as_str),
-            Some(
-                "tree"
-                    | "find"
-                    | "search"
-                    | "usages"
-                    | "diff"
-                    | "inspect"
-                    | "node"
-                    | "nodes"
-                    | "variables"
-                    | "bundle"
-                    | "export"
-                    | "compare"
-                    | "compare-image"
-                    | "verify"
-                    | "preview"
-                    | "mcp"
-                    | "workflow"
-                    | "cache"
-                    | "index"
-                    | "changes"
-                    | "watch"
-                    | "update"
-                    | "clipboard"
-            )
-        )
+        && let Some(usage) = args.first().and_then(|command| command_usage(command))
     {
-        writeln!(out, "{USAGE}")?;
+        writeln!(out, "{usage}")?;
         return Ok(());
     }
     match args.first().map(String::as_str) {

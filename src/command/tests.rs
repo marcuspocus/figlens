@@ -1570,3 +1570,48 @@ fn compare_image_args_refuse_a_threshold_out_of_range() {
         .to_string();
     assert!(error.contains("1-254"), "{error}");
 }
+
+#[test]
+fn command_help_prints_a_one_line_entry_and_the_pointer() {
+    let mut out = String::new();
+    run(vec!["update".into(), "--help".into()], &mut out).unwrap();
+    assert_eq!(
+        out,
+        "  figlens update                               install the latest GitHub release over this binary\n\nfiglens --help lists every command and explains <file.fig>, <node> and <out>\n"
+    );
+}
+
+#[test]
+fn command_help_keeps_continuation_lines_and_stops_at_the_next_command() {
+    let mut out = String::new();
+    run(vec!["find".into(), "-h".into()], &mut out).unwrap();
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines.len(), 5, "{out}");
+    assert!(
+        lines[0].starts_with("  figlens find <file.fig> <query>"),
+        "{out}"
+    );
+}
+
+#[test]
+fn every_entry_of_a_command_is_shown() {
+    let mut out = String::new();
+    run(vec!["models".into(), "--help".into()], &mut out).unwrap();
+    assert_eq!(out.matches("  figlens models ").count(), 3, "{out}");
+}
+
+#[test]
+fn a_usage_error_shows_only_that_command() {
+    let error = run(vec!["diff".into()], &mut String::new())
+        .unwrap_err()
+        .to_string();
+    assert!(error.starts_with("  figlens diff "), "{error}");
+    assert!(!error.contains("figlens tree "), "{error}");
+}
+
+#[test]
+fn help_after_help_still_prints_everything() {
+    let mut out = String::new();
+    run(vec!["--help".into(), "--help".into()], &mut out).unwrap();
+    assert!(out.starts_with("figlens — read Figma .fig files"), "{out}");
+}
