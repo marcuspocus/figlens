@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.13.0](https://github.com/runkids/figlens/compare/v0.12.1...v0.13.0) (2026-11-04)
+
+
+### New Features
+
+* **freshness:** tell agents when a saved .fig is older than its online file ([#230](https://github.com/runkids/figlens/issues/230)) ([09bd9d5](https://github.com/runkids/figlens/commit/09bd9d5ee1ba9fe588fbcc8427778e94f84c0556))
+* **herdr:** add a figlens panel and layout for Herdr ([#229](https://github.com/runkids/figlens/issues/229)) ([4bcba8e](https://github.com/runkids/figlens/commit/4bcba8e7bfe9726229149420c41ed5573dd1b90a))
+* **herdr:** show what agents did with each screen on a board ([#236](https://github.com/runkids/figlens/issues/236)) ([a73ca51](https://github.com/runkids/figlens/commit/a73ca5162178e7c756c42985c5b0c25bcdf65857))
+* **inspect:** report the node's ancestor path ([#228](https://github.com/runkids/figlens/issues/228)) ([c341c4f](https://github.com/runkids/figlens/commit/c341c4f68ecc99761de972608ff97f96687c6943))
+* **mcp:** journal agent reads in Herdr and show them in the panel ([#231](https://github.com/runkids/figlens/issues/231)) ([59bb2d6](https://github.com/runkids/figlens/commit/59bb2d67fdb56d3bdf062946e4196c2a008ac385))
+* **preview:** stop a viewer after it idles ([#234](https://github.com/runkids/figlens/issues/234)) ([8d5df0a](https://github.com/runkids/figlens/commit/8d5df0ac1f67919795013308497934bf8e4a7ce9))
+* **pull:** refresh mapped .fig copies through a browser sign-in ([#232](https://github.com/runkids/figlens/issues/232)) ([cc7c885](https://github.com/runkids/figlens/commit/cc7c88507c2db9c411f79c02dc597060afe90d22))
+
+
+### Bug Fixes
+
+* **herdr:** keep the figlens panel when switching spaces ([#233](https://github.com/runkids/figlens/issues/233)) ([d7224f5](https://github.com/runkids/figlens/commit/d7224f5217cdc2dd63f03ff7d58e50b777abb474))
+* **herdr:** name figlens's workflow tool when handing work to Claude Code ([#235](https://github.com/runkids/figlens/issues/235)) ([bee2897](https://github.com/runkids/figlens/commit/bee28974724f6e9854f9a0ad2b27d527661edd2a))
+* **preview:** keep the header status pill readable at every width ([effa208](https://github.com/runkids/figlens/commit/effa20867d9f63f875f6fdcb53f81b958f219ad8))
+
 ## [0.12.1](https://github.com/runkids/figlens/compare/v0.12.0...v0.12.1) (2026-11-04)
 
 

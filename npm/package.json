@@ -1,6 +1,6 @@
 {
   "name": "@runkids/figlens",
-  "version": "0.12.1",
+  "version": "0.13.0",
   "description": "Give your coding agent the design details to build, compare and follow changes from a saved Figma .fig: layout, text, variables, assets, reference renders, screenshot comparison and revision diffs. Offline: no Dev Mode seat, login or API quota. Pi, OpenCode, OMP, CLI and MCP.",
   "license": "MIT",
   "repository": {
