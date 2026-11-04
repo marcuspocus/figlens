@@ -43,7 +43,7 @@
 | 交接 | 分享 `.fig` 或 frame bundle | 分享 Figma 存取權 |
 | 精確度 | 獨立的 parser，有[已知缺漏](../README-zh-TW.md#limitations) | 由 Figma 維護 |
 
-讀取 `.fig` 可離線進行。安裝與更新 figlens、`gs://` 輸入、選用的 `freshness` 檢查、你的模型供應商，以及專案的相依套件仍需要網路。
+讀取 `.fig` 可離線進行。安裝與更新 figlens、`gs://` 輸入、選用的 `freshness` 檢查與 `pull`、你的模型供應商，以及專案的相依套件仍需要網路。
 
 <a id="bundle"></a>
 
@@ -271,6 +271,7 @@ Pi、OpenCode 和 OMP 透過各自的 opt-in 入口使用同一個索引，works
 | `node <file> <node>` | 單一原始 `.fig` 節點 |
 | `clipboard [copied.html] <out.fig>` | 用於沒有已存 `.fig` 的情況：在 Figma 選取圖層並複製（右鍵 > Copy，或 Cmd/Ctrl+C），再執行此指令，把剪貼簿轉成每個指令都能讀取的 `.fig`；貼到其他地方只會得到圖層的文字。讀取系統剪貼簿（macOS；Windows PowerShell 5.1 與 Linux `wl-paste`/`xclip` 未驗證）或已存的剪貼簿 HTML 檔。節點 ID 與來源檔案相同，並包含用到的元件。回報 `missingImages`、`missingComponents` 和 `layersWithoutOutlines`：複製內容沒有圖片位元組和向量輪廓，因此 export 和 bundle 會在缺少它們的地方發出警告。不會覆寫既有檔案。有已存的 `.fig` 時，改為把 Figma 連結當作節點傳入：可保留圖片和向量 |
 | `freshness [<file.fig> [--url URL] \| --sources <mapping.json>]` | 在斷定設計缺少某個 frame 之前，先確認每份已存副本是否比線上 Figma 檔案舊：檢查最近的 `.figlens/sources.json` 中的設計（`{name, url, file}` 清單，`file` 相對於 repository 根目錄；`.figlens/` 以外的 `--sources` 對照檔則相對於它自己的資料夾）、單一檔案，或附上 URL 的單一檔案。比較副本 `meta.json` 中的 `exported_at` 與線上的 `last_touched_at`（以 `curl` 和 `FIGMA_TOKEN` 中的 personal access token 讀取，scope 為 `file_metadata:read`）；輸出 `stale`、`current` 或附原因的 `unknown`，缺少 token 或網路時也不會失敗。設定 token 後，在已對應且過期的副本中找不到節點或 `find` 沒有結果時，也會提示重新儲存本機副本（MCP `freshness`） |
+| `pull [--only NAME]... [--stale] [--sources <mapping.json>] \| --login` | 根據最近的 `.figlens/sources.json`（或 `--sources`）重新整理已對應的儲存副本。未指定 `--only` 或 `--stale` 時不會下載任何內容，只列出每個設計的新舊狀態。`--only` 選擇設計，`--stale` 只抓取過期或缺少的副本（需要 `FIGMA_TOKEN`）。由專用的 Chrome profile 執行 **File > Save local copy**；下載內容必須能解碼，且 `exported_at` 不早於目前副本，才會以原子方式取代；檢查失敗則保留舊副本；失敗時會指出所在階段（`open`、`editor`、`menu`、`export`、`download`、`install`）。`--login` 開啟可見視窗以登入（工作階段過期時 pull 也會開啟）；在其中登入可能會讓你在另一台裝置上登出 Figma。需要 Node、Chrome 與 `playwright-core` (`npm i -g @runkids/figlens playwright-core`)；僅支援英文 Figma 介面。僅 CLI |
 | `index prepare\|refresh\|rebuild\|clear\|status\|add\|remove\|relocate\|reset\|track\|untrack\|embed\|visual` | 使用者 figlens state 目錄中的本機 workspace，或位於 workspace 之後會記住的 `--storage DIR` 下。`prepare <file> --scope NODE` 為該範圍建立一次搜尋索引；之後 `search --file <file>`（或 `--workspace DIR`）不再解析檔案，跨 workspace 的所有來源統一排序作答。`refresh` 重建有變更的檔案，`rebuild` 重建全部或單一 `--source`/`--scope`，`clear` 刪除未使用的索引；新索引就緒前繼續使用舊索引。`reset` 只刪除 workspace 資料庫，不會刪除設計、匯出或記住的位置。`track --scope NODE` 從 baseline 建置開始記錄該範圍的變更；`untrack` 停止記錄並保留歷史。 `embed` 用已設定的模型嵌入已發布的範圍（使用 CPU 與記憶體）；僅在需要 workspace 語意搜尋時執行。 `visual --scope NODE` 為圖片搜尋渲染該已發布範圍的畫面與元件，設定視覺模型時一併嵌入；僅在需要 workspace 視覺搜尋時執行。 |
 | `jobs status\|cancel <jobId>` | 查看或取消索引建置；`cancel` 在建置停止後才返回 |
 | `changes --file <file>\|--id ID\|--workspace DIR [--source ID] [--scope NODE] [--consumer NAME\|--subscription ID\|--cursor C] [--revision R] [--limit N]` | 已追蹤範圍記錄的變更，從最舊開始：每次發布的建置一個修訂（baseline 或 changes），含涵蓋狀況及依變更類型與 facet 的計數；每個 changes 修訂都有 `impact` 摘要，說明變更波及的圖層（schema 7 之前為 null）；`--revision` 分頁列出該修訂變更的節點，再列出 impact 列出的圖層（`entry` 標明是哪一種）；`tracking` 指出哪些範圍需要 `index refresh` 才能記錄變更。唯讀 |

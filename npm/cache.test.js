@@ -33,11 +33,14 @@ test('concurrent first use keeps the verified binary while an MCP process is usi
       else {
         assert.equal(command, binary);
         assert.equal(fs.readFileSync(binary, 'utf8'), 'verified binary');
+        // `figlens pull` finds its browser helper through the launcher.
+        assert.match(options.env.FIGLENS_PULL_HELPER, /pull[\\/]helper\.mjs$/);
         running = true;
       }
       return { status: 0 };
     };
     const completion = vm.runInNewContext(code, {
+      __dirname: path.join(__dirname, 'bin'),
       Buffer,
       require(name) {
         if (name === 'node:fs') return localFs;
@@ -76,6 +79,7 @@ function installer(root, failure, env = {}) {
   const digest = crypto.createHash('sha256').update(bytes).digest('hex');
   const state = { exits: [], errors: [], downloads: 0, executions: 0 };
   state.done = vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'bin/figlens.js'), 'utf8'), {
+    __dirname: path.join(__dirname, 'bin'),
     Buffer,
     require(name) {
       if (name === '../package.json') return { version };

@@ -51,6 +51,7 @@ def main():
         for name in ['package.json', 'README.md', 'target.js']:
             shutil.copy2(ROOT/'npm'/name, stage/name)
         shutil.copytree(ROOT/'npm/bin', stage/'bin')
+        shutil.copytree(ROOT/'npm/pull', stage/'pull')
         shutil.copy2(ROOT/'LICENSE', stage/'LICENSE')
         run([node, ROOT/'scripts/prepare-npm.cjs', stage], ROOT, env)
         packed = json.loads(run(npm + ['pack', '--ignore-scripts', '--offline', '--json', '--pack-destination', str(out)], stage, env))[0]['filename']

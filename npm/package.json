@@ -28,6 +28,7 @@
   },
   "files": [
     "bin/",
+    "pull/",
     "target.js",
     "pi/",
     "skills/",
@@ -51,7 +52,8 @@
     "typebox": "*",
     "@oh-my-pi/pi-coding-agent": "^18.13.2",
     "@oh-my-pi/pi-tui": "*",
-    "@opencode/plugin": "2.2.0"
+    "@opencode/plugin": "2.2.0",
+    "playwright-core": ">=1.40.0"
   },
   "peerDependenciesMeta": {
     "@earendil-works/pi-coding-agent": {
@@ -70,6 +72,9 @@
       "optional": true
     },
     "@opencode/plugin": {
+      "optional": true
+    },
+    "playwright-core": {
       "optional": true
     }
   },

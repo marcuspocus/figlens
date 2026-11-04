@@ -21,6 +21,7 @@ pub mod freshness;
 pub mod index;
 #[cfg(test)]
 mod instance_tests;
+pub mod pull;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

@@ -1,5 +1,5 @@
-//! `freshness` and the stale hint through the real CLI and MCP server, with a `curl` stand-in
-//! on PATH serving Figma's file metadata; no network.
+//! `freshness`, the stale hint and `pull` through the real CLI and MCP server, with a `curl`
+//! stand-in on PATH serving Figma's file metadata and a pull helper stand-in; no network.
 #![cfg(unix)]
 
 use std::io::{BufRead, Write};
@@ -73,7 +73,9 @@ impl Project {
             .args(args)
             .current_dir(&self.root)
             .env("PATH", std::env::join_paths(dirs).unwrap())
-            .env_remove("FIGMA_TOKEN");
+            .env_remove("FIGMA_TOKEN")
+            .env("XDG_STATE_HOME", self.root.join("state"))
+            .env("FIGLENS_PULL_HELPER", self.root.join("bin/helper"));
         if token {
             command.env("FIGMA_TOKEN", "test-token");
         }
@@ -122,6 +124,11 @@ impl Project {
 
 /// The public fixture plus a `meta.json` saved at `SAVED`, as Figma's Save local copy writes.
 fn saved_copy() -> Vec<u8> {
+    saved_copy_at(SAVED)
+}
+
+/// The public fixture saved at `at`.
+fn saved_copy_at(at: &str) -> Vec<u8> {
     let mut source =
         zip::ZipArchive::new(std::fs::File::open("examples/first-success/design.fig").unwrap())
             .unwrap();
@@ -131,7 +138,7 @@ fn saved_copy() -> Vec<u8> {
     }
     zip.start_file("meta.json", zip::write::SimpleFileOptions::default())
         .unwrap();
-    zip.write_all(json!({"exported_at": SAVED}).to_string().as_bytes())
+    zip.write_all(json!({"exported_at": at}).to_string().as_bytes())
         .unwrap();
     zip.finish().unwrap().into_inner()
 }
@@ -305,6 +312,216 @@ fn an_unmapped_file_reports_every_field() {
     assert_eq!(
         (design["reason"].clone(), design.get("savedAt").cloned()),
         (json!("not_mapped"), Some(Value::Null)),
+        "{report}"
+    );
+}
+
+impl Project {
+    /// A pull helper that answers each run with `download` (written into its download folder),
+    /// or with a path outside that folder when `outside`, and logs its request to `bin/request`.
+    fn helper(&self, download: &[u8], outside: bool) {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::write(self.root.join("bin/download"), download).unwrap();
+        let target = if outside {
+            "$d/download".to_owned()
+        } else {
+            "$dl/0-design.fig".to_owned()
+        };
+        let script = format!(
+            "#!/bin/sh\nd=$(dirname \"$0\")\nIFS= read -r req\nprintf '%s' \"$req\" > \"$d/request\"\n\
+             dl=$(printf '%s' \"$req\" | sed 's/.*\"downloads\":\"\\([^\"]*\\)\".*/\\1/')\n\
+             cp \"$d/download\" \"$dl/0-design.fig\"\n\
+             printf '{{\"name\":\"home\",\"path\":\"%s\"}}\\n' \"{target}\"\n"
+        );
+        let helper = self.root.join("bin/helper");
+        std::fs::write(&helper, script).unwrap();
+        std::fs::set_permissions(&helper, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+
+    fn map(&self, sources: Value) {
+        std::fs::write(self.root.join(".figlens/sources.json"), sources.to_string()).unwrap();
+    }
+
+    fn saved(&self) -> Vec<u8> {
+        std::fs::read(self.fig()).unwrap()
+    }
+}
+
+#[test]
+fn pull_replaces_the_copy_with_a_newer_save() {
+    let project = Project::new(LATER);
+    let newer = saved_copy_at(LATER);
+    project.helper(&newer, false);
+    let report = json(&project.run(&["pull", "--only", "home"], false));
+    assert_eq!(
+        (
+            report["designs"][0]["state"].clone(),
+            project.saved() == newer
+        ),
+        (json!("pulled"), true),
+        "{report}"
+    );
+}
+
+#[test]
+fn pull_keeps_the_copy_when_the_download_is_older() {
+    let project = Project::new(LATER);
+    let before = project.saved();
+    project.helper(&saved_copy_at("2026-01-01T00:00:00Z"), false);
+    let out = project.run(&["pull", "--only", "home"], false);
+    assert_eq!(
+        (out.status.success(), project.saved() == before),
+        (false, true)
+    );
+}
+
+#[test]
+fn pull_keeps_the_copy_when_the_download_is_not_a_fig() {
+    let project = Project::new(LATER);
+    let before = project.saved();
+    project.helper(b"<html>Sign in</html>", false);
+    let out = project.run(&["pull", "--only", "home"], false);
+    assert_eq!(
+        (out.status.success(), project.saved() == before),
+        (false, true)
+    );
+}
+
+#[test]
+fn pull_refuses_a_download_outside_its_folder() {
+    let project = Project::new(LATER);
+    let before = project.saved();
+    project.helper(&saved_copy_at(LATER), true);
+    let out = project.run(&["pull", "--only", "home"], false);
+    assert_eq!(
+        (out.status.success(), project.saved() == before),
+        (false, true)
+    );
+}
+
+#[test]
+fn pull_stale_skips_a_current_copy_without_the_browser() {
+    let project = Project::new(SAVED);
+    project.helper(&saved_copy_at(LATER), false);
+    let report = json(&project.run(&["pull", "--stale"], true));
+    assert_eq!(
+        (
+            report["designs"][0]["reason"].clone(),
+            project.root.join("bin/request").exists()
+        ),
+        (json!("current"), false),
+        "{report}"
+    );
+}
+
+#[test]
+fn pull_sends_the_helper_a_key_only_url() {
+    let project = Project::new(LATER);
+    project.helper(&saved_copy_at(LATER), false);
+    json(&project.run(&["pull", "--only", "home"], false));
+    let request = std::fs::read_to_string(project.root.join("bin/request")).unwrap();
+    assert!(
+        request.contains("https://www.figma.com/design/AbC123/\""),
+        "{request}"
+    );
+}
+
+#[test]
+fn pull_of_an_unknown_name_fails_before_the_browser() {
+    let project = Project::new(LATER);
+    project.helper(&saved_copy_at(LATER), false);
+    let out = project.run(&["pull", "--only", "nope"], false);
+    assert_eq!(
+        (
+            out.status.success(),
+            project.root.join("bin/request").exists()
+        ),
+        (false, false)
+    );
+}
+
+#[test]
+fn pull_without_a_selection_lists_freshness_and_downloads_nothing() {
+    let project = Project::new(LATER);
+    project.helper(&saved_copy_at(LATER), false);
+    let report = json(&project.run(&["pull"], true));
+    assert_eq!(
+        (
+            report["designs"][0]["state"].clone(),
+            project.root.join("bin/request").exists()
+        ),
+        (json!("stale"), false),
+        "{report}"
+    );
+}
+
+#[test]
+fn pull_refuses_a_mapped_file_outside_the_project() {
+    let project = Project::new(LATER);
+    project.helper(&saved_copy_at(LATER), false);
+    project.map(json!([{"name": "home", "url": "https://www.figma.com/design/AbC123/Home", "file": "../home.fig"}]));
+    let out = project.run(&["pull", "--only", "home"], false);
+    assert_eq!(
+        (
+            out.status.success(),
+            project.root.join("bin/request").exists()
+        ),
+        (false, false)
+    );
+}
+
+#[test]
+fn pull_refuses_a_name_mapped_twice() {
+    let project = Project::new(LATER);
+    project.helper(&saved_copy_at(LATER), false);
+    let entry = json!({"name": "home", "url": "https://www.figma.com/design/AbC123/Home", "file": "figma/home.fig"});
+    project.map(json!([entry, {"name": "home", "url": "https://www.figma.com/design/XyZ789/Other", "file": "figma/other.fig"}]));
+    let out = project.run(&["pull", "--only", "home"], false);
+    assert_eq!(
+        (
+            out.status.success(),
+            project.root.join("bin/request").exists()
+        ),
+        (false, false)
+    );
+}
+
+#[test]
+fn pull_ignores_a_bad_url_on_a_design_it_does_not_pull() {
+    let project = Project::new(LATER);
+    project.helper(&saved_copy_at(LATER), false);
+    let entry = json!({"name": "home", "url": "https://www.figma.com/design/AbC123/Home", "file": "figma/home.fig"});
+    project.map(json!([entry, {"name": "notes", "url": "https://example.com/notes", "file": "figma/notes.fig"}]));
+    let report = json(&project.run(&["pull", "--only", "home"], false));
+    assert_eq!(report["designs"][0]["state"], "pulled", "{report}");
+}
+
+#[test]
+fn pull_login_needs_no_mapping() {
+    let project = Project::new(LATER);
+    project.helper(&saved_copy_at(LATER), false);
+    std::fs::remove_file(project.root.join(".figlens/sources.json")).unwrap();
+    project.run(&["pull", "--login"], false);
+    let request = std::fs::read_to_string(project.root.join("bin/request")).unwrap();
+    assert!(request.contains("\"login\":true"), "{request}");
+}
+
+#[test]
+fn pull_reports_why_the_helper_stopped() {
+    use std::os::unix::fs::PermissionsExt;
+    let project = Project::new(LATER);
+    let helper = project.root.join("bin/helper");
+    std::fs::write(
+        &helper,
+        "#!/bin/sh\necho 'pull needs playwright-core' >&2\nexit 1\n",
+    )
+    .unwrap();
+    std::fs::set_permissions(&helper, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let out = project.run(&["pull", "--only", "home"], false);
+    let report: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(
+        report["designs"][0]["reason"],
+        "the helper stopped before this design: pull needs playwright-core",
         "{report}"
     );
 }

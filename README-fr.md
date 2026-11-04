@@ -26,9 +26,9 @@ figlens transforme les fichiers Figma sauvegardés en contexte de design exploit
 
 - **Réaliser à partir des détails source.** Lisez la mise en page, le texte, les styles, les variables ainsi que les annotations et le statut Ready for dev de Dev Mode ; exportez les icônes vectorielles en SVG et les images comme ressources. `bundle` rassemble les données, ressources et rendu de référence d’une frame ; `verify` signale les fichiers manquants, les vérifications de polices et les limites de la transmission.
 - **Comparer l’UI en cours d’exécution.** `compare-image` compare votre capture au rendu de figlens et nomme les calques sous les régions qui diffèrent. Examinez ces écarts et les avertissements de rendu ; ce n’est pas une garantie de fidélité au pixel près.
-- **Suivre les changements du design.** `diff` compare les révisions sauvegardées ; `changes` et `watch` signalent les mises à jour des périmètres locaux suivis ; `freshness` indique quand une copie sauvegardée est plus ancienne que le fichier en ligne. Sauvegardez un nouveau `.fig` depuis Figma pour récupérer les modifications : ce n’est pas une synchronisation en direct avec Figma.
+- **Suivre les changements du design.** `diff` compare les révisions sauvegardées ; `changes` et `watch` signalent les mises à jour des périmètres locaux suivis ; `freshness` indique quand une copie sauvegardée est plus ancienne que le fichier en ligne, et `pull` sauvegarde une nouvelle copie via votre propre connexion dans le navigateur. Sauvegardez un nouveau `.fig` depuis Figma pour récupérer les modifications : ce n’est pas une synchronisation en direct avec Figma.
 
-**Le fonctionnement hors ligne comme base.** Dans Figma, **File > Save local copy**. Placez `design.fig` à côté de votre code. Ensuite, un lien Figma suffit : son id de nœud choisit le frame. Sans copie enregistrée, copiez les calques dans Figma (clic droit > Copy) et lancez `figlens clipboard screen.fig` ; une copie ne contient ni images ni contours vectoriels ([comment](docs/README-fr.md#copy-a-selection)). Un binaire natif le lit en local, sans app Figma ouverte, connexion au compte ni appel réseau vers Figma ; seule la vérification facultative `freshness`, avec votre `FIGMA_TOKEN`, demande à Figma la date de dernière modification d’un fichier.
+**Le fonctionnement hors ligne comme base.** Dans Figma, **File > Save local copy**. Placez `design.fig` à côté de votre code. Ensuite, un lien Figma suffit : son id de nœud choisit le frame. Sans copie enregistrée, copiez les calques dans Figma (clic droit > Copy) et lancez `figlens clipboard screen.fig` ; une copie ne contient ni images ni contours vectoriels ([comment](docs/README-fr.md#copy-a-selection)). Un binaire natif le lit en local, sans app Figma ouverte, connexion au compte ni appel réseau vers Figma ; seules la vérification facultative `freshness` (avec votre `FIGMA_TOKEN`) et `pull` (via votre connexion dans le navigateur) contactent Figma.
 
 <a id="start"></a>
 
@@ -249,7 +249,7 @@ Le GIF en boucle lit la vidéo montée à une vitesse trois fois supérieure. Cl
 
 Utilisez **figlens** quand le design doit voyager sous forme de fichier : agents distants, CI, travail hors ligne, passation entre agents, lectures répétées illimitées. Utilisez le **MCP Figma officiel** quand l’agent doit voir le design en direct, sans étape d’export.
 
-La lecture d’un `.fig` se fait hors ligne. L’installation et la mise à jour de figlens, les entrées `gs://`, la vérification facultative `freshness`, votre fournisseur de modèle et les dépendances de votre projet nécessitent toujours un réseau.
+La lecture d’un `.fig` se fait hors ligne. L’installation et la mise à jour de figlens, les entrées `gs://`, la vérification facultative `freshness` et `pull`, votre fournisseur de modèle et les dépendances de votre projet nécessitent toujours un réseau.
 
 [Comparaison complète](docs/README-fr.md#why)
 

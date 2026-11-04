@@ -200,7 +200,7 @@ pub fn check(curl: &str, source: &Source, token: Result<&str, &'static str>) -> 
     match token.and_then(|token| online(curl, key, token)) {
         Err(reason) => unknown(report, reason),
         Ok((at, version)) => {
-            let stale = millis(&at) > millis(&saved);
+            let stale = newer(&at, &saved);
             report["onlineModifiedAt"] = at.into();
             report["onlineVersion"] = version.into();
             report["state"] = if stale { "stale" } else { "current" }.into();
@@ -220,6 +220,11 @@ pub fn unknown(name: Value, label: &str, reason: &str) -> Value {
         "state": "unknown",
         "reason": reason,
     })
+}
+
+/// Whether RFC 3339 time `a` is later than `b`; an unreadable time is never later.
+pub fn newer(a: &str, b: &str) -> bool {
+    millis(a).zip(millis(b)).is_some_and(|(a, b)| a > b)
 }
 
 /// `FIGMA_TOKEN` when set and non-empty.

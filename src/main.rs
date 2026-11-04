@@ -398,6 +398,22 @@ usage:
                                              never fails for a missing token or network. With a
                                              token, a node not found or an empty find in a mapped
                                              stale copy also says to save a new local copy
+  figlens pull [--only NAME]... [--stale] [--sources <mapping.json>] | --login
+                                             refresh mapped saved copies from Figma. With no --only or
+                                             --stale it downloads nothing and lists each design's
+                                             freshness. --only NAME (repeatable) picks designs; --stale
+                                             pulls only stale or missing copies (needs FIGMA_TOKEN). A
+                                             dedicated browser profile runs File > Save local copy; the
+                                             download must decode and carry an exported_at no older than
+                                             the current copy, then replaces the file atomically, and a
+                                             failed check keeps the old copy. Mapped files must stay
+                                             below the mapping's folder, one name per design. --login
+                                             opens a visible window to sign in (a pull opens it too when
+                                             the session has expired); signing in there may sign you out
+                                             of Figma elsewhere. Needs Node, Chrome and the npm package's
+                                             helper with playwright-core (FIGLENS_PULL_HELPER). Prints
+                                             {mapping, designs:[{name,file,state: pulled|skipped|failed,
+                                             savedAt,stage,reason}]}; fails when any design failed.
   figlens update                               install the latest GitHub release over this binary
   figlens --help | --version
 
@@ -681,6 +697,44 @@ fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
             )?;
             writeln!(out, "{}", serde_json::to_string_pretty(&report)?)?;
             return Ok(());
+        }
+        Some("pull") => {
+            let (mut only, mut sources, mut stale, mut login) = (Vec::new(), None, false, false);
+            let mut rest = args[1..].iter();
+            while let Some(arg) = rest.next() {
+                match arg.as_str() {
+                    "--only" => {
+                        only.push(rest.next().ok_or("--only needs a design name")?.as_str())
+                    }
+                    "--sources" => {
+                        sources = Some(Path::new(rest.next().ok_or("--sources needs a path")?))
+                    }
+                    "--stale" => stale = true,
+                    "--login" => login = true,
+                    _ => return Err(USAGE.into()),
+                }
+            }
+            if login && (stale || !only.is_empty()) {
+                return Err("--login only signs in; run pull again to download".into());
+            }
+            let cwd = std::env::current_dir()?;
+            let storage = figlens::workspace::storage(None)?;
+            let request = command::pull::Request {
+                sources,
+                only,
+                stale,
+                login,
+                start: &cwd,
+            };
+            return match command::pull::run(&request, storage.state_dir()) {
+                Ok(report) => Ok(writeln!(out, "{}", serde_json::to_string_pretty(&report)?)?),
+                Err(error) => {
+                    if let Some(failed) = error.downcast_ref::<command::pull::Failed>() {
+                        writeln!(out, "{}", serde_json::to_string_pretty(&failed.report)?)?;
+                    }
+                    Err(error)
+                }
+            };
         }
         Some("workflow") => {
             let topic = args.get(1).ok_or_else(|| {

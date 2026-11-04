@@ -74,7 +74,10 @@ async function install() {
 async function main() {
   // This version's archive always carries the runtime, so a cache without it is repaired.
   if (!fs.existsSync(bin) || !fs.existsSync(runtime)) await install();
-  const run = spawnSync(bin, process.argv.slice(2), { stdio: "inherit" });
+  // `figlens pull` drives Figma through the helper shipped beside this launcher.
+  const helper = process.env.FIGLENS_PULL_HELPER || path.join(__dirname, "..", "pull", "helper.mjs");
+  const env = { ...process.env, FIGLENS_PULL_HELPER: helper };
+  const run = spawnSync(bin, process.argv.slice(2), { stdio: "inherit", env });
   if (run.error) throw run.error;
   process.exit(run.status ?? 1);
 }

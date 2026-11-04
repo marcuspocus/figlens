@@ -295,7 +295,7 @@ def main():
     assert metadata['commit'] == args.commit, 'Candidate is from another commit'
     package = artifacts/metadata['package']['file']
     assert sha(package) == metadata['package']['sha256'], 'Candidate tarball hash differs'
-    required = {'package.json', 'README.md', 'LICENSE', 'bin/figlens.js', 'target.js',
+    required = {'package.json', 'README.md', 'LICENSE', 'bin/figlens.js', 'target.js', 'pull/helper.mjs',
                 'pi/index.ts', 'pi/workflow.mjs', 'pi/viewer.mjs', 'pi/requests.mjs', 'pi/stale.mjs', 'pi/package.json', 'pi/README.md',
                 '.mcp.json', 'omp/index.ts', 'omp/review.mjs', 'omp/mcp.cjs', 'omp/package.json', 'omp/README.md',
                 'opencode/index.mjs', 'opencode/tui.mjs', 'opencode/adapter.mjs', 'opencode/rpc.mjs',
