@@ -136,7 +136,7 @@ pi install npm:@runkids/figlens
 
 ## Herdr 面板
 
-在代理旁邊檢視設計的 [Herdr](https://herdr.dev) 面板：打開 `.fig`，用名稱、文字、節點 ID 或 Figma 連結找到畫面或圖層，看完整尺寸，並在顯示完整訊息的確認框之後，以 Build、Plan 或 YOLO 交給左側的代理。不需要安裝 figlens，遠端 Herdr 機器上的設計也在原處讀取。在 Herdr 裡請代理執行：`Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`。詳細說明：[herdr/README.md](../herdr/README.md)。
+在代理旁邊檢視設計的 [Herdr](https://herdr.dev) 面板：打開 `.fig`，用名稱、文字、節點 ID 或 Figma 連結找到畫面或圖層，看完整尺寸，並在顯示完整訊息的確認框之後，以 Build、Plan 或 YOLO 交給左側的代理。不需要安裝 figlens，遠端 Herdr 機器上的設計也在原處讀取。在 Herdr 裡請代理執行：`Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`。詳細說明：[herdr/README.md](../herdr/README.md)。代理的 figlens MCP 伺服器在 Herdr 終端機裡執行時，面板會顯示每個代理正在讀取的畫面。
 
 <a id="viewer"></a>
 

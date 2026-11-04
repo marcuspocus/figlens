@@ -136,7 +136,7 @@ Pi を再起動するか `/reload` を実行し、普通の言葉で画面を依
 
 ## Herdr パネル
 
-エージェントの隣でデザインを扱う [Herdr](https://herdr.dev) パネルです。`.fig` を開き、名前・テキスト・ノード ID・Figma リンクで画面やレイヤーを探し、フルサイズで確認して、送信内容をそのまま表示する確認ダイアログのあと、左のエージェントに Build・Plan・YOLO として渡せます。figlens のインストールは不要で、リモートの Herdr マシンにあるデザインもその場で読みます。Herdr 内のエージェントに次のように頼んでください: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`。詳細: [herdr/README.md](../herdr/README.md)。
+エージェントの隣でデザインを扱う [Herdr](https://herdr.dev) パネルです。`.fig` を開き、名前・テキスト・ノード ID・Figma リンクで画面やレイヤーを探し、フルサイズで確認して、送信内容をそのまま表示する確認ダイアログのあと、左のエージェントに Build・Plan・YOLO として渡せます。figlens のインストールは不要で、リモートの Herdr マシンにあるデザインもその場で読みます。Herdr 内のエージェントに次のように頼んでください: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`。詳細: [herdr/README.md](../herdr/README.md)。エージェントの figlens MCP サーバーが Herdr のターミナルで動いていると、パネルは各エージェントが読んでいる画面を表示します。
 
 <a id="viewer"></a>
 

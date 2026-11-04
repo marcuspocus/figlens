@@ -30,7 +30,9 @@ def check(binary):
         command = [sys.executable, '-c', prefix +
                    'import os,sys; os.execv(sys.argv[1], sys.argv[1:])', str(binary), 'mcp']
         args = {'name': 'nodes', 'arguments': {'file': str(source), 'node': '0:1'}}
-        with session(command, ROOT, os.environ.copy()) as request:
+        # Inside a Herdr terminal the server would journal into the real state folder.
+        env = {k: v for k, v in os.environ.items() if k != 'HC_TERMINAL_ID'}
+        with session(command, ROOT, env) as request:
             assert request('tools/call', args)['isError'] is False
             assert request('tools/call', args)['isError'] is False
             stamp = (source.stat().st_mtime_ns, source.stat().st_size)

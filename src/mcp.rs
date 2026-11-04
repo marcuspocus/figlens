@@ -476,6 +476,16 @@ impl AdmittedCall {
         )
     }
 
+    /// The node arguments this call names, as given: `node`, and each `export_batch` item's.
+    fn nodes(&self) -> Vec<&str> {
+        let items = self.call.argument("items").as_array().into_iter().flatten();
+        self.call
+            .string("node")
+            .into_iter()
+            .chain(items.filter_map(|item| item["node"].as_str()))
+            .collect()
+    }
+
     fn recheck(&self, roots: &[PathBuf]) -> Result<(), contract::Failure> {
         for path in self
             .local()
@@ -572,7 +582,7 @@ impl AdmittedCall {
                     })
                     .map_err(contract::Failure::from_error);
             }
-            let run = |tree: &Tree, path: &Path, decoded| {
+            let run_tool = |tree: &Tree, path: &Path, decoded| {
                 if name == "compare_image" {
                     let opts = figlens::compare_image::Options {
                         scale: self.call.argument("scale").as_f64(),
@@ -616,6 +626,17 @@ impl AdmittedCall {
                 )?
                 .decoded(decoded)
                 .execute(tree, path)
+            };
+            // Inside a Herdr terminal, a call that read the design's nodes leaves one journal line.
+            let run = |tree: &Tree, path: &Path, decoded| {
+                run_tool(tree, path, decoded).inspect(|_| {
+                    // find is a search: like search, usages and diff, it leaves no line.
+                    if name != "find"
+                        && let Some(journal) = crate::activity::journal()
+                    {
+                        journal.record(name, path, tree, &crate::activity::ids(self.nodes()));
+                    }
+                })
             };
             let result: Result<command::Output, Box<dyn Error>> = (|| {
                 if let Some((path, tree, decoded)) = loaded {

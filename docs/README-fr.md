@@ -136,7 +136,7 @@ Guide complet, commandes et limites : [pi/README.md](../pi/README.md).
 
 ## Panneau Herdr
 
-Un panneau [Herdr](https://herdr.dev) pour le design à côté de vos agents : ouvrez un `.fig`, trouvez un écran ou un calque par nom, texte, ID de nœud ou lien Figma, regardez-le en taille réelle et confiez-le à l’agent de gauche en Build, Plan ou YOLO après une boîte de confirmation qui montre le message exact. Aucune installation de figlens n’est nécessaire, et les designs des machines Herdr distantes sont lus sur place. Demandez à l’agent dans Herdr : `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`. Détails : [herdr/README.md](../herdr/README.md).
+Un panneau [Herdr](https://herdr.dev) pour le design à côté de vos agents : ouvrez un `.fig`, trouvez un écran ou un calque par nom, texte, ID de nœud ou lien Figma, regardez-le en taille réelle et confiez-le à l’agent de gauche en Build, Plan ou YOLO après une boîte de confirmation qui montre le message exact. Aucune installation de figlens n’est nécessaire, et les designs des machines Herdr distantes sont lus sur place. Demandez à l’agent dans Herdr : `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`. Détails : [herdr/README.md](../herdr/README.md). Lorsque le serveur MCP figlens d’un agent tourne dans un terminal Herdr, le panneau montre quel écran chaque agent est en train de lire.
 
 <a id="viewer"></a>
 

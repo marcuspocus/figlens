@@ -65,6 +65,11 @@ For the layout, also copy `figlens-layout/layouts/herdr-figlens.json` and
   OpenCode receive their own `/figlens plan` and `/figlens yolo` commands,
   Claude Code the plugin's workflow, any other agent a plain prompt naming the
   skill's reference. A shell is never a receiver. YOLO confirms only by click.
+- **Agents**: when an agent's figlens MCP server runs in a Herdr terminal, a
+  line under the filter shows what each agent read last (tool, screen, page,
+  how long ago; click to show that screen alone), its screen and its page,
+  even folded, get a dot in the agent's color, and the preview outlines the
+  layer it read.
 - **Keys** on the panel: `/` filters, ↑ ↓ move, Enter builds, Space looks closer, Esc clears.
 
 When the design and the agent are on different machines, the confirm dialog
@@ -78,9 +83,17 @@ keeps thumbnails and previews in its own folder under `~/.config/herdr-app`, and
 contacts the network only for the one-click engine download from GitHub
 Releases. It runs `figlens`, `hc` (to start the browser viewer, send a
 confirmed message and copy a design between your Herdr machines), `osascript`,
-`zenity` or `kdialog` for the file picker, and `open` or `xdg-open` for a
-snapshot. The cache row at the bottom of the empty panel shows and clears what
-it keeps, including figlens's render cache, after a confirm.
+`zenity` or `kdialog` for the file picker, `open` or `xdg-open` for a
+snapshot, and `sh` with its standard tools (`stat`, `find`, `dd`, `tar`,
+`realpath`, `sha256sum` or `shasum`, `awk`), plus `curl` for the download. The cache row at the bottom of the empty panel shows and clears what
+it keeps, including figlens's render cache, after a confirm. When an agent's
+figlens MCP server runs inside a Herdr terminal, it records each call that
+read the design: the design's path, the tool, node ids and the screen box (no
+names, text or images), in figlens's state folder under `activity/`, at most
+about 512 KiB per design. The panel reads it there; outside Herdr nothing is
+recorded. Lines older than a week are removed; delete that folder to clear
+it. A host that filters its MCP servers' environment (Codex's `env_vars`) must
+pass `HC_TERMINAL_ID`, or its agents do not show.
 
 ## Development
 
