@@ -136,7 +136,7 @@ Pi를 다시 시작하거나 `/reload`를 실행한 뒤 평소 말로 화면을 
 
 ## Herdr 패널
 
-에이전트 옆에서 디자인을 다루는 [Herdr](https://herdr.dev) 패널입니다. `.fig`를 열고 이름, 텍스트, 노드 ID, Figma 링크로 화면이나 레이어를 찾아 전체 크기로 본 뒤, 보낼 메시지를 그대로 보여 주는 확인 대화상자를 거쳐 왼쪽 에이전트에게 Build, Plan, YOLO로 넘깁니다. figlens 설치가 필요 없고, 원격 Herdr 머신의 디자인도 그 자리에서 읽습니다. Herdr 안의 에이전트에게 이렇게 요청하세요: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`. 자세한 내용: [herdr/README.md](../herdr/README.md). 에이전트의 figlens MCP 서버가 Herdr 터미널에서 실행되면, 패널에 각 에이전트가 읽고 있는 화면이 표시됩니다.
+에이전트 옆에서 디자인을 다루는 [Herdr](https://herdr.dev) 패널입니다. `.fig`를 열고 이름, 텍스트, 노드 ID, Figma 링크로 화면이나 레이어를 찾아 전체 크기로 본 뒤, 보낼 메시지를 그대로 보여 주는 확인 대화상자를 거쳐 왼쪽 에이전트에게 Build, Plan, YOLO로 넘깁니다. figlens 설치가 필요 없고, 원격 Herdr 머신의 디자인도 그 자리에서 읽습니다. Herdr 안의 에이전트에게 이렇게 요청하세요: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`. 자세한 내용: [herdr/README.md](../herdr/README.md). 에이전트가 Herdr 터미널에서 figlens(MCP 또는 CLI)를 쓰면, 패널에 각 에이전트가 읽고 있는 화면이 표시되고 보드에서 화면마다 추적합니다: 작업 중, compare_image로 검증됨, 구현 후 디자인 변경.
 
 <a id="viewer"></a>
 
@@ -149,7 +149,7 @@ npx -y @runkids/figlens preview design.fig                        # 로컬 viewe
 npx -y @runkids/figlens preview design.fig 12:345 --out preview.html   # 누구에게나 보낼 수 있는 오프라인 HTML 스냅샷
 ```
 
-페이지와 레이어를 탐색하고, 검색하고, 순위 검색과 선택 항목의 정확한 사용처(usages)를 확인하고, 거리를 측정하고, 레이아웃, 타이포그래피, 변수, CSS를 확인하고, 모든 레이어를 내보내고, 구현 프롬프트를 복사하거나 선택 영역의 bundle을 다운로드할 수 있습니다. 선택적인 로컬 모델로 순위 검색을 시맨틱 또는 하이브리드로 전환할 수 있으며, 파일 인덱싱은 Enable index를 눌렀을 때만 이루어집니다. 구현 결과의 스크린샷을 가져오면 디자인 위에 겹쳐 볼 수 있습니다. 자세한 내용: [미리보기 가이드](../wiki/preview.md). Visual/Hybrid는 참조 PNG 또는 선택한 레이어와 픽셀 자르기를 지원합니다. 시각 인덱스는 명시적으로 활성화하며 검색 이미지는 저장하지 않습니다.
+페이지와 레이어를 탐색하고, 검색하고, 순위 검색과 선택 항목의 정확한 사용처(usages)를 확인하고, 거리를 측정하고, 레이아웃, 타이포그래피, 변수, CSS를 확인하고, 모든 레이어를 내보내고, 구현 프롬프트를 복사하거나 선택 영역의 bundle을 다운로드할 수 있습니다. 선택적인 로컬 모델로 순위 검색을 시맨틱 또는 하이브리드로 전환할 수 있으며, 파일 인덱싱은 Enable index를 눌렀을 때만 이루어집니다. 구현 결과의 스크린샷을 가져오면 디자인 위에 겹쳐 볼 수 있습니다. 자세한 내용: [미리보기 가이드](../wiki/preview.md). Visual/Hybrid는 참조 PNG 또는 선택한 레이어와 픽셀 자르기를 지원합니다. 시각 인덱스는 명시적으로 활성화하며 검색 이미지는 저장하지 않습니다. **Copy reference prompt**는 선택한 레이어를 가리키는 짧은 프롬프트를 복사해 어떤 에이전트에든 붙여 넣을 수 있게 합니다.
 
 <a id="mcp-and-skill"></a>
 

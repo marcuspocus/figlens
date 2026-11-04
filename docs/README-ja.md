@@ -136,7 +136,7 @@ Pi を再起動するか `/reload` を実行し、普通の言葉で画面を依
 
 ## Herdr パネル
 
-エージェントの隣でデザインを扱う [Herdr](https://herdr.dev) パネルです。`.fig` を開き、名前・テキスト・ノード ID・Figma リンクで画面やレイヤーを探し、フルサイズで確認して、送信内容をそのまま表示する確認ダイアログのあと、左のエージェントに Build・Plan・YOLO として渡せます。figlens のインストールは不要で、リモートの Herdr マシンにあるデザインもその場で読みます。Herdr 内のエージェントに次のように頼んでください: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`。詳細: [herdr/README.md](../herdr/README.md)。エージェントの figlens MCP サーバーが Herdr のターミナルで動いていると、パネルは各エージェントが読んでいる画面を表示します。
+エージェントの隣でデザインを扱う [Herdr](https://herdr.dev) パネルです。`.fig` を開き、名前・テキスト・ノード ID・Figma リンクで画面やレイヤーを探し、フルサイズで確認して、送信内容をそのまま表示する確認ダイアログのあと、左のエージェントに Build・Plan・YOLO として渡せます。figlens のインストールは不要で、リモートの Herdr マシンにあるデザインもその場で読みます。Herdr 内のエージェントに次のように頼んでください: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`。詳細: [herdr/README.md](../herdr/README.md)。エージェントが Herdr のターミナルで figlens（MCP または CLI）を使うと、パネルは各エージェントが読んでいる画面を表示し、ボードで各画面を追います：作業中、compare_image で検証済み、実装後にデザインが変更。
 
 <a id="viewer"></a>
 
@@ -149,7 +149,7 @@ npx -y @runkids/figlens preview design.fig                        # ローカル
 npx -y @runkids/figlens preview design.fig 12:345 --out preview.html   # 誰にでも送れるオフライン HTML スナップショット
 ```
 
-ページとレイヤーの閲覧、検索、ランク付き検索と選択範囲の正確な使用箇所（usages）の確認、計測、レイアウト・タイポグラフィ・variables・CSS の確認、任意のレイヤーのエクスポート、実装プロンプトのコピー、選択範囲の bundle のダウンロードができます。ランク付き検索は、任意のローカルモデルでセマンティックまたはハイブリッドに切り替えられます。ファイルのインデックス化は Enable index を押したときだけ行われます。作成した画面のスクリーンショットをドロップすると、デザインに重ねて比較できます。詳細：[preview ガイド](../wiki/preview.md)。 Visual／Hybrid は参照 PNG または選択レイヤーとピクセル単位の切り抜きに対応。視覚インデックスは明示的に有効化し、検索画像は保存しません。
+ページとレイヤーの閲覧、検索、ランク付き検索と選択範囲の正確な使用箇所（usages）の確認、計測、レイアウト・タイポグラフィ・variables・CSS の確認、任意のレイヤーのエクスポート、実装プロンプトのコピー、選択範囲の bundle のダウンロードができます。ランク付き検索は、任意のローカルモデルでセマンティックまたはハイブリッドに切り替えられます。ファイルのインデックス化は Enable index を押したときだけ行われます。作成した画面のスクリーンショットをドロップすると、デザインに重ねて比較できます。詳細：[preview ガイド](../wiki/preview.md)。 Visual／Hybrid は参照 PNG または選択レイヤーとピクセル単位の切り抜きに対応。視覚インデックスは明示的に有効化し、検索画像は保存しません。**Copy reference prompt** は、選択中のレイヤーを示す短いプロンプトをコピーし、どのエージェントにも貼り付けられます。
 
 <a id="mcp-and-skill"></a>
 

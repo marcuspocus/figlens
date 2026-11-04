@@ -136,7 +136,7 @@ Passo a passo completo, comandos e limites: [pi/README.md](../pi/README.md).
 
 ## Painel para o Herdr
 
-Um painel do [Herdr](https://herdr.dev) para o design ao lado dos seus agentes: abra um `.fig`, encontre uma tela ou camada por nome, texto, ID de nó ou link do Figma, veja em tamanho real e entregue ao agente da esquerda como Build, Plan ou YOLO depois de um diálogo de confirmação que mostra a mensagem exata. Não precisa instalar o figlens e lê designs de máquinas remotas do Herdr no próprio lugar. Peça ao agente no Herdr: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`. Detalhes: [herdr/README.md](../herdr/README.md). Quando o servidor MCP do figlens de um agente roda em um terminal do Herdr, o painel mostra qual tela cada agente está lendo.
+Um painel do [Herdr](https://herdr.dev) para o design ao lado dos seus agentes: abra um `.fig`, encontre uma tela ou camada por nome, texto, ID de nó ou link do Figma, veja em tamanho real e entregue ao agente da esquerda como Build, Plan ou YOLO depois de um diálogo de confirmação que mostra a mensagem exata. Não precisa instalar o figlens e lê designs de máquinas remotas do Herdr no próprio lugar. Peça ao agente no Herdr: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`. Detalhes: [herdr/README.md](../herdr/README.md). Quando agentes usam o figlens em terminais do Herdr (MCP ou CLI), o painel mostra qual tela cada um está lendo, e seu quadro acompanha cada tela: em construção, verificada com compare_image ou alterada desde que um agente a construiu.
 
 <a id="viewer"></a>
 
@@ -149,7 +149,7 @@ npx -y @runkids/figlens preview design.fig                        # viewer local
 npx -y @runkids/figlens preview design.fig 12:345 --out preview.html   # snapshot HTML offline para enviar a qualquer pessoa
 ```
 
-Navegue por páginas e camadas, busque, use a busca ranqueada e os usos exatos da seleção, meça, inspecione layout, tipografia, variáveis e CSS, exporte qualquer camada, copie um prompt de implementação ou baixe um bundle da seleção. Mude a busca ranqueada para semântica ou híbrida com um modelo local opcional: o visualizador só indexa o arquivo quando você clica em Enable index. Importe uma captura de tela da sua implementação para sobrepô-la ao design. Detalhes: [guia de preview](../wiki/preview.md). Visual/Hybrid aceita um PNG de referência ou uma camada selecionada com recorte em pixels. Ative o índice visual explicitamente; imagens de consulta não são armazenadas.
+Navegue por páginas e camadas, busque, use a busca ranqueada e os usos exatos da seleção, meça, inspecione layout, tipografia, variáveis e CSS, exporte qualquer camada, copie um prompt de implementação ou baixe um bundle da seleção. Mude a busca ranqueada para semântica ou híbrida com um modelo local opcional: o visualizador só indexa o arquivo quando você clica em Enable index. Importe uma captura de tela da sua implementação para sobrepô-la ao design. Detalhes: [guia de preview](../wiki/preview.md). Visual/Hybrid aceita um PNG de referência ou uma camada selecionada com recorte em pixels. Ative o índice visual explicitamente; imagens de consulta não são armazenadas. **Copy reference prompt** copia um prompt curto que nomeia a camada selecionada, para colar em qualquer agente.
 
 <a id="mcp-and-skill"></a>
 

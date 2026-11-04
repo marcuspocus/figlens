@@ -930,6 +930,72 @@ fn mcp_in_a_herdr_terminal_journals_successful_node_reads_but_not_searches() {
 }
 
 #[test]
+fn the_cli_in_a_herdr_terminal_journals_node_reads_but_not_find() {
+    let env = Env::new();
+    let fig = env.fig("a.fig");
+    let file = fig.to_str().unwrap();
+    let shot = env.dir.join("shot.png");
+    let shot = shot.to_str().unwrap();
+    assert!(env.run(&["export", file, "0:1", shot]).status.success());
+    // compare-image gets the screenshot by a relative path: the journal keeps an absolute one.
+    let runs: [&[&str]; 5] = [
+        &["inspect", file, "0:4", "--depth", "0", "--compare", "0:5"],
+        &["find", file, "first"],
+        &["variables", file],
+        &["node", file, "0:3"],
+        &["compare-image", file, "0:1", "shot.png"],
+    ];
+    for args in runs {
+        let mut cli = env.command(args, None);
+        let out = cli
+            .current_dir(env.dir.join(""))
+            .env("HC_TERMINAL_ID", "t7")
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+    let state = if cfg!(windows) {
+        env.home.join("figlens").join("state")
+    } else {
+        env.home.join(".local/state/figlens")
+    };
+    let lines: Vec<Value> = std::fs::read_dir(state.join("activity"))
+        .unwrap()
+        .flat_map(|entry| {
+            let text = std::fs::read_to_string(entry.unwrap().path()).unwrap();
+            text.lines().map(str::to_owned).collect::<Vec<_>>()
+        })
+        .map(|line| serde_json::from_str(&line).unwrap())
+        .collect();
+    let seen: Vec<(Value, Value, bool, Value)> = lines
+        .iter()
+        .map(|l| {
+            let shot = l["result"]["screenshot"].clone();
+            (
+                l["tool"].clone(),
+                l["nodes"].clone(),
+                l["revision"].is_string(),
+                shot,
+            )
+        })
+        .collect();
+    let canonical = json!(std::fs::canonicalize(shot).unwrap());
+    assert_eq!(
+        seen,
+        [
+            (json!("inspect"), json!(["0:4"]), true, Value::Null),
+            (json!("variables"), json!([]), true, Value::Null),
+            (json!("nodes"), json!(["0:3"]), true, Value::Null),
+            (json!("compare_image"), json!(["0:1"]), true, canonical),
+        ]
+    );
+}
+
+#[test]
 fn a_relocated_source_scoped_file_keeps_its_workspace_and_source_under_the_new_path() {
     let env = Env::new();
     let old = env.fig("a.fig");

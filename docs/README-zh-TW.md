@@ -136,7 +136,7 @@ pi install npm:@runkids/figlens
 
 ## Herdr 面板
 
-在代理旁邊檢視設計的 [Herdr](https://herdr.dev) 面板：打開 `.fig`，用名稱、文字、節點 ID 或 Figma 連結找到畫面或圖層，看完整尺寸，並在顯示完整訊息的確認框之後，以 Build、Plan 或 YOLO 交給左側的代理。不需要安裝 figlens，遠端 Herdr 機器上的設計也在原處讀取。在 Herdr 裡請代理執行：`Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`。詳細說明：[herdr/README.md](../herdr/README.md)。代理的 figlens MCP 伺服器在 Herdr 終端機裡執行時，面板會顯示每個代理正在讀取的畫面。
+在代理旁邊檢視設計的 [Herdr](https://herdr.dev) 面板：打開 `.fig`，用名稱、文字、節點 ID 或 Figma 連結找到畫面或圖層，看完整尺寸，並在顯示完整訊息的確認框之後，以 Build、Plan 或 YOLO 交給左側的代理。不需要安裝 figlens，遠端 Herdr 機器上的設計也在原處讀取。在 Herdr 裡請代理執行：`Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`。詳細說明：[herdr/README.md](../herdr/README.md)。代理在 Herdr 終端機裡使用 figlens（MCP 或 CLI）時，面板會顯示每個代理正在讀取的畫面，並在看板上追蹤每個畫面：進行中、已用 compare_image 驗證，或實作後設計已改動。
 
 <a id="viewer"></a>
 
@@ -149,7 +149,7 @@ npx -y @runkids/figlens preview design.fig                        # 本機 viewe
 npx -y @runkids/figlens preview design.fig 12:345 --out preview.html   # 可寄給任何人的離線 HTML 快照
 ```
 
-可瀏覽頁面與圖層、搜尋、排序搜尋與所選項目的精確用處（usages）、量測，檢視排版、字體、variables 與 CSS，匯出任何圖層，複製實作 prompt，或下載所選項目的 bundle。排序搜尋可搭配選用的本機模型切換為語意或混合模式，只有按下 Enable index 時，檢視器才會為檔案建立索引。拖入你實作成果的截圖，即可疊在設計上比對。詳情：[預覽指南](../wiki/preview.md)。 Visual／Hybrid 可使用參考 PNG 或所選圖層，並以像素裁切。請明確啟用視覺索引；查詢圖片不會保存。
+可瀏覽頁面與圖層、搜尋、排序搜尋與所選項目的精確用處（usages）、量測，檢視排版、字體、variables 與 CSS，匯出任何圖層，複製實作 prompt，或下載所選項目的 bundle。排序搜尋可搭配選用的本機模型切換為語意或混合模式，只有按下 Enable index 時，檢視器才會為檔案建立索引。拖入你實作成果的截圖，即可疊在設計上比對。詳情：[預覽指南](../wiki/preview.md)。 Visual／Hybrid 可使用參考 PNG 或所選圖層，並以像素裁切。請明確啟用視覺索引；查詢圖片不會保存。**Copy reference prompt** 會複製一段指明所選圖層的簡短 prompt，可以貼給任何代理。
 
 <a id="mcp-and-skill"></a>
 

@@ -56,22 +56,39 @@ For the layout, also copy `figlens-layout/layouts/herdr-figlens.json` and
   node ID (`12:345`) or paste a Figma link to jump to that node and the screen
   that holds it; other text also searches every layer. Pages fold; the button
   beside the filter folds or opens them all.
-- **Look**: select a row for a large preview. **Quick Look** (Space) opens a
-  floating window at full size; ← → move between screens. **Browser** opens
+- **Look**: select a row for a large preview. **Quick Look** (Space, or a
+  thumbnail) opens a floating window at full size; ← → move between screens. **Browser** opens
   the figlens viewer at that node, or an offline snapshot when the design is
   on another machine; the viewer stops by itself after 10 minutes with no page
-  open.
+  open. **Point** sends the agent on the left a reference to it
+  (file, node, screen) after a confirm; the agent says what it is and waits for
+  what you want done.
 - **Hand over**: the split button builds with the agent focused on the left;
   its menu holds Plan, YOLO, Start in a new tab and Copy prompt. Pi and
   OpenCode receive their own `/figlens plan` and `/figlens yolo` commands,
   Claude Code the figlens MCP `workflow` guide (or `figlens workflow` when
   its session has no figlens MCP), any other agent a plain prompt naming the
   skill's reference. A shell is never a receiver. YOLO confirms only by click.
-- **Agents**: when an agent's figlens MCP server runs in a Herdr terminal, a
-  line under the filter shows what each agent read last (tool, screen, page,
-  how long ago; click to show that screen alone), its screen and its page,
-  even folded, get a dot in the agent's color, and the preview outlines the
-  layer it read.
+- **Agents**: when agents use figlens in Herdr terminals (its MCP server or
+  the CLI), a line under the filter shows what each agent read last (tool,
+  screen, page, how long ago; click to watch that screen in Quick Look, where
+  the agents' boxes move as they read), its screen and its page, even folded,
+  get a dot in the agent's color, and the preview outlines the layer it read
+  with the agent and tool (click the preview for Quick Look). Below the list,
+  **Activity on this file** lists the latest reads.
+- **Board** (beside List in the header): every screen by what agents did with
+  it: Changed since built (the design was saved again and that screen changed
+  since an agent worked on it), Building (its agent is working on it, or needs
+  you), Done · not verified (its agent finished a turn), Planned (an agent you
+  asked to plan it finished; pick it to build), Verified (checked with figlens compare_image, with
+  its mismatch), Read before, Not started. Thumbnails open Quick Look to watch,
+  without actions. A banner above names the newest changed screen; **Send changes**
+  gives its agent the changed layers after a confirm. Pick screens and
+  plan them with the agent on the left (one message, one screen at a time) or
+  **Plan each in a new tab** (side by side); picks that are all Planned are
+  built the same ways; **Compare** opens a verified screen's design
+  beside the build screenshot (or the differences), and **Ask … to fix** sends
+  what the comparison found to an agent after a confirm.
 - **Keys** on the panel: `/` filters, ↑ ↓ move, Enter builds, Space looks closer, Esc clears.
 
 When the design and the agent are on different machines, the confirm dialog
@@ -86,15 +103,24 @@ contacts the network only for the one-click engine download from GitHub
 Releases. It runs `figlens`, `hc` (to start the browser viewer, send a
 confirmed message and copy a design between your Herdr machines), `osascript`,
 `zenity` or `kdialog` for the file picker, `open` or `xdg-open` for a
-snapshot, and `sh` with its standard tools (`stat`, `find`, `dd`, `tar`,
-`realpath`, `sha256sum` or `shasum`, `awk`), plus `curl` for the download. The cache row at the bottom of the empty panel shows and clears what
-it keeps, including figlens's render cache, after a confirm. When an agent's
-figlens MCP server runs inside a Herdr terminal, it records each call that
-read the design: the design's path, the tool, node ids and the screen box (no
-names, text or images), in figlens's state folder under `activity/`, at most
-about 512 KiB per design. The panel reads it there; outside Herdr nothing is
+snapshot, and `sh` with its standard tools (`stat`, `find`, `dd`, `du`, `wc`, `tar`,
+`gzip`, `gunzip`, `mktemp`, `touch`, `realpath`, `sha256sum` or `shasum`,
+`awk`, `cp`, `ls`, `rm`, `tail`, `head`, `base64`, `env`), plus `curl` for the
+download. For Changed since built it
+keeps each saved version of an open design (a copy-on-write clone where the
+file system has one, else a full copy; the newest 8 per design) under
+`~/.cache/figlens/herdr-revisions/`. The cache row at the bottom of the empty
+panel shows and clears what it keeps, including figlens's render cache, design
+copies and kept versions, after a confirm. When agents use figlens inside a
+Herdr terminal (MCP or CLI), each call that read the design is recorded: the
+design's path and saved version, the tool, node ids and the screen box, and
+for a comparison its numbers and the screenshot and diff paths (no names, text
+or images), in figlens's state folder under `activity/`, at most about 512 KiB
+per design. The panel reads it there; outside Herdr nothing is
 recorded. Lines older than a week are removed; delete that folder to clear
-it. A host that filters its MCP servers' environment (Codex's `env_vars`) must
+it. Herdr's shared state keeps what the board needs: each screen the panel
+handed to an agent (screen id, intent, the agent's terminal or tab name; a
+week) and what agents read in the last 10 minutes. A host that filters its MCP servers' environment (Codex's `env_vars`) must
 pass `HC_TERMINAL_ID`, or its agents do not show.
 
 ## Development

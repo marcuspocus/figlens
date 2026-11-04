@@ -45,7 +45,7 @@ figlens は保存した Figma ファイルを、coding agent が活用できる�
 | [Pi](#setup-pi) | Pi 1.3.0+ | パッケージに同梱の skill |
 | [OpenCode V2](#setup-opencode) | OpenCode V2 2.2.0 | 同梱の skill |
 | [OMP](#setup-omp) | OMP 18.13.2 | 同梱の skill |
-| [Herdr](herdr/README.md) | Herdr 0.1.12+ でエージェントの隣に置くパネル：画面を探して渡す | 受け取るエージェント側のセットアップ |
+| [Herdr](herdr/README.md) | Herdr 0.1.12+ でエージェントの隣に置くパネル：画面を探して渡し、各画面の進み具合をボードで追う | 受け取るエージェント側のセットアップ |
 | [CLI](#setup-cli) | シェルコマンドだけを実行するエージェント、スクリプト、CI、または自分で使う場合 | `figlens workflow <topic>`、または任意の [skill](#setup-skill) |
 
 **通常と上級。** 通常の利用にセットアップは不要です。`figlens search design.fig "query"` は `.fig` を読むだけで何も作りません。任意のローカルインデックスは依頼したときだけ作成され（`figlens index prepare design.fig --scope 0:0`）、再起動やホストをまたいで再利用されます。[通常の検索と任意のローカルインデックス](docs/README-ja.md#local-index)を参照してください。 任意・実験的：`--mode semantic` または `hybrid` は、自分で用意したローカルモデルで意味による順位付けを行います。[任意のセマンティック検索](docs/README-ja.md#semantic-search)を参照。

@@ -18,7 +18,8 @@
   change that pastes into an agent or deletes files asks first.
 - Network: only the engine download from GitHub Releases. Programs: `figlens`,
   `hc`, `sh` with its standard tools (`stat`, `find`, `dd`, `tar`, `realpath`,
-  `sha256sum`/`shasum`, `awk`), `curl` for the download, the platform file
+  `sha256sum`/`shasum`, `awk`, `cp`, `ls`, `rm`, `tail`, `head`, `base64`, `env`, `du`,
+  `wc`, `gzip`, `gunzip`, `mktemp`, `touch`), `curl` for the download, the platform file
   picker and `open`/`xdg-open`. Keep README, RECIPEs and
   code in step on hosts, programs, storage and behavior.
 - Each `preview.png` is a screenshot of the real mod or layout running in

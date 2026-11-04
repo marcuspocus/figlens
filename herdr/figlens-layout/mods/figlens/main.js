@@ -1,5 +1,6 @@
 // figlens beside your agents: open a .fig, find a screen or any layer, hand it to the agent on
-// the left as Build, Plan or YOLO, look at it full size, or start a new agent on it.
+// the left as Build, Plan or YOLO, point it at a node, look at it full size, or start a new
+// agent on it.
 // Roles (props.role): the panel (default); "toggle", the tab-bar button that opens the panel as
 // the "figlens" child of the layout's "panel-body" stack; "confirm", the dialog that shows
 // exactly what is pasted into which agent; "newtab", the dialog that starts an agent in a new
@@ -11,11 +12,17 @@ import { writeFile, mkdir, readdir } from "fs/promises";
 import { Buffer } from "buffer";
 import { createHash, randomUUID } from "crypto";
 import { VERSION, asset, releaseBase, cacheDir, INSTALL } from "./engine.js";
-import { groupFrames, thumbFile, fitBox, clean, nodeRef, intentText, appOf, latestActivity, ago, ACTIVITY } from "./frames.js";
+import { groupFrames, thumbFile, fitBox, clean, nodeRef, intentText, appOf, ago, ACTIVITY, ACTIVE_MS, parseActivity, latestActivity, recentActivity, screenStates, pct, scopeChange, isRevision, changeText, boardState, handoffStep } from "./frames.js";
 
 const FILES = "figlens.files.v1"; // { [space id]: { path, on } }: each space keeps its own design
 const NOTICE = "figlens.notice.v1"; // { kind, text, at }: dialogs report to the panel
 const QL = "figlens.quicklook.v1"; // what the Quick Look window shows and where it is in the list
+const CMP = "figlens.compare.v1"; // the comparison the compare window shows
+const HANDOFFS = "figlens.handoffs.v1"; // { "<machine>:<path>": { <screen id>: { intent, address | tab + space, at, started, finished } } }
+const HANDOFF_DAYS = 7;
+// A design's key in shared state, from a file or a design ({ on, path }).
+const designKey = (d) => `${d.on ?? ""}:${d.path}`;
+const LIVE = "figlens.live.v1"; // { "<machine>:<path>": { at, entries } }: what agents read now, for Quick Look
 const CLEARED = "figlens.cleared.v1"; // when the image cache was last cleared: every panel reloads
 const VIEWERS = "figlens.viewers.v1"; // { "<machine>:<path>": { terminal, url } }: browser viewers
 const PANELS = "workspace.panels"; // Herdr's: the side panels its tabs mod restores per space
@@ -27,11 +34,12 @@ const FOLD_OVER = 40, PREVIEW_MAX = 960, PREVIEW_H = 360, LOOK_MAX = 1600, THUMB
 const scaleFor = (size, max) => Math.min(16, Math.max(1, Math.ceil(max / Math.max(1, ...(size ?? [max])))));
 const GONE = "This file is no longer there";
 // GNU stat first: there, -f means file-system status and would print garbage. Then macOS's.
-const STAT = 'stat -c "%Y %s" "$1" 2>/dev/null || stat -f "%m %z" "$1"';
+const STAT = 'stat -L -c "%Y %s" "$1" 2>/dev/null || stat -L -f "%m %z" "$1"';
 const FIND = `find "$1" -maxdepth 4 \\( -name node_modules -o -name .git -o -name target \\) -prune -o -type f -name '*.fig' -print 2>/dev/null | head -20`;
 // sh -c REMOTE_EXPORT <name> <bin> <file> <max> <scale> <id>...: images rendered on the design's
 // machine, sent back as one base64 tar.gz; the design itself never moves.
 const REMOTE_EXPORT = `set -e
+unset HC_TERMINAL_ID
 bin=$1; file=$2; max=$3; scale=$4; shift 4
 d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
 mkdir "$d/out"; printf '%s\\n' "$@" > "$d/list"
@@ -50,6 +58,20 @@ printf '%s %s' "$d" "$(wc -c < "$d/s.gz" | tr -d ' ')"`;
 const FETCH_PART = 'h=$(command -v hc || echo "$HOME/.local/bin/hc"); "$h" exec --on "$1" dd if="$2" bs=1048576 skip="$3" count="$4" 2>/dev/null >> "$5"; wc -c < "$5"';
 const PART_MB = 4;
 const ACTIVITY_POLL = 5000;
+// sh -c KEEP_REVISION <design> <folder key> <revision key> <revision>: keeps this saved version of
+// the design beside the others agents read (a copy-on-write clone where the file system has one),
+// so a later save can be compared with what an agent built from; the newest 8 per design stay. A
+// save during the copy leaves none rather than other bytes under this revision's name.
+const REVISIONS = ".cache/figlens/herdr-revisions";
+const KEEP_REVISION = `d="$HOME/${REVISIONS}/$2"; f="$d/$3.fig"; mkdir -p "$d"
+now() { stat -L -c "%Y %s" "$1" 2>/dev/null || stat -L -f "%m %z" "$1"; }
+[ -e "$f" ] && exit 0
+[ "$(now "$1")" = "$4" ] || exit 0
+cp -c "$1" "$f" 2>/dev/null || cp --reflink=auto "$1" "$f" 2>/dev/null || cp "$1" "$f" || { rm -f "$f"; exit 0; }
+[ "$(now "$1")" = "$4" ] || rm -f "$f"
+cd "$d" && ls -1t | tail -n +9 | while IFS= read -r x; do rm -f "./$x"; done`;
+// A kept revision's folder and file names: the design's key, the revision with "-" for spaces.
+const revisionKeys = (file, rev) => [hash(`${file.on ?? ""}:${file.path}`), rev.replace(/\s+/g, "-")];
 const PRUNE = 'cd "$1" && ls -1t | tail -n +$2 | while IFS= read -r d; do rm -rf "./$d"; done';
 const KIND = { Darwin: "macos", Linux: "linux" };
 const STATUS_ICON = { done: "check", info: "copy", working: "ring", error: "alert" };
@@ -61,6 +83,9 @@ const INTENT = {
   build: { verb: "Build", title: (n, a) => `Send “${n}” to ${a}?`, go: (a) => `Send to ${a}` },
   plan: { verb: "Plan", title: (n, a) => `Plan “${n}” with ${a}?`, go: (a) => `Plan with ${a}` },
   yolo: { verb: "YOLO", title: (n, a) => `Let ${a} build “${n}” on its own?`, go: (a) => `Start YOLO in ${a}` },
+  point: { verb: "Point", title: (n, a) => `Point ${a} at “${n}”?`, go: (a) => `Send to ${a}` },
+  fix: { verb: "Fix", title: (n, a) => `Ask ${a} to fix “${n}”?`, go: (a) => `Send to ${a}` },
+  update: { verb: "Update", title: (n, a) => `Send the changes in “${n}” to ${a}?`, go: (a) => `Send to ${a}` },
 };
 const YOLO_NOTE = (a) => `${a} plans, edits this project, checks its work, and after a verified run deletes only the plan and exports it made. A failed run keeps them.`;
 
@@ -119,8 +144,11 @@ const working = (t, text) => h_flex().gap(7).items_center().text_size(S().second
 
 // ---- Data from Herdr and the design's machine ----
 
+// The panel's own figlens calls: never journaled as an agent's, whatever environment exec has.
+const engineArgs = (bin, args) => ["-u", "HC_TERMINAL_ID", bin, ...args];
+
 async function figlens(bin, args, on) {
-  const r = await exec(bin, args, { on });
+  const r = await exec("env", engineArgs(bin, args), { on });
   if (r.code !== 0) throw new Error(lastLine(r.stderr) || `figlens exited with ${r.code}`);
   return r.stdout;
 }
@@ -157,7 +185,7 @@ async function renderNode(bin, file, id, dir, max, size) {
     if (r.code === 0 && r.stdout.trim()) await unpackImages(r.stdout, dir);
   } else {
     // The node's own box, not its shadows or overflow: agent boxes are drawn in that space.
-    await exec(bin, ["export", file.path, id, `${dir}/${name}`, "--bounds", "layout", "--scale", scale, "--max-size", String(max)]);
+    await exec("env", engineArgs(bin, ["export", file.path, id, `${dir}/${name}`, "--bounds", "layout", "--scale", scale, "--max-size", String(max)]));
   }
   return (await readdir(dir)).includes(name);
 }
@@ -173,7 +201,7 @@ async function idleArgs(bin) {
 }
 
 async function viewerUrl(bin, file, cx, started) {
-  const key = `${file.on ?? ""}:${file.path}`, known = (shared(VIEWERS) ?? {})[key];
+  const key = designKey(file), known = (shared(VIEWERS) ?? {})[key];
   if (known) {
     const g = await hc(["get", known.terminal, "--json"]).catch(() => null);
     try { if (g?.code === 0 && JSON.parse(g.stdout).finished_ms == null) return known.url; } catch { /* start another */ }
@@ -370,12 +398,28 @@ function agentCard(t, agent, fallbackName) {
 }
 
 // Opens the confirm dialog for one intent; what it shows is exactly what is pasted.
-function confirmIntent(intent, agent, text, name, design) {
+// `screens`: the screen ids the message is about, recorded once it is sent (see recordHandoff).
+function confirmIntent(intent, agent, text, name, design, screens = []) {
   const copying = copyPlan(design, machineOf(agent.address));
   openOverlay({
     mod: "figlens", kind: "dialog", width: 480, height: (intent === "yolo" ? 470 : 410) + (copying ? 90 : 0),
-    props: { role: "confirm", intent, address: agent.address, name: agent.program.name, frame: name, text, design },
+    props: { role: "confirm", intent, address: agent.address, name: agent.program.name, frame: name, text, design, screens },
   });
+}
+
+// What the person asked for, by screen: the board shows a planned or done screen from it once its
+// agent finishes, for HANDOFF_DAYS. Point asks nothing to be built, so it is not recorded; the
+// other intents count as building.
+function recordHandoff(design, screens, intent, who) {
+  screens = (screens ?? []).filter(Boolean);
+  if (!design || intent === "point" || !screens.length) return;
+  const at = Date.now(), fresh = (h) => at - (h?.at ?? 0) < HANDOFF_DAYS * 86400000;
+  const all = Object.fromEntries(Object.entries(shared(HANDOFFS) ?? {})
+    .map(([k, v]) => [k, Object.fromEntries(Object.entries(v ?? {}).filter(([, h]) => fresh(h)))])
+    .filter(([, v]) => Object.keys(v).length));
+  const key = designKey(design), handoff = { intent: intent === "plan" ? "plan" : "build", ...who, at };
+  all[key] = { ...(all[key] ?? {}), ...Object.fromEntries(screens.map((id) => [id, handoff])) };
+  setShared(HANDOFFS, all);
 }
 
 // Empties this panel's image cache and figlens's render cache on each measured machine.
@@ -404,10 +448,10 @@ function handoffProps({ agent, file, frame, page, screen, cli, design }) {
   const space = activeSpace(), agentCli = cliFor(cli, design, machineOf(agent?.address));
   const text = (intent) => intentText({ intent, app: agent?.app ?? null, file: file.path, frame, page, screen, cli: agentCli });
   return {
-    address: agent?.address ?? null, agentName: agent?.program?.name ?? null, frame: frame.name,
+    address: agent?.address ?? null, agentName: agent?.program?.name ?? null, frame: frame.name, screens: [screen?.id ?? frame.id],
     plan: agent ? text("plan") : null, yolo: agent ? text("yolo") : null, copy: text("build"), design,
     newtab: { role: "newtab", on: space?.machine ?? null, space: space?.id, spaceName: space?.name, file: file.path, design,
-      frame: { id: frame.id, name: frame.name }, page: page ? { name: page.name } : null, screen: screen ? { name: screen.name } : null,
+      frame: { id: frame.id, name: frame.name }, page: page ? { name: page.name } : null, screen: screen ? { id: screen.id, name: screen.name } : null,
       cli: cliFor(cli, design, space?.machine ?? null) },
   };
 }
@@ -437,6 +481,42 @@ function handoffButton(t, key, agent, build, menuProps, newTab, inRow = false) {
       .child(icon("caret", 13, t.solid_foreground)));
 }
 
+// A screen's thumbnail cell (a dashed outline until drawn); a click opens Quick Look.
+function thumbCell(t, id, size, src, open) {
+  const box = fitBox(size, THUMB_W, THUMB_H);
+  return div().id(`thumb-${id}`).w(THUMB_W).h(THUMB_H).flex_none().flex().items_center().justify_center().rounded(4).bg(t.chrome)
+    .cursor_pointer().hover((st) => st.opacity(0.85)).on_click((_e, cx) => { cx.stop_propagation(); open(); })
+    .child(src ? image(src).w(box.w).h(box.h) : div().w(box.w).h(box.h).rounded(2).border_1().border_dashed().border_color(t.border));
+}
+
+// Live agents among journal lines, newest first, each with its color. Colors follow terminal order,
+// so an agent keeps its color while others come and go, here and in Quick Look alike.
+function readersFrom(entries, t) {
+  const colors = [t.ansi4, t.ansi5, t.ansi6, t.ansi3, t.ansi2, t.ansi1], live = agents();
+  return entries
+    .map((e) => ({ e, agent: live.find((a) => a.address === e.address) }))
+    .filter((r) => r.agent)
+    .sort((a, b) => a.e.address.localeCompare(b.e.address))
+    .map((r, i) => ({ ...r, color: colors[i % colors.length] }))
+    .sort((a, b) => b.e.at - a.e.at);
+}
+
+// Each reader's box on an image of a frame drawn into `box`: only the part inside the frame, tagged
+// with the agent and tool.
+function agentMarks(readers, frameSize, box, t) {
+  const scale = box.w / (frameSize?.[0] || box.w);
+  return readers.filter((r) => r.e.box).flatMap((r) => {
+    const [x, y, w, h] = r.e.box.map((v) => v * scale);
+    const left = Math.max(0, x), top = Math.max(0, y);
+    const width = Math.min(box.w, x + w) - left, height = Math.min(box.h, y + h) - top;
+    if (!(width >= 1 && height >= 1)) return [];
+    const label = `${r.agent.program?.name ?? r.e.address} · ${r.e.tool}`;
+    return [div().absolute().left(left).top(top).w(Math.max(4, width)).h(Math.max(4, height)).border_2().border_color(r.color).rounded(2),
+      div().absolute().left(left).top(Math.max(0, top - 16)).h(15).px(5).flex().items_center().rounded(3).bg(r.color)
+        .text_size(S().label - 1).text_color(t.background).child(label)];
+  });
+}
+
 export default class Figlens extends View {
   init(_props, cx) {
     this.role = blockProps()?.role ?? "panel";
@@ -455,6 +535,7 @@ export default class Figlens extends View {
       if (this.role === "newtab") this.initNewTab(cx);
       if (this.role === "menu") this.at = 0;
       if (this.role === "clear") this.clearing = false;
+      if (this.role === "compare") { this.cmp = null; this.cmpKey = null; this.showDiff = false; this.cmpError = null; }
       return;
     }
     this.handle = cx.focus_handle();
@@ -465,7 +546,8 @@ export default class Figlens extends View {
     this.found = []; this.foundKey = null; this.picked = null; this.queue = []; this.tried = new Set(); this.drawing = false;
     this.kind = "screens"; this.query = ""; this.fold = new Map(); this.previews = new Map(); this.width = 368;
     this.raw = ""; this.hit = null; this.layers = null; this.lookToken = 0; this.looking = false;
-    this.activity = new Map();
+    this.activity = new Map(); this.recent = []; this.states = new Map(); this.view = "list"; this.boardPicks = new Set();
+    this.diffs = new Map(); this.later = new Set(); // revision diffs to now, and changes put off
     this.filter = InputState.new({ placeholder: "Filter by name, text, node ID or Figma link" });
     this.filter.on("change", (_e, cx) => {
       this.raw = this.filter.value().trim(); this.query = this.raw.toLowerCase();
@@ -508,7 +590,8 @@ export default class Figlens extends View {
       }
       const r = await hc(["send", p.address, text]).catch((e) => ({ code: 1, stderr: String(e.message ?? e) }));
       if (r.code === 0) {
-        const verb = p.intent === "plan" ? "Asked" : p.intent === "yolo" ? "Started YOLO in" : "Sent to";
+        recordHandoff(p.design, p.screens, p.intent, { address: p.address });
+        const verb = p.intent === "plan" ? "Asked" : p.intent === "yolo" ? "Started YOLO in" : p.intent === "point" ? "Pointed" : p.intent === "fix" ? "Asked" : p.intent === "update" ? "Sent the changes to" : "Sent to";
         setShared(NOTICE, { kind: "done", text: `${verb} ${agent.program.name}${agent.space_name ? ` in ${agent.space_name}` : ""}`, at: Date.now() });
         closeOverlay(p.overlay);
         run("agent.focus", { terminal: p.address });
@@ -586,6 +669,8 @@ export default class Figlens extends View {
       h_flex().id(id).h(32).px(14).items_center().rounded(8).border_1().border_color(border).bg(bg).text_size(S().button).text_color(fg)
         .when(id === "go", (el) => el.font_semibold())
         .when(enabled, (el) => el.cursor_pointer().hover((s) => s.opacity(0.88)).on_click(onClick)).child(label);
+    const versions = (p.copies ?? []).filter((x) => x.dir.endsWith(REVISIONS)).reduce((n, x) => n + x.bytes, 0);
+    const agentCopies = (p.copies ?? []).reduce((n, x) => n + x.bytes, 0) - versions;
     return v_flex().id("clear").track_focus(this.handle)
       .on_key_down((e, cx) => {
         if (e.key === "enter") go(cx);
@@ -600,7 +685,8 @@ export default class Figlens extends View {
       .child(v_flex().gap(6).text_size(S().secondary).text_color(t.muted)
         .child(div().child(`This panel's thumbnails, previews, Quick Look images and snapshots · ${mb(p.panelBytes ?? 0)}`))
         .child(div().child(`figlens's render cache on ${where} · ${mb(renders.reduce((n, x) => n + x.bytes, 0))}`))
-        .when(Boolean(p.copies?.length), (el) => el.child(div().child(`Copies of designs made for agents on other machines · ${mb(p.copies.reduce((n, x) => n + x.bytes, 0))}; an agent still working from one loses it`)))
+        .when(agentCopies > 0, (el) => el.child(div().child(`Copies of designs made for agents on other machines · ${mb(agentCopies)}; an agent still working from one loses it`)))
+        .when(versions > 0, (el) => el.child(div().child(`Saved versions kept for Changed since built · ${mb(versions)}; screens changed before now are no longer flagged`)))
         .child(div().child("Your own designs are not touched. Images are drawn and copies made again when needed.")))
       .child(div().flex_1())
       .child(h_flex().justify_end().gap(8)
@@ -615,7 +701,7 @@ export default class Figlens extends View {
   renderMenu() {
     const t = theme(), p = blockProps() ?? {}, close = () => closeOverlay(p.overlay);
     const agent = p.address ? agents().find((a) => a.address === p.address) ?? null : null;
-    const ask = (intent) => () => { close(); if (agent) confirmIntent(intent, agent, p[intent], p.frame, p.design); };
+    const ask = (intent) => () => { close(); if (agent) confirmIntent(intent, agent, p[intent], p.frame, p.design, p.screens); };
     const list = [
       ...(agent ? [
         { glyph: "list", color: t.muted, label: `Plan with ${p.agentName}…`, go: ask("plan") },
@@ -645,10 +731,11 @@ export default class Figlens extends View {
 
   initNewTab(cx) {
     const p = blockProps() ?? {};
-    this.choices = null; this.pick = null; this.intent = "plan"; this.progress = null; this.failed = null;
+    this.choices = null; this.pick = null; this.intent = p.intent ?? "plan"; this.progress = null; this.failed = null;
     cx.spawn(async (cx) => {
       const list = await knownAgents({ on: p.on ?? null }).catch(() => []);
-      this.choices = list; this.pick = list.find((a) => a.installed)?.key ?? null;
+      // The agent the person was using, when it is installed here; else the first one installed.
+      this.choices = list; this.pick = list.find((a) => a.installed && a.key === p.prefer)?.key ?? list.find((a) => a.installed)?.key ?? null;
       cx.notify();
     });
   }
@@ -657,28 +744,35 @@ export default class Figlens extends View {
     const t = theme(), p = blockProps() ?? {}, list = this.choices;
     const agent = list?.find((a) => a.key === this.pick) ?? null;
     const close = () => closeOverlay(p.overlay);
+    // One screen, or several picked on the board: one tab each, the design copied once.
+    const targets = p.frames ?? [{ frame: p.frame, page: p.page, screen: p.screen }], many = targets.length > 1;
+    const textOf = (x) => intentText({ intent: this.intent, app: appOf(agent.key), file: p.file, frame: x.frame, page: x.page, screen: x.screen, cli: p.cli });
     const open = (cx) => {
       if (!agent || this.progress) return;
       this.progress = "Starting…"; this.failed = null; cx.notify();
-      const text = intentText({ intent: this.intent, app: appOf(agent.key), file: p.file, frame: p.frame, page: p.page, screen: p.screen, cli: p.cli });
       cx.spawn(async (cx) => {
-        let task = text;
+        let path = p.file;
         if (copyPlan(p.design, p.on)) {
-          try { task = text.split(p.design.path).join(await designOn(p.design, p.on, (note) => { this.progress = note; cx.notify(); })); }
+          try { path = await designOn(p.design, p.on, (note) => { this.progress = note; cx.notify(); }); }
           catch (e) { this.progress = null; this.failed = String(e.message ?? e); cx.notify(); return; }
         }
         this.progress = null;
-        run("tab.new", { name: `${clean(p.frame.name, 40)} · ${this.intent}`, space: p.space, argv: agent.run, task });
-        setShared(NOTICE, { kind: "done", text: `Opened ${agent.name} in a new tab`, at: Date.now() });
+        for (const x of targets) {
+          const tab = `${clean(x.frame.name, 40)} · ${this.intent}`;
+          run("tab.new", { name: tab, space: p.space, argv: agent.run, task: textOf(x).split(p.file).join(path) });
+          // The agent has no address yet: the board finds it by its tab.
+          recordHandoff(p.design, [x.screen?.id ?? x.frame.id], this.intent, { tab, space: p.space });
+        }
+        setShared(NOTICE, { kind: "done", text: many ? `Opened ${targets.length} tabs with ${agent.name}` : `Opened ${agent.name} in a new tab`, at: Date.now() });
         close();
       });
     };
     const plan = copyPlan(p.design, p.on);
-    const message = agent ? intentText({ intent: this.intent, app: appOf(agent.key), file: p.file, frame: p.frame, page: p.page, screen: p.screen, cli: p.cli }) : "";
+    const message = agent ? textOf(targets[0]) + (many ? `\n\n…and ${targets.length - 1} more, one tab each.` : "") : "";
     return v_flex().id("newtab").track_focus(this.handle)
       .on_key_down((e, cx) => { if (e.key === "escape") { close(); cx.stop_propagation(); } })
       .size_full().min_h(0).p(14).gap(10).bg(t.popover).text_color(t.foreground)
-      .child(div().truncate().text_size(S().title).font_semibold().child(`Start an agent on “${clean(p.frame?.name, 50)}”`))
+      .child(div().truncate().text_size(S().title).font_semibold().child(many ? `Start an agent on each of ${targets.length} screens` : `Start an agent on “${clean(p.frame?.name, 50)}”`))
       .child(v_flex().id("choices").flex_1().min_h(0).overflow_y_scrollbar().gap(2)
         .when(!list, (el) => el.child(working(t, "Looking for installed agents…")))
         .children((list ?? []).map((a) => {
@@ -704,13 +798,88 @@ export default class Figlens extends View {
         .child(plan ? plan.shown(message) : message)))
       .child(div().text_size(S().secondary).text_color(this.intent === "yolo" ? t.working : t.muted)
         .child(this.intent === "yolo" ? YOLO_NOTE(agent?.name ?? "The agent")
+          : many ? `Opens ${targets.length} tabs, “<screen> · ${this.intent}”, in ${p.spaceName ?? "this space"}.`
           : `Opens tab “${clean(p.frame?.name, 30)} · ${this.intent}” in ${p.spaceName ?? "this space"}.`))
       .when(Boolean(plan || this.failed || this.progress), (el) => el.child(div().text_size(S().secondary)
         .text_color(this.failed ? t.ansi1 : this.progress ? t.working : t.muted).child(this.failed ?? this.progress ?? plan?.note ?? "")))
       .child(h_flex().justify_end().gap(8)
         .child(secondary("nt-cancel", "Cancel", t, close))
-        .child(agent ? primary("nt-open", this.progress ? "Starting…" : `Open tab with ${agent.name}`, t, (_e, cx) => open(cx), "plus")
+        .child(agent ? primary("nt-open", this.progress ? "Starting…" : many ? `Open ${targets.length} tabs with ${agent.name}` : `Open tab with ${agent.name}`, t, (_e, cx) => open(cx), "plus")
           : secondary("nt-open", "No agent installed", t, () => {}, { color: t.muted })));
+  }
+
+  // ---- Compare: a verified screen's design beside the build screenshot compare_image checked ----
+
+  renderCompare(cx) {
+    const t = theme(), q = shared(CMP), close = () => closeOverlay(blockProps()?.overlay);
+    if (!q) return div().size_full().bg(t.popover);
+    const r = q.result ?? {}, key = `${q.address}:${q.at}:${q.frame.id}`;
+    if (this.cmpKey !== key) { this.cmpKey = key; this.cmp = null; this.cmpError = null; this.loadCompare(q, cx); }
+    const verifier = agents().find((a) => a.address === q.address);
+    const asked = verifier ?? agents().find((a) => a.focused) ?? null;
+    const W = this.width ?? 1000, H = this.height ?? 680;
+    const paneW = Math.max(200, (W - 48) / 2), paneH = Math.max(160, H - 160);
+    const pane = (label, img, size) => v_flex().flex_1().min_w(0).gap(6)
+      .child(div().text_size(S().label).font_semibold().text_color(t.muted).child(label))
+      .child(h_flex().w_full().h(paneH).items_center().justify_center().rounded(6).bg(t.chrome)
+        .child(img && size ? ((b) => image(img).w(b.w).h(b.h))(fitBox(size, paneW - 16, paneH - 16)) : working(t, "Loading…")));
+    const build = this.showDiff ? this.cmp?.diff : this.cmp?.shot;
+    const text = asked && intentText({ intent: "fix", app: asked.app, file: q.file.path, frame: q.frame, page: q.page, screen: null,
+      cli: cliFor(q.cli, q.design, machineOf(asked.address)), compare: r });
+    return v_flex().id("compare").track_focus(this.handle).size_full().min_h(0).p(16).gap(12).bg(t.popover).text_color(t.foreground)
+      .on_size_change((size, cx) => { this.width = size.width; this.height = size.height; cx.notify(); })
+      .on_key_down((e, cx) => { if (e.key === "escape") { close(); cx.stop_propagation(); } })
+      .child(h_flex().flex_none().gap(10).items_center()
+        .child(v_flex().flex_1().min_w(0).gap(2)
+          .child(div().truncate().text_size(S().dialog).font_semibold().child(`${clean(q.frame.name, 60)} · design vs build`))
+          .child(div().truncate().text_size(S().secondary).text_color(t.muted)
+            .child(`${pct(r.mismatch)} mismatch · ${pct(r.nonTextMismatch)} outside text · ${r.regionCount ?? "?"} regions · checked by ${verifier?.program?.name ?? q.address} ${ago(Date.now() - q.at)} ago`)))
+        .when(Boolean(r.diff), (el) => el.child(secondary("cmp-diff", this.showDiff ? "Show screenshot" : "Show differences", t,
+          (_e, cx) => { this.showDiff = !this.showDiff; cx.notify(); }, { size: S().secondary, px: 8 })))
+        .child(h_flex().id("cmp-close").w(28).h(28).flex_none().items_center().justify_center().rounded(6).cursor_pointer()
+          .hover((s) => s.bg(t.hover)).on_click(close).child(icon("close", 14, t.muted))))
+      .child(this.cmpError
+        ? h_flex().flex_1().gap(7).items_center().text_size(S().secondary).text_color(t.ansi1).child(icon("alert", 13, t.ansi1)).child(this.cmpError)
+        : h_flex().flex_1().min_h(0).gap(16)
+          .child(pane("Design", this.cmp?.design, q.frame.size))
+          .child(pane(this.showDiff ? "Differences" : "Build", build, this.cmp?.size)))
+      .child(h_flex().flex_none().gap(10).items_center()
+        .child(div().flex_1().min_w(0).truncate().text_size(S().label).text_color(t.muted).font_family(mono()).child(r.screenshot ?? ""))
+        .child(asked
+          ? primary("cmp-fix", `Ask ${asked.program.name} to fix…`, t, () => confirmIntent("fix", asked, text, q.frame.name, q.design, [q.frame.id]), "arrow")
+          : div().text_size(S().secondary).text_color(t.muted).child("Focus an agent on the left to ask for a fix")));
+  }
+
+  // The screenshot and diff live on the machine whose agent compared; the design renders here.
+  // Local files are copied; a remote one comes over in parts (a remote command's output stops at
+  // 8 MB), and its size is read from the PNG header.
+  loadCompare(q, cx) {
+    const key = this.cmpKey;
+    cx.spawn(async (cx) => {
+      try {
+        await mkdir(`${appHome()}/${CACHE}/compare`, { recursive: true });
+        const id = hash(`${q.address}:${q.at}:${q.frame.id}`);
+        const bring = async (src, name) => {
+          if (!src) return null;
+          const rel = `${CACHE}/compare/${id}-${name}.png`, abs = `${appHome()}/${rel}`;
+          if (q.on) {
+            const size = await sizeOn(src, q.on);
+            if (!size) throw new Error(`Cannot read ${src} on ${q.on}`);
+            await sh('rm -f "$1"', [abs]);
+            await copyParts(FETCH_PART, [q.on, src, abs], size, PART_MB, () => {});
+          } else if ((await sh('cp "$1" "$2"', [src, abs])).code !== 0) throw new Error(`Cannot read ${src}`);
+          return rel;
+        };
+        const shot = await bring(q.result?.screenshot, "shot"), diff = await bring(q.result?.diff, "diff");
+        const head = shot && (await sh('head -c 24 "$1" | base64', [`${appHome()}/${shot}`])).stdout.replace(/\s+/g, "");
+        const bytes = head ? Buffer.from(head, "base64") : null;
+        const size = bytes?.length >= 24 ? [bytes.readUInt32BE(16), bytes.readUInt32BE(20)] : null;
+        const ok = await renderNode(q.bin, q.file, q.frame.id, `${appHome()}/${CACHE}/${q.key}/look`, LOOK_MAX, q.frame.size).catch(() => false);
+        if (this.cmpKey !== key) return;
+        this.cmp = { shot, diff, size, design: ok ? `${CACHE}/${q.key}/look/${thumbFile(q.frame.id)}` : null };
+      } catch (e) { if (this.cmpKey === key) this.cmpError = String(e.message ?? e); }
+      cx.notify();
+    });
   }
 
   // ---- Quick Look: one screen at full size in a floating window ----
@@ -720,7 +889,8 @@ export default class Figlens extends View {
     const close = () => closeOverlay(p.overlay);
     if (!q?.frames?.length) return v_flex().size_full().bg(t.popover).p(18).child(div().text_color(t.muted).child("Nothing to show"));
     const index = Math.max(0, Math.min(q.index, q.frames.length - 1)), f = q.frames[index];
-    const move = (step) => setShared(QL, { ...q, index: (index + step + q.frames.length) % q.frames.length });
+    // A running Open in browser keeps its note: it is what stops a second click starting another.
+    const move = (step) => { if (this.note?.kind !== "working") this.note = null; setShared(QL, { ...q, index: (index + step + q.frames.length) % q.frames.length }); };
     const dir = `${appHome()}/${CACHE}/${q.key}/full`, look = `${q.key}:${f.id}`, state = this.looks.get(look);
     if (!state) {
       this.looks.set(look, "loading");
@@ -732,6 +902,9 @@ export default class Figlens extends View {
     const agent = agents().find((a) => a.focused) ?? agents().find((a) => a.address === this.lastAgent) ?? null;
     const [w, h] = f.size ?? [];
     const box = fitBox(f.size, Math.max(200, this.width - 40), Math.max(160, this.height - 42 - 40 - 36));
+    // Agents reading this screen now, live from the panel: their boxes on the image and a line below.
+    const here = (shared(LIVE) ?? {})[`${q.file.on ?? ""}:${q.file.path}`]?.entries ?? [];
+    const readers = readersFrom(here.filter((e) => e.screen === f.id), t);
     const prev = q.frames[(index - 1 + q.frames.length) % q.frames.length], next = q.frames[(index + 1) % q.frames.length];
     return v_flex().id("quicklook").track_focus(this.handle)
       .on_size_change((size, cx) => {
@@ -749,7 +922,7 @@ export default class Figlens extends View {
         .child(div().flex_none().max_w(260).truncate().text_size(S().title).font_semibold().child(clean(f.name)))
         .child(div().flex_1().min_w(0).truncate().text_size(S().secondary).text_color(t.muted)
           .child([w > 0 ? `${Math.round(w)}×${Math.round(h)}` : null, f.page?.name ? clean(f.page.name) : null, base(q.file.path)].filter(Boolean).join(" · ")))
-        .child(secondary("ql-browser", q.file.on ? "Open snapshot" : "Open in browser", t, (_e, cx) => {
+        .when(!q.watch, (el) => el.child(secondary("ql-browser", q.file.on ? "Open snapshot" : "Open in browser", t, (_e, cx) => {
           if (this.note?.kind === "working") return;
           this.note = { kind: "working", text: "Starting…" }; cx.notify();
           cx.spawn(async (cx) => {
@@ -758,17 +931,18 @@ export default class Figlens extends View {
             catch (e) { this.note = { kind: "error", text: String(e.message ?? e) }; }
             cx.notify();
           });
-        }, { icon: "external" }))
-        .child(handoffButton(t, "ql", agent,
-          () => confirmIntent("build", agent, intentText({ intent: "build", app: agent.app, file: q.file.path, frame: f, page: f.page, screen: f.screen, cli: cliFor(q.cli, q.design, machineOf(agent.address)) }), f.name, q.design),
+        }, { icon: "external" })))
+        .when(!q.watch, (el) => el.child(handoffButton(t, "ql", agent,
+          () => confirmIntent("build", agent, intentText({ intent: "build", app: agent.app, file: q.file.path, frame: f, page: f.page, screen: f.screen, cli: cliFor(q.cli, q.design, machineOf(agent.address)) }), f.name, q.design, [f.screen?.id ?? f.id]),
           () => handoffProps({ agent, file: q.file, frame: f, page: f.page, screen: f.screen, cli: q.cli, design: q.design }),
           () => openOverlay({ mod: "figlens", kind: "dialog", width: 380, height: 540, props: handoffProps({ agent: null, file: q.file, frame: f, page: f.page, screen: f.screen, cli: q.cli, design: q.design }).newtab }),
-          true))
+          true)))
         .child(h_flex().id("ql-close").w(26).h(26).flex_none().items_center().justify_center().rounded(6).cursor_pointer()
           .hover((s) => s.bg(t.hover)).on_mouse_down("left", stop).on_click(close).child(icon("close", 14, t.muted))))
       .child(h_flex().flex_1().min_h(0).items_center().justify_center().bg(t.chrome)
         .child(this.looks.get(look) === "ready"
-          ? image(`${CACHE}/${q.key}/full/${thumbFile(f.id)}`).w(box.w).h(box.h)
+          ? div().relative().w(box.w).h(box.h).child(image(`${CACHE}/${q.key}/full/${thumbFile(f.id)}`).w(box.w).h(box.h))
+            .children(agentMarks(readers, f.size, box, t))
           : this.looks.get(look) === "error" ? div().text_size(S().secondary).text_color(t.muted).child("This layer could not be drawn")
             : working(t, "Drawing at full size…")))
       .child(h_flex().h(40).flex_none().px(10).gap(6).items_center().border_t(1).border_color(t.border).text_size(S().secondary).text_color(t.muted)
@@ -776,11 +950,15 @@ export default class Figlens extends View {
           .child(secondary("ql-prev", `‹ ${clean(prev.name, 24)}`, t, () => move(-1), { px: 8 }))
           .child(secondary("ql-next", `${clean(next.name, 24)} ›`, t, () => move(1), { px: 8 })))
         .child(div().flex_1())
-        .child(this.note
+        .child(this.note && (this.note.kind === "working" || this.note.kind === "error" || !readers.length)
           ? h_flex().gap(7).items_center().min_w(0).text_color(statusColor(t, this.note.kind))
             .child(this.note.kind === "working" ? icon("ring", 13, statusColor(t, "working")).spin(900) : icon(STATUS_ICON[this.note.kind] ?? "alert", 13, statusColor(t, this.note.kind)))
             .child(div().min_w(0).truncate().child(this.note.text))
-          : div().child(q.frames.length > 1 ? `${index + 1} of ${q.frames.length} · Space or Esc closes · ← → moves` : "Space or Esc closes")));
+          : readers.length
+            ? h_flex().gap(10).min_w(0).children(readers.map((r) => h_flex().gap(6).items_center().min_w(0)
+              .child(dot(r.color, 7)).child(div().font_semibold().text_color(t.foreground).child(r.agent.program?.name ?? r.e.address))
+              .child(div().truncate().child(`${r.e.tool}${r.e.nodes[0] && r.e.nodes[0] !== f.id ? ` · node ${r.e.nodes[0]}` : ""} · ${ago(Date.now() - r.e.at)}`))))
+            : div().child(q.frames.length > 1 ? `${index + 1} of ${q.frames.length} · Space or Esc closes · ← → moves` : "Space or Esc closes")));
   }
 
   // ---- Panel: engine, file, screens ----
@@ -825,7 +1003,11 @@ export default class Figlens extends View {
   // Called from render: state set here shows in this pass, so it must not notify.
   load(file, cx) {
     const token = ++this.token;
-    if (!same(file, this.file)) this.activity = new Map();
+    // A new design starts empty, signatures too: an unchanged signature would keep it empty.
+    if (!same(file, this.file)) {
+      this.activity = new Map(); this.recent = []; this.states = new Map(); this.boardPicks = new Set(); this.diffs = new Map();
+      this.recentSig = null; this.statesSig = null;
+    }
     this.file = file; this.groups = []; this.thumbs = new Set(); this.selected = null;
     this.error = null; this.gone = false; this.queue = []; this.drawing = false; this.fold = new Map(); this.previews = new Map();
     this.lookToken += 1; this.hit = null; this.layers = null; this.looking = false;
@@ -857,6 +1039,8 @@ export default class Figlens extends View {
         const q = shared(QL);
         if (q && same(q.file, file) && q.key !== key) setShared(QL, { ...q, key, design: this.design() });
         this.watch(file, stamp, cx);
+        // Kept now, while it is the saved one: the next save is compared with it.
+        sh(KEEP_REVISION, [file.path, ...revisionKeys(file, stamp), stamp], file.on).catch(() => null);
         this.follow(file, cx);
         if (this.raw) this.lookup(cx);
       } catch (e) {
@@ -914,7 +1098,7 @@ export default class Figlens extends View {
             for (const id of chunk) if (now.has(thumbFile(id))) this.thumbs.add(id);
           } else {
             await writeFile(`${dir}/.frames`, chunk.join("\n"));
-            const out = await exec(bin, ["export", file.path, "--frames", `${dir}/.frames`, "--out-dir", dir, "--format", "png", "--bounds", "layout", "--scale", String(THUMB_SCALE), "--max-size", max]);
+            const out = await exec("env", engineArgs(bin, ["export", file.path, "--frames", `${dir}/.frames`, "--out-dir", dir, "--format", "png", "--bounds", "layout", "--scale", String(THUMB_SCALE), "--max-size", max]));
             if (token !== this.token) return;
             for (const line of out.stdout.split("\n")) {
               try { const r = JSON.parse(line); if (r.nodeId && !r.error) this.thumbs.add(r.nodeId); } catch { /* not a result line */ }
@@ -959,10 +1143,20 @@ export default class Figlens extends View {
     });
   }
 
+  // This design's handoffs moved on by what their agents do now (handoffStep); written only on a change.
+  stepHandoffs(id, now, cx) {
+    const all = shared(HANDOFFS) ?? {}, mine = all[id];
+    if (!mine) return;
+    const live = agents();
+    const next = Object.fromEntries(Object.entries(mine).map(([k, h]) => [k, handoffStep(h, live, now)]));
+    if (Object.keys(next).every((k) => next[k] === mine[k])) return;
+    setShared(HANDOFFS, { ...(shared(HANDOFFS) ?? {}), [id]: next }); cx.notify();
+  }
+
   // What agents read in this design: the figlens activity journal on the design's machine, and
   // for its copy on each other agent machine. Polled; redraws while anyone is active.
   follow(file, cx) {
-    const id = `${file.on ?? ""}:${file.path}`;
+    const id = designKey(file);
     if (this.following === id) return;
     // A generation, not the id: reopening a file while an older loop for it sleeps must not
     // leave two loops polling.
@@ -972,15 +1166,32 @@ export default class Figlens extends View {
     cx.spawn(async (cx) => {
       try {
         while (still()) {
-          // Only machines with agents: lines from terminals that are not agents never show.
+          // The design's machine (the board's history lives there) and each machine with agents.
           const from = file.on ?? null, copy = `${COPIES}/${copyKey(this.design())}/${base(file.path)}`;
-          const machines = new Set(agents().map((a) => machineOf(a.address)));
-          const all = new Map(), now = Date.now();
+          const machines = new Set([from, ...agents().map((a) => machineOf(a.address))]);
+          const now = Date.now(), entries = [];
           const reads = await Promise.all([...machines].map((m) => sh(ACTIVITY, [m === from ? file.path : copy], m).catch(() => null)));
           if (!still()) return;
-          [...machines].forEach((m, i) => latestActivity(reads[i]?.stdout, m, now, undefined, all));
-          // Redraw while anyone is active (the "12s ago" moves) and once more when the last one goes.
-          if (all.size || this.activity.size) { this.activity = all; cx.notify(); }
+          [...machines].forEach((m, i) => entries.push(...parseActivity(reads[i]?.stdout, m)));
+          const all = latestActivity(entries, now, ACTIVE_MS);
+          // Quick Look draws the same boxes; it redraws every 10 s while anyone is active ("12s ago").
+          const liveSig = `${[...all.values()].map((e) => `${e.address}${e.at}`).join()}|${all.size ? Math.floor(now / 10000) : 0}`;
+          if (liveSig !== this.liveSig) {
+            this.liveSig = liveSig;
+            // One key per design: two panels on two designs never overwrite each other.
+            const kept = Object.fromEntries(Object.entries(shared(LIVE) ?? {}).filter(([k, v]) => k !== id && now - (v?.at ?? 0) < ACTIVE_MS));
+            setShared(LIVE, { ...kept, [id]: { at: now, entries: [...all.values()] } });
+          }
+          this.stepHandoffs(id, now, cx);
+          const recent = recentActivity(entries), sig = recent.map((e) => `${e.address}${e.at}`).join();
+          const changes = this.revisionChanges(file, entries, cx);
+          // Redraw while anyone is active (the "12s ago" moves) and when the history changes.
+          if (all.size || this.activity.size || sig !== this.recentSig) {
+            this.activity = all; this.recent = recent; this.recentSig = sig; cx.notify();
+          }
+          const states = screenStates(entries, now, { current: this.stamp, changes });
+          const statesSig = [...states].map(([s, v]) => `${s}${v.state}${v.entry?.at}`).join();
+          if (statesSig !== this.statesSig) { this.states = states; this.statesSig = statesSig; cx.notify(); }
           await cx.sleep(ACTIVITY_POLL);
         }
       } catch { /* the follow ends; reopening the file starts another */ }
@@ -988,27 +1199,55 @@ export default class Figlens extends View {
     });
   }
 
-  // Live agents with recent reads in this design, newest first, each with its color.
-  readers(t) {
-    const colors = [t.ansi4, t.ansi5, t.ansi6, t.ansi3, t.ansi2, t.ansi1];
-    const live = agents();
-    return [...this.activity.values()]
-      .map((e) => ({ e, agent: live.find((a) => a.address === e.address) }))
-      .filter((r) => r.agent)
-      // Colors follow terminal order, so an agent keeps its color while others come and go less often.
-      .sort((a, b) => a.e.address.localeCompare(b.e.address))
-      .map((r, i) => ({ ...r, color: colors[i % colors.length] }))
-      .sort((a, b) => b.e.at - a.e.at);
+  // For each older revision agents last read here, the screens `figlens diff --node` found changed
+  // from it to the saved design: revision → Map. Only screens agents worked on are compared, one
+  // `--node` each (a whole large file stops at diff's work limit), once per pair, one at a time (each
+  // diff decodes both designs), from the copy KEEP_REVISION kept; a revision with no copy is skipped.
+  revisionChanges(file, entries, cx) {
+    const now = this.stamp, out = new Map();
+    for (const e of entries) {
+      if (e.on !== (file.on ?? null) || !isRevision(e.revision) || e.revision === now || !e.screen) continue;
+      const key = `${e.revision}|${now}|${e.screen}`, known = this.diffs.get(key);
+      if (known && typeof known === "object") {
+        if (!out.has(e.revision)) out.set(e.revision, new Map());
+        out.get(e.revision).set(e.screen, known);
+      }
+      if (known === undefined) { this.diffs.set(key, "queued"); (this.diffQueue ??= []).push({ key, rev: e.revision, screen: e.screen }); }
+    }
+    if (!this.diffing && this.diffQueue?.length && this.engine?.bin) this.runDiffs(file, now, cx);
+    return out;
   }
 
-  // Shows the screen an agent is reading as the filter's node card: the one card, its preview
-  // and the agent's box, however long the list. Clearing the filter brings the list back.
-  reveal(r, cx) {
-    const id = r.e.screen;
-    if (!id || !this.topIndex().has(id)) return;
-    this.filter.set_value(id);
-    this.raw = id; this.query = id.toLowerCase();
-    this.lookup(cx);
+  runDiffs(file, now, cx) {
+    this.diffing = true;
+    const bin = this.engine.bin;
+    cx.spawn(async (cx) => {
+      try {
+        while (this.diffQueue.length && same(file, this.file) && this.stamp === now) {
+          const { key, rev, screen } = this.diffQueue.shift();
+          let change = null;
+          try {
+            const [dir, name] = revisionKeys(file, rev);
+            const old = (await sh(`f="$HOME/${REVISIONS}/$1/$2.fig"; [ -e "$f" ] && printf %s "$f"`, [dir, name], file.on)).stdout.trim();
+            if (old) change = scopeChange(JSON.parse(await figlens(bin, ["diff", old, file.path, "--node", screen, "--json", "--limit", "500"], file.on)));
+          } catch { /* no comparison: the screen keeps its other state */ }
+          // Saved again or another design meanwhile: this answer is for neither; ask again later.
+          if (!same(file, this.file) || this.stamp !== now) { this.diffs.delete(key); break; }
+          this.diffs.set(key, change ?? "none"); this.statesSig = null; cx.notify();
+        }
+      } finally {
+        // What is left was queued for another save or design: unmarked, the next poll queues it again.
+        for (const { key } of this.diffQueue) this.diffs.delete(key);
+        this.diffing = false; this.diffQueue = [];
+      }
+    });
+  }
+
+  // The screen an agent is reading, at full size in Quick Look: this is the agents' live line, so it
+  // opens a look, not the screen's actions.
+  reveal(r) {
+    const place = r.e.screen && this.topIndex().get(r.e.screen);
+    if (place) this.quickLook(place.frame, place.page, null, true);
   }
 
   // One line per agent reading this design: who, which tool, which screen, how long ago.
@@ -1017,12 +1256,9 @@ export default class Figlens extends View {
     if (!list.length) return null;
     const top = this.topIndex(), now = Date.now();
     return v_flex().gap(1).children(list.map((r) => {
-      const place = r.e.screen && top.get(r.e.screen);
-      // A big design repeats screen names: the page tells them apart.
-      const what = place ? `${clean(place.frame.name, 60)} · ${clean(place.page.name, 40)}`
-        : r.e.nodes[0] && r.e.nodes[0] !== "0:0" ? `node ${r.e.nodes[0]}` : "the file";
+      const place = r.e.screen && top.get(r.e.screen), what = this.whatOf(r.e, top);
       return h_flex().id(`reader-${r.e.address}`).h(24).px(6).gap(7).items_center().rounded(5).text_size(S().secondary)
-        .when(Boolean(place), (el) => el.cursor_pointer().hover((s) => s.bg(t.hover)).on_click((_e, cx) => { this.reveal(r, cx); cx.notify(); }))
+        .when(Boolean(place), (el) => el.cursor_pointer().hover((s) => s.bg(t.hover)).on_click(() => this.reveal(r)))
         .child(dot(r.color, 8))
         .child(div().flex_none().font_semibold().child(r.agent.program?.name ?? r.e.address))
         .child(div().flex_1().min_w(0).truncate().text_color(t.muted).child(`${r.e.tool} · ${what}`))
@@ -1098,8 +1334,10 @@ export default class Figlens extends View {
   // ---- Finding a node: an id or Figma link, or any layer by name or text ----
 
   topIndex() {
+    if (this.topFor === this.groups) return this.top;
     const top = new Map();
     for (const g of this.groups) for (const f of g.frames) top.set(f.id, { frame: f, page: g });
+    this.top = top; this.topFor = this.groups;
     return top;
   }
 
@@ -1177,33 +1415,26 @@ export default class Figlens extends View {
     });
   }
 
-  previewBox(target, t) {
+  previewBox(target, t, open = null) {
     const width = Math.max(160, this.width - 34), box = fitBox(target.size, width, PREVIEW_H), state = this.previews.get(target.id);
     // Where agents read inside this screen: a box in each agent's color.
-    const scale = box.w / (target.size?.[0] || box.w);
-    // Only the part inside the screen is drawn; a box wholly outside it is not.
-    const marks = (this.reading ?? []).filter((r) => r.e.screen === target.id && r.e.box).flatMap((r) => {
-      const [x, y, w, h] = r.e.box.map((v) => v * scale);
-      const left = Math.max(0, x), top = Math.max(0, y);
-      const width = Math.min(box.w, x + w) - left, height = Math.min(box.h, y + h) - top;
-      if (!(width >= 1 && height >= 1)) return [];
-      return [div().absolute().left(left).top(top).w(Math.max(4, width)).h(Math.max(4, height))
-        .border_2().border_color(r.color).rounded(2)];
-    });
+    const marks = agentMarks((this.reading ?? []).filter((r) => r.e.screen === target.id), target.size, box, t);
     return h_flex().h(box.h + 16).flex_none().items_center().justify_center().rounded(6).bg(t.chrome)
       .child(state === "ready"
-        ? div().relative().w(box.w).h(box.h).child(image(`${CACHE}/${this.key}/preview/${thumbFile(target.id)}`).w(box.w).h(box.h)).children(marks)
+        ? div().id(`preview-${target.id}`).relative().w(box.w).h(box.h).when(Boolean(open), (el) => el.cursor_pointer().on_click(open))
+          .child(image(`${CACHE}/${this.key}/preview/${thumbFile(target.id)}`).w(box.w).h(box.h)).children(marks)
         : state === "error"
           ? div().text_size(S().secondary).text_color(t.muted).child("Preview unavailable for this layer")
           : working(t, "Rendering preview…"));
   }
 
   // Quick Look over the visible list, starting at the target.
-  quickLook(target, page, screen) {
-    const frames = this.listed.map((v) => ({ id: v.target.id, name: v.target.name, size: v.target.size, page: { name: v.page?.name }, screen: v.screen ? { name: v.screen.name } : null }));
+  // `watch`: opened to look at what agents do (the board, the live line), so no actions show.
+  quickLook(target, page, screen, watch = false) {
+    const frames = this.listed.map((v) => ({ id: v.target.id, name: v.target.name, size: v.target.size, page: { name: v.page?.name }, screen: v.screen ? { id: v.screen.id, name: v.screen.name } : null }));
     let index = frames.findIndex((f) => f.id === target.id);
-    if (index < 0) { frames.unshift({ id: target.id, name: target.name, size: target.size, page: { name: page?.name }, screen: screen ? { name: screen.name } : null }); index = 0; }
-    setShared(QL, { file: this.file, bin: this.engine.bin, cli: this.cli(), key: this.key, frames, index, design: this.design() });
+    if (index < 0) { frames.unshift({ id: target.id, name: target.name, size: target.size, page: { name: page?.name }, screen: screen ? { id: screen.id, name: screen.name } : null }); index = 0; }
+    setShared(QL, { file: this.file, bin: this.engine.bin, cli: this.cli(), key: this.key, frames, index, design: this.design(), watch });
     openOverlay({ mod: "figlens", kind: "window", key: "figlens-quicklook", width: 920, height: 660, props: { role: "quicklook", agent: this.lastAgent } });
   }
 
@@ -1224,16 +1455,15 @@ export default class Figlens extends View {
       props: handoffProps({ agent: null, file: this.file, frame: target, page, screen, cli: this.cli(), design: this.design() }).newtab });
   }
 
-
   // The selected thing's details: a large preview, the handoff split button, and quiet tools.
   details(target, page, t, screen) {
     const agent = this.receiver(), id = target.id, name = agent?.program?.name;
     const copyId = (_e, cx) => { cx.write_to_clipboard(id); this.say("info", `Copied node ID ${id}`); cx.notify(); };
     const tool = (key, label, glyph, onClick) => secondary(`${key}-${id}`, label, t, onClick, { icon: glyph, size: S().secondary, px: 8, color: t.muted });
     return [
-      this.previewBox(target, t),
+      this.previewBox(target, t, () => this.quickLook(target, page, screen)),
       handoffButton(t, id, agent,
-        () => confirmIntent("build", agent, this.textFor("build", agent, target, page, screen), target.name, this.design()),
+        () => confirmIntent("build", agent, this.textFor("build", agent, target, page, screen), target.name, this.design(), [screen?.id ?? target.id]),
         () => handoffProps({ agent, file: this.file, frame: target, page, screen, cli: this.cli(), design: this.design() }),
         () => this.newTab(target, page, screen)),
       div().text_size(S().secondary).text_color(t.muted).child(agent
@@ -1242,6 +1472,8 @@ export default class Figlens extends View {
       h_flex().gap(6).flex_wrap()
         .child(tool("look", "Quick Look", "eye", () => this.quickLook(target, page, screen)))
         .child(tool("browser", this.file.on ? "Snapshot" : "Browser", "external", (_e, cx) => this.browser(target, cx)))
+        .when(Boolean(agent), (el) => el.child(tool("point", "Point", "crosshair",
+          () => confirmIntent("point", agent, this.textFor("point", agent, target, page, screen), target.name, this.design()))))
         .child(secondary(`id-${id}`, h_flex().gap(5).child(div().child("Node")).child(div().font_family(mono()).text_color(t.foreground).child(id)),
           t, copyId, { icon: "copy", size: S().secondary, px: 8, color: t.muted })),
     ];
@@ -1254,15 +1486,12 @@ export default class Figlens extends View {
   // ---- Panel drawing ----
 
   frameRow(frame, page, t) {
-    const on = this.selected === frame.id, box = fitBox(frame.size, THUMB_W, THUMB_H), ready = this.thumbs.has(frame.id);
+    const on = this.selected === frame.id, ready = this.thumbs.has(frame.id);
     const [w, h] = frame.size ?? [];
     const row = h_flex().id(`frame-${frame.id}`).h(60).flex_none().gap(10).px(8).py(6).items_center().cursor_pointer()
       .when(on, (el) => el.bg(t.selected).rounded_t(7)).when(!on, (el) => el.rounded(7).hover((s) => s.bg(t.hover)))
       .on_click((_e, cx) => { if (on) this.selected = null; else this.select({ target: frame, page }, cx); this.say(null); cx.notify(); })
-      .child(div().w(THUMB_W).h(THUMB_H).flex_none().flex().items_center().justify_center().rounded(4).bg(t.chrome)
-        .child(ready
-          ? image(`${CACHE}/${this.key}/${thumbFile(frame.id)}`).w(box.w).h(box.h)
-          : div().w(box.w).h(box.h).rounded(2).border_1().border_dashed().border_color(t.border)))
+      .child(thumbCell(t, frame.id, frame.size, ready && `${CACHE}/${this.key}/${thumbFile(frame.id)}`, () => this.quickLook(frame, page, null)))
       .child(v_flex().flex_1().min_w(0).gap(3)
         .child(h_flex().gap(6).items_center()
           .child(div().min_w(0).truncate().text_size(S().body).when(on, (el) => el.font_semibold()).child(clean(frame.name)))
@@ -1383,11 +1612,14 @@ export default class Figlens extends View {
           try { renders.push({ on, bin: engine.bin, bytes: JSON.parse(out.stdout).bytes || 0 }); } catch { /* no render cache there */ }
         }
         const copies = [];
+        // Design copies sent to agents and the versions kept for Changed since built.
         for (const on of machines) {
-          const dir = on ? `${(await sh('printf %s "$HOME"', [], on).catch(() => ({ stdout: "" }))).stdout.trim()}/${COPIES}` : `${home()}/${COPIES}`;
-          const d = await sh('du -sk "$1" 2>/dev/null | cut -f1', [dir], on).catch(() => null);
-          const bytes = (Number(d?.stdout?.trim()) || 0) * 1024;
-          if (bytes) copies.push({ on, dir, bytes });
+          const root = on ? (await sh('printf %s "$HOME"', [], on).catch(() => ({ stdout: "" }))).stdout.trim() : home();
+          for (const dir of [`${root}/${COPIES}`, `${root}/${REVISIONS}`]) {
+            const d = await sh('du -sk "$1" 2>/dev/null | cut -f1', [dir], on).catch(() => null);
+            const bytes = (Number(d?.stdout?.trim()) || 0) * 1024;
+            if (bytes) copies.push({ on, dir, bytes });
+          }
         }
         this.cacheBytes = (Number(r?.stdout?.trim()) || 0) * 1024; this.renders = renders; this.copies = copies; this.measuring = false; cx.notify();
       });
@@ -1471,6 +1703,7 @@ export default class Figlens extends View {
     if (!this.groups.length) return div().p(14).text_size(S().button).text_color(t.muted).child(this.error ? "" : "No screens found in this file");
     // An id or a Figma link: that node alone.
     if (!view) return v_flex().p(4).gap(2).child(this.nodeCard(t));
+    if (this.view === "board") return this.boardView(t, cx);
     const { q, pages, isOpen } = view;
     this.listed = pages.flatMap((g) => g.shown.map((f) => ({ target: f, page: g })));
     this.visible = pages.filter(isOpen).flatMap((g) => g.shown.map((f) => ({ target: f, page: g })));
@@ -1491,7 +1724,198 @@ export default class Figlens extends View {
             .child(div().font_normal().child(String(page.shown.length))))
           .when(open, (el) => el.children(page.shown.map((f) => this.frameRow(f, page, t))));
       }))
-      .when(Boolean(q), (el) => el.child(this.layersSection(t)));
+      .when(Boolean(q), (el) => el.child(this.layersSection(t)))
+      .when(!q && this.recent.length > 0, (el) => el.child(this.feed(t)));
+  }
+
+  // ---- What agents did: the feed under the list, and the board ----
+
+  // An agent as people know it: its program while it runs, else its terminal.
+  who(address, live = agents()) {
+    const agent = live.find((a) => a.address === address);
+    return { name: agent?.program?.name ?? address, color: (this.reading ?? []).find((r) => r.e.address === address)?.color ?? null };
+  }
+
+  // Where a line points: its screen and page, else its node.
+  whatOf(e, top) {
+    const place = e.screen && top.get(e.screen);
+    if (place) return `${clean(place.frame.name, 40)} · ${clean(place.page.name, 30)}`;
+    return e.nodes[0] && e.nodes[0] !== "0:0" ? `node ${e.nodes[0]}` : "the file";
+  }
+
+  feed(t) {
+    const top = this.topIndex(), now = Date.now();
+    return v_flex().mt(8).px(8).pt(8).gap(1).border_t(1).border_color(t.border)
+      .child(div().pb(4).text_size(S().label).font_semibold().text_color(t.muted).child("Activity on this file"))
+      .children(this.recent.map((e, i) => {
+        const w = this.who(e.address);
+        return h_flex().id(`feed-${i}`).h(22).gap(7).items_center().text_size(S().secondary)
+          .child(dot(w.color ?? t.muted, 7))
+          .child(div().flex_none().max_w(110).truncate().font_semibold().child(w.name))
+          .child(div().flex_none().w(84).truncate().text_color(t.muted).font_family(mono()).text_size(S().label).child(e.tool))
+          .child(div().flex_1().min_w(0).truncate().text_color(t.muted).child(this.whatOf(e, top)))
+          .child(div().flex_none().text_size(S().label).text_color(t.muted).child(ago(now - e.at)));
+      }));
+  }
+
+  // Every screen by what agents did with it (boardState): changed since built, building, done,
+  // planned, verified with compare_image, read before, or not started. Planned, read and
+  // not-started screens can be picked: planned ones to build, the others to plan.
+  boardView(t, cx) {
+    const q = this.query, now = Date.now();
+    const frames = this.groups.flatMap((g) => g.frames.filter((f) => !isComponent(f) && (!q || f.find.includes(q))).map((f) => ({ f, page: g })));
+    const groups = { changed: [], building: [], done: [], planned: [], verified: [], read: [], todo: [] };
+    const live = agents(), handed = (shared(HANDOFFS) ?? {})[designKey(this.file)] ?? {};
+    for (const x of frames) {
+      const s = boardState(this.states.get(x.f.id), handed[x.f.id], live);
+      groups[s?.state ?? "todo"].push({ ...x, s });
+    }
+    this.planned = new Set(groups.planned.map(({ f }) => f.id));
+    // Quick Look moves in board order; the keyboard's list moves stay with the list.
+    const ordered = ["changed", "building", "done", "planned", "verified", "read", "todo"].flatMap((k) => groups[k]);
+    this.listed = ordered.map(({ f, page }) => ({ target: f, page })); this.visible = [];
+    // Thumbnails for the screens agents touched and the first not-started ones, not the whole file.
+    this.want(ordered.slice(0, ordered.length - groups.todo.length + 40).map(({ f }) => f.id), cx);
+    // Only screens that can still be picked, and are shown, count and are sent.
+    this.pickable = new Set([...groups.planned, ...groups.read, ...groups.todo].map(({ f }) => f.id));
+    const sections = [["changed", "Changed since built", t.ansi3], ["building", "Building", t.working], ["done", "Done · not verified", t.ansi4],
+      ["planned", "Planned", t.ansi5], ["verified", "Verified", t.ansi2],
+      ["read", "Read before", t.muted], ["todo", "Not started", t.muted]];
+    if (!frames.length) return div().px(12).py(10).text_size(S().secondary).text_color(t.muted).child(q ? "Nothing matches this filter" : "No screens in this file");
+    // Until agents have worked on it, the board says what it is for instead of looking like the list.
+    const empty = !this.states.size && !Object.keys(handed).length && v_flex().mx(4).mt(4).mb(6).p(10).gap(4).rounded(8).bg(t.chrome).text_size(S().secondary).text_color(t.muted)
+      .child(div().text_size(S().body).font_semibold().text_color(t.foreground).child("What agents did with each screen"))
+      .child(div().child("Screens move here as agents in Herdr terminals read them with figlens: Building while one works on it, Verified after it checks the build with compare_image, Changed since built when the design is saved again over its work."))
+      .child(div().child("No agent has read this design yet. Pick screens below to plan them with the agent on the left or in new tabs."));
+    return v_flex().p(4).gap(2).when(Boolean(empty), (el) => el.child(empty)).children(sections.filter(([k]) => groups[k].length).map(([k, label, color]) => v_flex().gap(1)
+      .child(h_flex().h(28).px(8).gap(6).items_center().text_size(S().label).font_semibold().text_color(t.muted)
+        .child(dot(color, 7)).child(div().flex_1().child(label)).child(div().font_normal().child(String(groups[k].length))))
+      .children(groups[k].map((x) => this.boardRow(t, x, k, now, live)))));
+  }
+
+  boardRow(t, { f, page, s }, kind, now, live) {
+    const e = s?.entry, address = s?.agent?.address ?? e?.address, ready = this.thumbs.has(f.id);
+    const w = address ? this.who(address, live) : null;
+    const pickable = kind === "todo" || kind === "read" || kind === "planned", picked = this.boardPicks.has(f.id);
+    const [fw, fh] = f.size ?? [];
+    const sub = kind === "changed" ? `${changeText(s.change)} · ${w?.name ?? "an agent"} worked on it ${ago(now - e.at)} ago`
+      : kind === "building" ? (s.waiting ? `needs you · ${ago(now - s.since)}` : `working · ${ago(now - s.since)}`)
+      : kind === "done" ? `finished ${ago(now - s.at)} ago · check it with compare_image`
+      : kind === "planned" ? `planned ${ago(now - s.at)} ago · pick it to build`
+      : kind === "verified" ? `${pct(e.result?.mismatch)} mismatch · ${e.result?.regionCount ?? "?"} regions · ${ago(now - e.at)} ago`
+      : kind === "read" ? `${e.tool} ${ago(now - e.at)} ago` : fw > 0 ? `${Math.round(fw)}×${Math.round(fh)}` : clean(page.name, 40);
+    const toggle = (_e, cx) => { if (picked) this.boardPicks.delete(f.id); else this.boardPicks.add(f.id); cx.notify(); };
+    // The thumbnail, or a row that cannot be picked, opens Quick Look: full size, ← → between screens.
+    const look = () => this.quickLook(f, page, null, true);
+    return h_flex().id(`board-${f.id}`).h(60).flex_none().px(8).gap(8).items_center().rounded(7)
+      .bg(picked ? t.selected : t.background).hover((st) => st.bg(picked ? t.selected : t.hover)).cursor_pointer()
+      .on_click(pickable ? toggle : look)
+      .when(pickable, (el) => el
+        .child(div().w(14).h(14).flex_none().flex().items_center().justify_center().rounded(3).border_1()
+          .border_color(picked ? t.solid : t.border).bg(picked ? t.solid : t.background)
+          .when(picked, (el) => el.child(icon("check", 11, t.solid_foreground)))))
+      .child(thumbCell(t, f.id, f.size, ready && `${CACHE}/${this.key}/${thumbFile(f.id)}`, look))
+      .child(v_flex().flex_1().min_w(0).gap(2)
+        .child(div().truncate().text_size(S().body).child(clean(f.name)))
+        .child(div().truncate().text_size(S().secondary).text_color(kind === "building" ? t.working : kind === "changed" ? t.ansi3 : t.muted).child(sub)))
+      .when(Boolean(w), (el) => el.child(h_flex().flex_none().max_w(110).h(20).px(7).gap(5).items_center().rounded(10).bg(t.selected)
+        .text_size(S().label).text_color(t.muted).child(dot(w.color ?? t.muted, 6)).child(div().truncate().child(w.name))))
+      .when(kind === "changed", (el) => el.child(secondary(`upd-${f.id}`, "Send…", t,
+        (_e, cx) => { cx.stop_propagation(); this.sendChanges(f, page, s); }, { size: S().secondary, px: 8 })))
+      .when(kind === "verified" && Boolean(e?.result?.screenshot), (el) => el.child(secondary(`cmp-${f.id}`, "Compare", t,
+        (_e, cx) => { cx.stop_propagation(); this.openCompare(f, page, e); }, { size: S().secondary, px: 8 })));
+  }
+
+  // One picked screen goes to the agent on the left; several go to it in one message (one at a
+  // time) or each to a new tab (side by side). With no agent on the left, new tabs. Picks that are
+  // all planned are built; any other pick is planned.
+  boardFooter(t, picks, agent) {
+    const n = picks.length, to = agent?.program?.name, intent = this.pickIntent(picks), verb = intent === "build" ? "Build" : "Plan";
+    return h_flex().h(44).flex_none().px(12).gap(8).items_center().border_t(1).border_color(t.border).bg(t.background)
+      .child(div().flex_1().min_w(0).text_size(S().secondary).text_color(t.muted).child(`${n} screen${n === 1 ? "" : "s"} selected`))
+      .child(secondary("board-clear", "Clear", t, (_e, cx) => { this.boardPicks.clear(); cx.notify(); }, { size: S().secondary, px: 8 }))
+      .when(Boolean(agent) && n > 1, (el) => el.child(secondary("board-all", `Send all to ${to}…`, t, () => this.sendPicked(agent, intent), { size: S().secondary, px: 8 })))
+      .child(agent && n === 1
+        ? primary("board-one", `${verb} with ${to}…`, t, () => this.sendPicked(agent, intent), "arrow")
+        : primary("board-fan", `${verb} each in a new tab…`, t, () => this.fanOut(intent), "plus"));
+  }
+
+  pickIntent(picks) {
+    return picks.length && picks.every((id) => this.planned?.has(id)) ? "build" : "plan";
+  }
+
+  // The picked screens as handoff targets, in board order.
+  pickedTargets() {
+    const top = this.topIndex();
+    return this.livePicks().map((id) => top.get(id)).filter(Boolean)
+      .map(({ frame, page }) => ({ frame: { id: frame.id, name: frame.name }, page: page ? { name: page.name } : null, screen: null }));
+  }
+
+  // The picked screens to the agent on the left in one message, after the confirm.
+  sendPicked(agent, intent) {
+    const targets = this.pickedTargets();
+    if (!targets.length) return;
+    const text = intentText({ intent, app: agent.app, file: this.file.path, ...targets[0], targets,
+      cli: cliFor(this.cli(), this.design(), machineOf(agent.address)) });
+    confirmIntent(intent, agent, text, targets.length > 1 ? `${targets.length} screens` : targets[0].frame.name, this.design(),
+      targets.map((x) => x.frame.id));
+  }
+
+  // Who gets a changed screen: the agent that worked on it while it runs, else the one on the left.
+  changeReceiver(s) {
+    return agents().find((a) => a.address === s.entry.address) ?? this.receiver();
+  }
+
+  sendChanges(frame, page, s) {
+    const agent = this.changeReceiver(s);
+    if (!agent) { this.say("info", "Focus an agent on the left to send the changes to"); return; }
+    const text = intentText({ intent: "update", app: agent.app, file: this.file.path, frame, page, screen: null,
+      cli: cliFor(this.cli(), this.design(), machineOf(agent.address)), change: s.change });
+    confirmIntent("update", agent, text, frame.name, this.design(), [frame.id]);
+  }
+
+  // The newest changed screen not put off: a card above the list or the board.
+  changeBanner(t) {
+    const top = this.topIndex(), now = Date.now();
+    const [id, s] = [...this.states].filter(([id, s]) => s.state === "changed" && top.has(id) && !this.later.has(`${id}|${this.stamp}`))
+      .sort((a, b) => b[1].entry.at - a[1].entry.at)[0] ?? [];
+    if (!s) return null;
+    const { frame, page } = top.get(id), w = this.who(s.entry.address), to = this.changeReceiver(s);
+    const names = s.change.layers.slice(0, 3).map((l) => clean(l.name, 30)).join(", ");
+    const what = `${changeText(s.change)}${names ? `: ${names}` : ""}`;
+    return v_flex().mx(12).mt(8).p(10).gap(6).flex_none().rounded(8).border_1().border_color(t.border).bg(t.chrome)
+      .child(h_flex().gap(7).items_center().child(icon("refresh", 13, t.ansi3))
+        .child(div().flex_1().min_w(0).truncate().text_size(S().body).font_semibold().child(`${clean(frame.name, 50)} changed in ${base(this.file.path)}`)))
+      .child(div().text_size(S().secondary).text_color(t.muted)
+        .child(`${w.name} worked on it ${ago(now - s.entry.at)} ago; ${what}.`))
+      .child(h_flex().gap(6).justify_end()
+        .child(secondary("later", "Later", t, (_e, cx) => { this.later.add(`${id}|${this.stamp}`); cx.notify(); }, { size: S().secondary, px: 8 }))
+        .child(to ? primary("send-changes", `Send changes to ${to.program.name}…`, t, () => this.sendChanges(frame, page, s), "arrow")
+          : div().text_size(S().secondary).text_color(t.muted).child("Focus an agent on the left to send the changes")));
+  }
+
+  // The picked screens, each in its own new tab with the chosen agent and intent.
+  fanOut(intent) {
+    const top = this.topIndex(), frames = this.pickedTargets();
+    if (!frames.length) return;
+    const first = top.get(frames[0].frame.id);
+    const props = handoffProps({ agent: null, file: this.file, frame: first.frame, page: first.page, screen: null, cli: this.cli(), design: this.design() }).newtab;
+    openOverlay({ mod: "figlens", kind: "dialog", width: 380, height: 560, props: { ...props, frames, intent, prefer: this.receiver()?.program?.key ?? null } });
+  }
+
+  // Picks still pickable and shown by the filter: a screen an agent took up since drops out.
+  livePicks() {
+    return [...this.boardPicks].filter((id) => this.pickable?.has(id));
+  }
+
+  // The compare window for a verified screen: its design and the build screenshot side by side.
+  openCompare(frame, page, e) {
+    setShared(CMP, {
+      file: this.file, bin: this.engine.bin, key: this.key, at: e.at, on: e.on, address: e.address, result: e.result,
+      frame: { id: frame.id, name: frame.name, size: frame.size }, page: page ? { name: page.name } : null,
+      design: this.design(), cli: this.cli(),
+    });
+    openOverlay({ mod: "figlens", kind: "window", key: "figlens-compare", width: 1000, height: 680, props: { role: "compare" } });
   }
 
   // Kind tabs, the filter and fold-all, pinned above the list: how a file with hundreds of
@@ -1560,7 +1984,7 @@ export default class Figlens extends View {
       this.select(next, cx);
     } else if (e.key === "enter" && cur) {
       const agent = this.receiver();
-      if (agent) confirmIntent("build", agent, this.textFor("build", agent, cur.target, cur.page), cur.target.name, this.design());
+      if (agent) confirmIntent("build", agent, this.textFor("build", agent, cur.target, cur.page), cur.target.name, this.design(), [cur.target.id]);
     } else if (e.key === "space" && cur) this.quickLook(cur.target, cur.page);
     else if (e.key === "escape") {
       if (this.raw) this.clearFilter(cx);
@@ -1578,11 +2002,12 @@ export default class Figlens extends View {
     if (this.role === "menu") return this.renderMenu();
     if (this.role === "clear") return this.renderClear();
     if (this.role === "quicklook") return this.renderQuickLook(cx);
+    if (this.role === "compare") return this.renderCompare(cx);
     const t = theme(), file = sharedFile(), cleared = shared(CLEARED) ?? null;
     if (cleared !== this.cleared) { this.cleared = cleared; this.cacheBytes = null; this.renders = null; if (this.file) this.file = undefined; }
     if (this.file === undefined || !same(file, this.file)) this.load(file, cx);
     this.receiver(); // remembers the agent focused on the left while it is
-    this.reading = this.readers(t); // once per frame: rows, pages, the strip and the preview read it
+    this.reading = readersFrom([...this.activity.values()], t); // once per frame: rows, pages, the strip and the preview read it
     const status = this.status();
     const view = this.listReady() && !nodeRef(this.raw) ? this.listing() : null;
     return v_flex().id("figlens").track_focus(this.handle).size_full().min_h(0).rounded(10).overflow_hidden().bg(t.background)
@@ -1598,14 +2023,26 @@ export default class Figlens extends View {
       .child(h_flex().h(42).flex_none().pl(14).pr(8).gap(8).items_center().border_b(1).border_color(t.border)
         .child(image("mods/figlens/mark.svg").w(18).h(18).flex_none())
         .child(div().flex_none().font_semibold().text_size(S().title).child("figlens"))
+        .when(this.listReady(), (el) => el.child(h_flex().flex_none().p(2).gap(2).rounded(6).bg(t.chrome)
+          .children([["list", "List"], ["board", "Board"]].map(([id, label]) => {
+            const on = this.view === id;
+            return div().id(`view-${id}`).h(20).px(8).flex().items_center().rounded(4).text_size(S().label)
+              .text_color(on ? t.foreground : t.muted).bg(on ? t.selected : t.chrome).when(on, (el) => el.font_semibold())
+              .cursor_pointer().on_mouse_down("left", stop).on_click((_e, cx) => { this.view = id; cx.notify(); }).child(label);
+          }))))
         .child(div().flex_1().min_w(0).truncate().text_right().text_size(S().secondary).text_color(t.muted).child(this.file ? base(this.file.path) : ""))
         .when(Boolean(this.file?.on), (el) => el.child(pill(this.file.on, t)))
         .when(Boolean(this.file), (el) => el.child(h_flex().id("close-file").w(24).h(24).flex_none().items_center().justify_center()
           .rounded(6).cursor_pointer().hover((s) => s.bg(t.hover)).on_mouse_down("left", stop).on_click(() => this.open(null))
           .child(icon("close", 14, t.muted)))))
       .when(this.listReady(), (el) => el.child(this.toolbar(t, view)))
+      .when(this.listReady(), (el) => { const b = this.changeBanner(t); return b ? el.child(b) : el; })
       .child(v_flex().id("figlens-body").flex_1().min_h(0).overflow_y_scrollbar().child(this.body(t, cx, view)))
       .when(!this.file, (el) => el.child(this.cacheRow(t, cx)))
+      .when(this.view === "board" && this.listReady() && this.boardPicks.size > 0, (el) => {
+        const picks = this.livePicks();
+        return picks.length ? el.child(this.boardFooter(t, picks, this.receiver())) : el;
+      })
       .when(Boolean(status), (el) => el.child(statusRow(t, status[0], status[1])));
   }
 }

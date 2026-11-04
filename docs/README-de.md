@@ -136,7 +136,7 @@ Vollständige Anleitung, Befehle und Grenzen: [pi/README.md](../pi/README.md).
 
 ## Herdr-Panel
 
-Ein [Herdr](https://herdr.dev)-Panel für das Design neben deinen Agents: Öffne eine `.fig`, finde einen Screen oder eine Ebene über Name, Text, Node-ID oder Figma-Link, sieh sie dir in voller Größe an und übergib sie dem Agent links als Build, Plan oder YOLO, nach einem Bestätigungsdialog mit der genauen Nachricht. Es braucht keine figlens-Installation und liest Designs auf entfernten Herdr-Rechnern direkt dort. Bitte den Agent in Herdr: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`. Details: [herdr/README.md](../herdr/README.md). Läuft der figlens-MCP-Server eines Agents in einem Herdr-Terminal, zeigt das Panel, welchen Screen jeder Agent gerade liest.
+Ein [Herdr](https://herdr.dev)-Panel für das Design neben deinen Agents: Öffne eine `.fig`, finde einen Screen oder eine Ebene über Name, Text, Node-ID oder Figma-Link, sieh sie dir in voller Größe an und übergib sie dem Agent links als Build, Plan oder YOLO, nach einem Bestätigungsdialog mit der genauen Nachricht. Es braucht keine figlens-Installation und liest Designs auf entfernten Herdr-Rechnern direkt dort. Bitte den Agent in Herdr: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`. Details: [herdr/README.md](../herdr/README.md). Nutzen Agents figlens in Herdr-Terminals (MCP oder CLI), zeigt das Panel, welchen Screen jeder gerade liest, und sein Board verfolgt jeden Screen: in Arbeit, mit compare_image geprüft oder seit dem Bau geändert.
 
 <a id="viewer"></a>
 
@@ -149,7 +149,7 @@ npx -y @runkids/figlens preview design.fig                        # lokaler View
 npx -y @runkids/figlens preview design.fig 12:345 --out preview.html   # Offline-HTML-Snapshot zum Weitergeben an jeden
 ```
 
-Durchsuche Seiten und Layer, suche, nutze die gerankte Suche und exakte Verwendungen der Auswahl, miss, inspiziere Layout, Typografie, Variablen und CSS, exportiere jeden Layer, kopiere einen Implementierungs-Prompt oder lade ein Bundle für die Auswahl herunter. Stelle die gerankte Suche mit einem optionalen lokalen Modell auf semantisch oder hybrid um: Der Viewer indexiert die Datei erst, wenn du auf Enable index klickst. Lege einen Screenshot deines Builds über das Design, um beide zu überlagern. Details: [Preview-Anleitung](../wiki/preview.md). Visual/Hybrid nimmt ein Referenz-PNG oder einen ausgewählten Layer mit Pixelzuschnitt an. Visuelle Indexierung wird ausdrücklich aktiviert; Suchbilder werden nicht gespeichert.
+Durchsuche Seiten und Layer, suche, nutze die gerankte Suche und exakte Verwendungen der Auswahl, miss, inspiziere Layout, Typografie, Variablen und CSS, exportiere jeden Layer, kopiere einen Implementierungs-Prompt oder lade ein Bundle für die Auswahl herunter. Stelle die gerankte Suche mit einem optionalen lokalen Modell auf semantisch oder hybrid um: Der Viewer indexiert die Datei erst, wenn du auf Enable index klickst. Lege einen Screenshot deines Builds über das Design, um beide zu überlagern. Details: [Preview-Anleitung](../wiki/preview.md). Visual/Hybrid nimmt ein Referenz-PNG oder einen ausgewählten Layer mit Pixelzuschnitt an. Visuelle Indexierung wird ausdrücklich aktiviert; Suchbilder werden nicht gespeichert. **Copy reference prompt** kopiert einen kurzen Prompt, der die ausgewählte Ebene nennt, zum Einfügen in jeden Agent.
 
 <a id="mcp-and-skill"></a>
 

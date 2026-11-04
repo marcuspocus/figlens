@@ -136,7 +136,7 @@ Full walkthrough, commands and limits: [pi/README.md](../pi/README.md).
 
 ## Herdr panel
 
-A [Herdr](https://herdr.dev) panel for the design beside your agents: open a `.fig`, find a screen or layer by name, text, node ID or Figma link, look at it full size, and hand it to the agent on the left as Build, Plan or YOLO after a confirm dialog that shows the exact message. It needs no figlens install and reads designs on remote Herdr machines in place. Ask the agent in Herdr: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`. Details: [herdr/README.md](../herdr/README.md). When an agent's figlens MCP server runs in a Herdr terminal, the panel shows which screen each agent is reading.
+A [Herdr](https://herdr.dev) panel for the design beside your agents: open a `.fig`, find a screen or layer by name, text, node ID or Figma link, look at it full size, and hand it to the agent on the left as Build, Plan or YOLO after a confirm dialog that shows the exact message. It needs no figlens install and reads designs on remote Herdr machines in place. Ask the agent in Herdr: `Read ~/.config/herdr-app/AGENTS.md, then add this layout: https://github.com/runkids/figlens/tree/main/herdr/figlens-layout`. Details: [herdr/README.md](../herdr/README.md). When agents use figlens in Herdr terminals (MCP or CLI), the panel shows which screen each one is reading, and its Board tracks every screen: building, verified with compare_image, or changed since an agent built it.
 
 <a id="viewer"></a>
 
@@ -149,7 +149,7 @@ npx -y @runkids/figlens preview design.fig                        # local viewer
 npx -y @runkids/figlens preview design.fig 12:345 --out preview.html   # offline HTML snapshot to send to anyone
 ```
 
-Browse pages and layers, search, run ranked search and exact usages of the selection, measure, inspect layout, typography, variables and CSS, export any layer, copy an implementation prompt or download a bundle for the selection. Switch ranked search to semantic or hybrid with an optional local model: the viewer indexes the file only when you press Enable index. Drop in a screenshot of your build to overlay it on the design. Details: [preview guide](../wiki/preview.md). Visual/Hybrid accepts a reference PNG or selected layer with a pixel crop. Enable visual indexing explicitly; query images are not stored.
+Browse pages and layers, search, run ranked search and exact usages of the selection, measure, inspect layout, typography, variables and CSS, export any layer, copy an implementation prompt or download a bundle for the selection. Switch ranked search to semantic or hybrid with an optional local model: the viewer indexes the file only when you press Enable index. Drop in a screenshot of your build to overlay it on the design. Details: [preview guide](../wiki/preview.md). Visual/Hybrid accepts a reference PNG or selected layer with a pixel crop. Enable visual indexing explicitly; query images are not stored. **Copy reference prompt** copies a short prompt naming the selected layer to paste into any agent.
 
 <a id="mcp-and-skill"></a>
 

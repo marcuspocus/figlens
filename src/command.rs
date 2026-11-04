@@ -505,6 +505,19 @@ impl Command {
         })
     }
 
+    /// The node the command reads, as parsed: never a flag's value (`--mode 1:0`, `--compare`).
+    pub fn node(&self) -> Option<&str> {
+        match self {
+            Self::Tree { root, .. } => Some(root),
+            Self::Node(node) | Self::Nodes(node, ..) => Some(node),
+            Self::Inspect { node, .. } | Self::Bundle { node, .. } | Self::Export { node, .. } => {
+                Some(node)
+            }
+            Self::Variables(node) => node.as_deref(),
+            Self::Find { .. } | Self::Tokens { .. } => None,
+        }
+    }
+
     /// Sets a bundle's `decoded` stamp; other commands ignore it.
     pub fn decoded(mut self, stamp: Option<figlens::search::Stamp>) -> Self {
         if let Self::Bundle { decoded, .. } = &mut self {
