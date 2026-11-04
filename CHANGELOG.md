@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.12.1](https://github.com/runkids/figlens/compare/v0.12.0...v0.12.1) (2026-11-04)
+
+
+* **release:** request 0.12.1 ([c9b2ec3](https://github.com/runkids/figlens/commit/c9b2ec35184b7178aa75d473535c0847a718152c))
+
+
+### New Features
+
+* **clipboard:** read the system clipboard ([#220](https://github.com/runkids/figlens/issues/220)) ([10de609](https://github.com/runkids/figlens/commit/10de609da556586b936bc3800d133c50656ebc51))
+* **cli:** print only a command's usage for &lt;command&gt; --help ([#221](https://github.com/runkids/figlens/issues/221)) ([353c71f](https://github.com/runkids/figlens/commit/353c71fedf3d86459c5f6e3a6ac31a5f70388916))
+
 ## [0.12.0](https://github.com/runkids/figlens/compare/v0.11.4...v0.12.0) (2026-11-03)
 
 
