@@ -1175,7 +1175,10 @@ if (typeof document !== 'undefined') {
                 if (firstLoad) fit();
             }
         } catch (e) {
-            $('fileStatus').textContent = `Saved file unavailable / view stale: ${e.message}`;
+            // No answer at all: the viewer stopped (Ctrl+C, --idle-exit, or a frozen tab's absence).
+            $('fileStatus').textContent = e instanceof TypeError
+                ? 'Viewer stopped; start it again where you opened it (figlens preview, or Browser in Herdr)'
+                : `Saved file unavailable / view stale: ${e.message}`;
             $('fileStatus').dataset.state = 'stale';
         }
     }

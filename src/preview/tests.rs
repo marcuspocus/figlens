@@ -659,3 +659,21 @@ fn cancellation_names_one_running_call_and_revision_end_stops_the_rest() {
     assert!(second.cancel.load(Ordering::SeqCst));
     assert!(calls.begin(Some("late"), &ended).is_err());
 }
+
+#[test]
+fn a_viewer_no_page_asks_anything_of_stops_after_its_idle_time() {
+    let design = Path::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/examples/first-success/design.fig"
+    ));
+    let started = std::time::Instant::now();
+    serve_until(
+        design,
+        None,
+        "127.0.0.1:0".parse().unwrap(),
+        &std::sync::atomic::AtomicBool::new(false),
+        Some(Duration::from_millis(300)),
+    )
+    .unwrap();
+    assert!(started.elapsed() >= Duration::from_millis(300));
+}

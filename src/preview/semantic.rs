@@ -18,6 +18,15 @@ pub(super) struct Owned {
     thread: std::thread::JoinHandle<()>,
 }
 
+impl Indexing {
+    /// Whether the build this viewer owns is still running: it keeps an idle viewer alive.
+    pub(super) fn building(&self) -> bool {
+        self.0
+            .lock()
+            .is_ok_and(|o| o.as_ref().is_some_and(|o| !o.thread.is_finished()))
+    }
+}
+
 impl Drop for Indexing {
     /// However the viewer ends, the build it owns ends with it.
     fn drop(&mut self) {

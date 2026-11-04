@@ -59,7 +59,8 @@ For the layout, also copy `figlens-layout/layouts/herdr-figlens.json` and
 - **Look**: select a row for a large preview. **Quick Look** (Space) opens a
   floating window at full size; ← → move between screens. **Browser** opens
   the figlens viewer at that node, or an offline snapshot when the design is
-  on another machine.
+  on another machine; the viewer stops by itself after 10 minutes with no page
+  open.
 - **Hand over**: the split button builds with the agent focused on the left;
   its menu holds Plan, YOLO, Start in a new tab and Copy prompt. Pi and
   OpenCode receive their own `/figlens plan` and `/figlens yolo` commands,

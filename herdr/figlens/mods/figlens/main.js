@@ -165,13 +165,20 @@ async function renderNode(bin, file, id, dir, max, size) {
 // The browser viewer for a design on this computer: one figlens preview per file, run as a
 // hidden Herdr terminal and reused while it lives. Resolves with its URL; started(terminal)
 // hears about a viewer this call started.
+// A viewer the panel starts stops after 10 minutes with no page open (an open page asks every
+// 2 s), when this figlens has --idle-exit; an older one runs until the design or panel closes.
+async function idleArgs(bin) {
+  const r = await exec(bin, ["preview", "--help"]).catch(() => null);
+  return String(r?.stdout ?? "").includes("--idle-exit") ? ["--idle-exit", "600"] : [];
+}
+
 async function viewerUrl(bin, file, cx, started) {
   const key = `${file.on ?? ""}:${file.path}`, known = (shared(VIEWERS) ?? {})[key];
   if (known) {
     const g = await hc(["get", known.terminal, "--json"]).catch(() => null);
     try { if (g?.code === 0 && JSON.parse(g.stdout).finished_ms == null) return known.url; } catch { /* start another */ }
   }
-  const r = await hc(["run", "--bg", "--json", "--no-parent", "--", bin, "preview", file.path]);
+  const r = await hc(["run", "--bg", "--json", "--no-parent", "--", bin, "preview", file.path, ...(await idleArgs(bin))]);
   if (r.code !== 0) throw new Error(lastLine(r.stderr) || "Could not start the viewer");
   const terminal = JSON.parse(r.stdout).address;
   started?.(terminal);
