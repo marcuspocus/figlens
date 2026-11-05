@@ -402,7 +402,8 @@ usage:
                                              never fails for a missing token or network. With a
                                              token, a node not found or an empty find in a mapped
                                              stale copy also says to save a new local copy
-  figlens pull [--only NAME]... [--stale] [--sources <mapping.json>] | --login
+  figlens pull [--only NAME]... [--stale] [--sources <mapping.json>] [--browser B] | --login
+          [--browser B] | --logout
                                              refresh mapped saved copies from Figma. With no --only or
                                              --stale it downloads nothing and lists each design's
                                              freshness. --only NAME (repeatable) picks designs; --stale
@@ -414,8 +415,13 @@ usage:
                                              below the mapping's folder, one name per design. --login
                                              opens a visible window to sign in (a pull opens it too when
                                              the session has expired); signing in there may sign you out
-                                             of Figma elsewhere. Needs Node, Chrome and the npm package's
-                                             helper with playwright-core (FIGLENS_PULL_HELPER). Prints
+                                             of Figma elsewhere. --logout deletes the browser profiles
+                                             (signing figlens out), runs alone and prints {logout,
+                                             removed}. Needs Node, Chrome and
+                                             the npm package's helper (FIGLENS_PULL_HELPER) with
+                                             playwright-core or agent-browser on PATH; --browser
+                                             playwright|agent-browser picks one (default: playwright-core
+                                             when found), each with its own profile. Prints
                                              {mapping, designs:[{name,file,state: pulled|skipped|failed,
                                              savedAt,stage,reason}]}; fails when any design failed.
   figlens update                               install the latest GitHub release over this binary
@@ -733,6 +739,7 @@ fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
         }
         Some("pull") => {
             let (mut only, mut sources, mut stale, mut login) = (Vec::new(), None, false, false);
+            let (mut logout, mut browser) = (false, None);
             let mut rest = args[1..].iter();
             while let Some(arg) = rest.next() {
                 match arg.as_str() {
@@ -744,11 +751,28 @@ fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
                     }
                     "--stale" => stale = true,
                     "--login" => login = true,
+                    "--logout" => logout = true,
+                    "--browser" => {
+                        let name = rest.next().ok_or("--browser needs a name")?.as_str();
+                        if !command::pull::BROWSERS.iter().any(|(b, _)| *b == name) {
+                            let names: Vec<_> =
+                                command::pull::BROWSERS.iter().map(|(b, _)| *b).collect();
+                            return Err(
+                                format!("--browser is {}, not {name}", names.join(" or ")).into()
+                            );
+                        }
+                        browser = Some(name);
+                    }
                     _ => return Err(USAGE.into()),
                 }
             }
             if login && (stale || !only.is_empty()) {
                 return Err("--login only signs in; run pull again to download".into());
+            }
+            if logout
+                && (login || stale || browser.is_some() || sources.is_some() || !only.is_empty())
+            {
+                return Err("--logout only deletes the browser profiles; pass it alone".into());
             }
             let cwd = std::env::current_dir()?;
             let storage = figlens::workspace::storage(None)?;
@@ -757,6 +781,8 @@ fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
                 only,
                 stale,
                 login,
+                logout,
+                browser,
                 start: &cwd,
             };
             return match command::pull::run(&request, storage.state_dir()) {

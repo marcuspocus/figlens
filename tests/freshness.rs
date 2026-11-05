@@ -506,6 +506,80 @@ fn pull_login_needs_no_mapping() {
     assert!(request.contains("\"login\":true"), "{request}");
 }
 
+impl Project {
+    /// The request the stand-in helper received on its last run.
+    fn request(&self) -> Value {
+        let request = std::fs::read_to_string(self.root.join("bin/request")).unwrap();
+        serde_json::from_str(&request).unwrap()
+    }
+}
+
+#[test]
+fn pull_sends_the_chosen_browser_and_its_own_profile() {
+    let project = Project::new(LATER);
+    project.helper(&saved_copy_at(LATER), false);
+    project.run(&["pull", "--login", "--browser", "agent-browser"], false);
+    let request = project.request();
+    let profile = request["profiles"]["agent-browser"]
+        .as_str()
+        .unwrap_or_default();
+    assert_eq!(
+        (
+            request["browser"].clone(),
+            profile.ends_with("pull/agent-browser-profile")
+        ),
+        (json!("agent-browser"), true),
+        "{request}"
+    );
+}
+
+#[test]
+fn pull_refuses_an_unknown_browser() {
+    let project = Project::new(LATER);
+    let out = project.run(&["pull", "--login", "--browser", "firefox"], false);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        !out.status.success() && stderr.contains("playwright or agent-browser"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn pull_logout_deletes_every_browser_profile() {
+    let project = Project::new(LATER);
+    project.helper(&saved_copy_at(LATER), false);
+    project.run(&["pull", "--login"], false);
+    let profiles = project.request()["profiles"].clone();
+    let out = project.run(&["pull", "--logout"], false);
+    let left: Vec<_> = ["playwright", "agent-browser"]
+        .iter()
+        .filter(|b| Path::new(profiles[**b].as_str().unwrap()).exists())
+        .collect();
+    assert_eq!(
+        (out.status.success(), left.len()),
+        (true, 0),
+        "{profiles} {left:?}"
+    );
+}
+
+#[test]
+fn pull_logout_runs_alone() {
+    let project = Project::new(LATER);
+    let out = project.run(&["pull", "--logout", "--only", "home"], false);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        !out.status.success() && stderr.contains("--logout only"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn pull_logout_refuses_a_mapping() {
+    let project = Project::new(LATER);
+    let out = project.run(&["pull", "--logout", "--sources", "x.json"], false);
+    assert!(!out.status.success(), "{out:?}");
+}
+
 #[test]
 fn pull_reports_why_the_helper_stopped() {
     use std::os::unix::fs::PermissionsExt;

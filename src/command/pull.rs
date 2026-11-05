@@ -1,8 +1,8 @@
 //! `pull`: refresh mapped `.fig` copies through a browser helper (#225).
 //!
 //! figlens owns the mapping, the selection, the profile lock, validation and the atomic replace;
-//! the helper (`FIGLENS_PULL_HELPER`, a Node + playwright-core script the npm package ships) only
-//! drives Figma's File > Save local copy in a dedicated browser profile. The helper reads one
+//! the helper (`FIGLENS_PULL_HELPER`, a Node script the npm package ships, over playwright-core or
+//! agent-browser) only drives Figma's File > Save local copy in a dedicated browser profile. The helper reads one
 //! JSON request on stdin and answers one JSON line per design on stdout; its stderr is the
 //! person's progress log.
 
@@ -20,6 +20,13 @@ use serde_json::{Value, json};
 /// The helper the npm launcher points at; a native-only install sets it by hand.
 pub const HELPER_VAR: &str = "FIGLENS_PULL_HELPER";
 
+/// The browsers the helper can drive, each with its own profile folder under `pull/`: they may
+/// launch different Chrome builds, which do not share one profile's cookies.
+pub const BROWSERS: [(&str, &str); 2] = [
+    ("playwright", "profile"),
+    ("agent-browser", "agent-browser-profile"),
+];
+
 /// What to pull: the designs named in `only`, or only stale ones; with neither, nothing is
 /// downloaded and the mapped designs are listed with their freshness.
 pub struct Request<'a> {
@@ -27,11 +34,18 @@ pub struct Request<'a> {
     pub only: Vec<&'a str>,
     pub stale: bool,
     pub login: bool,
+    /// Deletes every browser profile, signing figlens out of Figma; reads no mapping.
+    pub logout: bool,
+    /// One of [`BROWSERS`]; `None` lets the helper pick what is installed.
+    pub browser: Option<&'a str>,
     pub start: &'a Path,
 }
 
 /// Pulls the requested designs and reports each; an error after the report means some failed.
 pub fn run(request: &Request, state: &Path) -> Result<Value, Box<dyn Error>> {
+    if request.logout {
+        return logout(&state.join("pull"));
+    }
     // Signing in needs no project.
     let mapping = if request.login {
         None
@@ -69,28 +83,23 @@ pub fn run(request: &Request, state: &Path) -> Result<Value, Box<dyn Error>> {
         )
     })?;
     let dir = state.join("pull");
-    // Downloads are whole designs and the profile holds Figma's login cookies.
-    private_dir(&dir)?;
-    let lock = OpenOptions::new()
-        .create(true)
-        .truncate(false)
-        .write(true)
-        .open(dir.join("lock"))?;
-    // The OS drops the lock when this process ends, however it ends.
-    lock.try_lock().map_err(|_| {
-        "another figlens pull is running; it shares one browser profile, so wait for it to finish"
-    })?;
+    let _lock = lock(&dir)?;
     let downloads = dir.join("downloads");
     // Held under the lock, so anything left here is from a run that stopped early.
     let _ = std::fs::remove_dir_all(&downloads);
     std::fs::create_dir_all(&downloads)?;
-    let profile = dir.join("profile");
-    private_dir(&profile)?;
+    let mut profiles = serde_json::Map::new();
+    for (browser, folder) in BROWSERS {
+        let profile = dir.join(folder);
+        private_dir(&profile)?;
+        profiles.insert(browser.to_owned(), json!(profile));
+    }
+    let launch = json!({"profiles": profiles, "browser": request.browser});
     let wanted: Vec<&Source> = selected
         .iter()
         .filter_map(|(s, skip)| skip.is_none().then_some(*s))
         .collect();
-    let outcome = helper_run(&helper, &profile, &downloads, request.login, &wanted);
+    let outcome = helper_run(&helper, &launch, &downloads, request.login, &wanted);
     let _ = std::fs::remove_dir_all(&downloads);
     let (mut results, stopped) = outcome?;
     let Some(mapping) = mapping else {
@@ -114,6 +123,36 @@ pub fn run(request: &Request, state: &Path) -> Result<Value, Box<dyn Error>> {
         return Err(Failed { report, failed }.into());
     }
     Ok(report)
+}
+
+/// Takes the lock every pull holds; the OS drops it when this process ends, however it ends.
+fn lock(dir: &Path) -> Result<File, Box<dyn Error>> {
+    // Downloads are whole designs and the profiles hold Figma's login cookies.
+    private_dir(dir)?;
+    let lock = OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(dir.join("lock"))?;
+    lock.try_lock().map_err(|_| {
+        "another figlens pull is running; it shares the browser profiles, so wait for it to finish"
+    })?;
+    Ok(lock)
+}
+
+/// Deletes every browser profile under the lock, so no running pull loses its browser's.
+fn logout(dir: &Path) -> Result<Value, Box<dyn Error>> {
+    let _lock = lock(dir)?;
+    let mut removed = Vec::new();
+    for (_, folder) in BROWSERS {
+        let profile = dir.join(folder);
+        if profile.exists() {
+            std::fs::remove_dir_all(&profile)
+                .map_err(|e| format!("could not delete {}: {e}", profile.display()))?;
+            removed.push(profile);
+        }
+    }
+    Ok(json!({"logout": "signed out", "removed": removed}))
 }
 
 /// A report in which some designs failed; the CLI prints the report, then fails.
@@ -237,7 +276,7 @@ type Outcome = (std::collections::HashMap<String, Value>, String);
 /// stdin stays open until it is done, so it can exit when figlens goes away.
 fn helper_run(
     helper: &Path,
-    profile: &Path,
+    launch: &Value,
     downloads: &Path,
     login: bool,
     sources: &[&Source],
@@ -275,7 +314,7 @@ fn helper_run(
             }
         })
     });
-    let read = read_events(&mut child, profile, downloads, login, sources, &mut results);
+    let read = read_events(&mut child, launch, downloads, login, sources, &mut results);
     if read.is_err() {
         let _ = child.kill();
     }
@@ -303,7 +342,7 @@ fn helper_run(
 /// Sends the request and installs each download the helper reports.
 fn read_events(
     child: &mut Child,
-    profile: &Path,
+    launch: &Value,
     downloads: &Path,
     login: bool,
     sources: &[&Source],
@@ -317,7 +356,8 @@ fn read_events(
         })
         .collect();
     let request = json!({
-        "profile": profile,
+        "profiles": launch["profiles"],
+        "browser": launch["browser"],
         "downloads": downloads,
         "login": login,
         "designs": designs,
