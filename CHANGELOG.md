@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.13.1](https://github.com/runkids/figlens/compare/v0.13.0...v0.13.1) (2026-11-05)
+
+
+* **release:** request 0.13.1 ([f932055](https://github.com/runkids/figlens/commit/f93205512d0fe2df6a8629759aa6f47b0ef079cb))
+
+
+### New Features
+
+* **herdr:** hide the side panel from the panel's own header ([a8b97ed](https://github.com/runkids/figlens/commit/a8b97edbdb99c6227c47b50857d434505523ef2d))
+* **pull:** sign out with --logout and drive agent-browser as an alternative browser ([#239](https://github.com/runkids/figlens/issues/239)) ([9f7f45f](https://github.com/runkids/figlens/commit/9f7f45ffdd5af5903e0f364a248576dbc06db300))
+
+
+### Bug Fixes
+
+* **herdr:** stop the panel freezing Herdr when several agents work on one design ([#240](https://github.com/runkids/figlens/issues/240)) ([b73c2ed](https://github.com/runkids/figlens/commit/b73c2edcf8d56be73f4484af34ea6e091f6b1534))
+
 ## [0.13.0](https://github.com/runkids/figlens/compare/v0.12.1...v0.13.0) (2026-11-04)
 
 

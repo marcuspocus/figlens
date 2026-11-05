@@ -3,7 +3,7 @@
 // for VERSION (shared with `npx @runkids/figlens`), else one click downloads this
 // version's release archive into that same cache after checking it against SHA256SUMS.
 
-export const VERSION = "0.13.0"; // x-release-please-version
+export const VERSION = "0.13.1"; // x-release-please-version
 
 const OS = { macos: "apple-darwin", linux: "unknown-linux-musl" };
 const ARCH = { arm64: "aarch64", aarch64: "aarch64", x64: "x86_64", x86_64: "x86_64" };
