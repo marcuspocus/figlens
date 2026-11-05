@@ -1,0 +1,3 @@
+{"at":5,"box":[80.0,32.0,120.0,28.0],"file":"/d/design.fig","nodes":["0:4"],"revision":"1700000000 1615","screen":"0:1","terminal":"t7","tool":"inspect","v":1}
+{"at":6,"box":[0.0,0.0,320.0,180.0],"file":"/d/design.fig","nodes":["0:1"],"result":{"diff":"/p/.figlens/diff.png","mismatch":0.018,"nonTextMismatch":0.006,"regionCount":1,"screenshot":"/p/shot.png"},"revision":"1700000000 1615","screen":"0:1","terminal":"t7","tool":"compare_image","v":1}
+{"at":7,"file":"/d/design.fig","nodes":["0:3","0:4"],"terminal":"mac-mini/t1r","tool":"export_batch","v":1}

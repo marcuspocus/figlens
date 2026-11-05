@@ -10,8 +10,10 @@
   `gpui-kit.d.ts`. Mods are plain JavaScript in QuickJS: no Node APIs,
   `setTimeout` or `Intl`; never keep a `cx` past its callback; never notify
   during render.
-- Keep `engine.js` and `frames.js` free of Herdr imports so
-  `node --test herdr/tests/*.test.mjs` runs them. `VERSION` in `engine.js` is
+- Keep every module but `main.js` (`engine.js`, `frames.js`, `journal.js`,
+  `session.js`, `work.js`, `place.js`, `store.js`, `cache.js`) free of Herdr
+  imports so `node --test herdr/tests/*.test.mjs` runs them; `main.js` passes
+  Herdr's functions in. `VERSION` in `engine.js` is
   bumped by Release Please through a `generic` extra-files entry that rewrites
   its marked line; never edit it by hand.
 - Use Herdr theme tokens only; secondary text is `muted`, never `dim`. Every

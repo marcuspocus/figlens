@@ -537,6 +537,60 @@ mod tests {
         });
     }
 
+    /// herdr/tests/journal.jsonl holds lines as this writer makes them, and the Herdr panel's
+    /// tests read that file: a change to the format fails here and there together.
+    #[test]
+    fn the_herdr_panels_journal_fixture_is_what_this_writer_writes() {
+        let saved = (
+            std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000),
+            1615,
+        );
+        let reply = json!({"mismatch": 0.018, "nonTextMismatch": 0.006, "regionCount": 1,
+            "path": "/p/.figlens/diff.png"});
+        with_tree(|tree| {
+            let design = Path::new("/d/design.fig");
+            let lines = [
+                line(
+                    "t7",
+                    "inspect",
+                    design,
+                    tree,
+                    &ids(["0:4"]),
+                    5,
+                    extra(Some(saved), None),
+                ),
+                line(
+                    "t7",
+                    "compare_image",
+                    design,
+                    tree,
+                    &ids(["0:1"]),
+                    6,
+                    extra(
+                        Some(saved),
+                        Some(compare_summary(&reply, Some("/p/shot.png"))),
+                    ),
+                ),
+                line(
+                    "mac-mini/t1r",
+                    "export_batch",
+                    design,
+                    tree,
+                    &ids(["0:3", "0:4"]),
+                    7,
+                    Default::default(),
+                ),
+            ]
+            .concat();
+            let fixture = concat!(env!("CARGO_MANIFEST_DIR"), "/herdr/tests/journal.jsonl");
+            assert_eq!(
+                std::fs::read_to_string(fixture).unwrap_or_default(),
+                lines,
+                "{fixture}"
+            );
+        });
+    }
+
     #[test]
     fn a_revision_reads_like_stat_seconds_and_bytes() {
         let at = std::time::UNIX_EPOCH + std::time::Duration::from_millis(1_700_000_000_999);

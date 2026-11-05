@@ -13,7 +13,13 @@ const HERE = path.dirname(new URL(import.meta.url).pathname);
 const MOD = path.join(HERE, "../figlens/mods/figlens");
 const LAYOUT = path.join(HERE, "../figlens-layout");
 const { VERSION, asset, cacheDir, INSTALL } = await import(path.join(MOD, "engine.js"));
-const { groupFrames, thumbFile, fitBox, clean, handoff, nodeRef, intentText, appOf, latestActivity, ago, ACTIVITY, parseActivity, recentActivity, screenStates, pct, changedFrames, scopeChange, isRevision, boardState, handoffStep, STARTING_MS } = await import(path.join(MOD, "frames.js"));
+const { STAT, placeOf, REMOTE_CHUNK, CHUNK, POLL } = await import(path.join(MOD, "place.js"));
+const { DesignSession } = await import(path.join(MOD, "session.js"));
+const { createStore, HANDOFF_DAYS } = await import(path.join(MOD, "store.js"));
+const { createCache, KEEP_IMAGES } = await import(path.join(MOD, "cache.js"));
+const { createQueue, NOW, SOON, LATER, Stale } = await import(path.join(MOD, "work.js"));
+const { groupFrames, thumbFile, fitBox, clean, handoff, nodeRef, intentText, appOf, ago, pct, changedFrames, scopeChange, isRevision, boardState, handoffStep, STARTING_MS } = await import(path.join(MOD, "frames.js"));
+const { latestActivity, ACTIVITY, parseActivity, recentActivity, screenStates, Journal } = await import(path.join(MOD, "journal.js"));
 
 test("asset names the release archive for Herdr's platform and either arch spelling", () => {
   assert.equal(asset("macos", "arm64"), `figlens-${VERSION}-aarch64-apple-darwin.tar.gz`);
@@ -183,8 +189,6 @@ test("INSTALL replaces a cache folder that lost its binary instead of nesting in
 });
 
 test("STAT prints modified time and size on this platform", () => {
-  const src = fs.readFileSync(path.join(MOD, "main.js"), "utf8");
-  const STAT = src.match(/const STAT = '(.+)';/)[1];
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "figlens-stat-")), "a.fig");
   fs.writeFileSync(file, "12345");
   const out = spawnSync("sh", ["-c", STAT, "figlens", file], { encoding: "utf8" }).stdout.trim();
@@ -241,7 +245,9 @@ test("ACTIVITY keeps every terminal's newest line, however busy another one is",
 
 test("the toggle lists figlens among the panels Herdr's tabs mod restores per space", () => {
   const main = fs.readFileSync(path.join(MOD, "main.js"), "utf8");
-  assert.match(main, /if \(!panels\.includes\("figlens"\)\) setShared\(PANELS, \[\.\.\.panels, "figlens"\]\)/);
+  const m = new Map(), store = createStore((k) => m.get(k), (k, v) => m.set(k, v));
+  store.listPanel("figlens");
+  assert.deepEqual([/store\.listPanel\("figlens"\)/.test(main), m.get("workspace.panels")], [true, ["files", "changes", "figlens"]]);
 });
 
 test("intentText runs YOLO through figlens's workflow tool, with npx when figlens may not be on PATH", () => {
@@ -374,4 +380,259 @@ test("handoffStep finds a new tab's agent, starts, finishes once, and gives up a
 test("boardState without a handoff: done once the building agent stops, read once it is gone", () => {
   const s = { state: "building", entry: { address: "t7", at: 5 }, since: 5 };
   assert.deepEqual([boardState(s, null, [{ address: "t7", status: "idle" }]).state, boardState(s, null, []).state], ["done", "read"]);
+});
+
+// ---- session.js: one owner of "is this work still current" ----
+
+const saved = (stamp) => async () => stamp;
+
+test("a folder event that left the design's revision as read reads nothing again", async () => {
+  const s = new DesignSession(), gen = s.read({ path: "/p/a.fig", on: null });
+  s.saw(gen, "100 5");
+  assert.equal(await s.changed(gen, saved("100 5")), false);
+});
+
+test("a new save of the design is a new revision to read", async () => {
+  const s = new DesignSession(), gen = s.read({ path: "/p/a.fig", on: null });
+  s.saw(gen, "100 5");
+  assert.equal(await s.changed(gen, saved("101 6")), true);
+});
+
+test("a design that is gone is read again, so the panel can say so", async () => {
+  const s = new DesignSession(), gen = s.read({ path: "/p/a.fig", on: null });
+  s.saw(gen, "100 5");
+  assert.equal(await s.changed(gen, saved(null)), true);
+});
+
+test("a machine that cannot be asked changes nothing", async () => {
+  const s = new DesignSession(), gen = s.read({ path: "/p/a.fig", on: "box" });
+  s.saw(gen, "100 5");
+  assert.equal(await s.changed(gen, async () => { throw new Error("unreachable"); }), false);
+});
+
+test("a new read makes the work of the earlier one stale", () => {
+  const s = new DesignSession(), first = s.read({ path: "/p/a.fig", on: null });
+  s.read({ path: "/p/a.fig", on: null });
+  assert.equal(s.current(first), false);
+});
+
+test("a cleared cache makes the panel read the same design again", () => {
+  const s = new DesignSession(), file = { path: "/p/a.fig", on: null };
+  s.read(file); s.stale();
+  assert.equal(s.wants(file), true);
+});
+
+// ---- work.js: every figlens run in one queue ----
+
+// A run the test finishes by hand, and how many were running at once.
+function gate() {
+  const open = [];
+  let now = 0, most = 0;
+  const run = (name) => () => { now += 1; most = Math.max(most, now); return new Promise((r) => open.push({ name, done: () => { now -= 1; r(name); } })); };
+  return { open, run, get most() { return most; } };
+}
+const tick = () => new Promise((r) => setTimeout(r, 0));
+
+test("the queue runs two at once and keeps one of them for what the person waits on", async () => {
+  const q = createQueue(), g = gate();
+  for (const n of ["t1", "t2", "t3"]) q.run(g.run(n), { priority: SOON });
+  q.run(g.run("look"), { priority: NOW });
+  await tick();
+  assert.deepEqual(g.open.map((j) => j.name), ["t1", "look"]);
+});
+
+test("the queue starts what the person waits on before background work", async () => {
+  const q = createQueue({ limit: 1 }), g = gate();
+  q.run(g.run("first"), { priority: NOW });
+  q.run(g.run("diff"), { priority: LATER });
+  q.run(g.run("thumbs"), { priority: SOON });
+  q.run(g.run("preview"), { priority: NOW });
+  const order = [];
+  for (let i = 0; i < 4; i += 1) { await tick(); order.push(g.open.at(-1).name); g.open.at(-1).done(); await tick(); }
+  assert.deepEqual(order, ["first", "preview", "thumbs", "diff"]);
+});
+
+test("a queued run that went stale never starts", async () => {
+  const q = createQueue({ limit: 1 }), g = gate();
+  let stale = false, started = false;
+  q.run(g.run("busy"));
+  const p = q.run(() => { started = true; return Promise.resolve(); }, { stale: () => stale });
+  stale = true;
+  await tick(); g.open[0].done();
+  await assert.rejects(p, Stale);
+  assert.equal(started, false);
+});
+
+// ---- place.js: a design here or on another machine ----
+
+function fakeHost(over = {}) {
+  const calls = [];
+  return {
+    calls,
+    sh: async (script, args, on) => { calls.push({ sh: script, args, on }); return { code: 0, stdout: "" }; },
+    exec: async (cmd, args, opts) => { calls.push({ exec: cmd, args, on: opts?.on ?? null }); return { code: 0, stdout: "" }; },
+    watchFolder: async () => [],
+    writeFile: async () => {},
+    readdir: async () => [],
+    unpack: async () => {},
+    ...over,
+  };
+}
+const nap = async () => {};
+
+test("another file written in the design's folder is not a change to the design", async () => {
+  const p = placeOf({ path: "/p/a.fig", on: null }, fakeHost({ watchFolder: async () => ["/p/src/App.tsx", "/p/shot.png"] }));
+  assert.equal(await p.changes(nap), false);
+});
+
+test("a watch batch naming the folder itself may be the design changing", async () => {
+  const p = placeOf({ path: "/p/a.fig", on: null }, fakeHost({ watchFolder: async () => ["/p"] }));
+  assert.equal(await p.changes(nap), true);
+});
+
+test("a design on another machine is polled, not watched", async () => {
+  let watched = false, slept = 0;
+  const p = placeOf({ path: "/p/a.fig", on: "box" }, fakeHost({ watchFolder: async () => { watched = true; return []; } }));
+  await p.changes(async (ms) => { slept = ms; });
+  assert.deepEqual([watched, slept], [false, POLL]);
+});
+
+test("a design on another machine is drawn there and comes back as images", async () => {
+  const host = fakeHost({ sh: async (script, args, on) => { host.calls.push({ script, on }); return { code: 0, stdout: "aGk=" }; } });
+  await placeOf({ path: "/p/a.fig", on: "box" }, host).render("figlens", ["0:1"], "/d", { max: 216, scale: 3 });
+  assert.deepEqual(host.calls.map((c) => [c.on, c.script.includes("--frames")]), [["box", true]]);
+});
+
+test("a design here is drawn with one export run for every node asked", async () => {
+  const host = fakeHost({ readdir: async () => ["0-1.png"] });
+  const drawn = await placeOf({ path: "/p/a.fig", on: null }, host).render("figlens", ["0:1", "0:2"], "/d", { max: 216, scale: 3 });
+  assert.deepEqual([host.calls.filter((c) => c.args?.includes("export")).length, [...drawn]], [1, ["0:1"]]);
+});
+
+// ---- journal.js: the activity journal figlens writes, as the panel reads it ----
+
+// journal.jsonl is written by src/activity.rs's writer (its test keeps the two the same).
+const WRITTEN = fs.readFileSync(path.join(HERE, "journal.jsonl"), "utf8");
+
+// The lines ACTIVITY keeps from a journal holding `text`, for a design at a temporary path.
+function throughActivity(text) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "figlens-written-")), design = path.join(dir, "design.fig");
+  fs.writeFileSync(design, "");
+  const key = createHash("sha256").update(fs.realpathSync(design)).digest("hex").slice(0, 16);
+  fs.mkdirSync(path.join(dir, "state/figlens/activity"), { recursive: true });
+  fs.writeFileSync(path.join(dir, "state/figlens/activity", `${key}.jsonl`), text);
+  return spawnSync("sh", ["-c", ACTIVITY, "figlens", design], { encoding: "utf8", env: { ...process.env, XDG_STATE_HOME: path.join(dir, "state") } }).stdout;
+}
+
+test("the panel reads the screen, box and revision of a line figlens wrote", () => {
+  const e = parseActivity(throughActivity(WRITTEN), null).find((x) => x.tool === "inspect");
+  assert.deepEqual([e.screen, e.box, e.revision], ["0:1", [80, 32, 120, 28], "1700000000 1615"]);
+});
+
+test("the panel reads a comparison figlens wrote as a verified screen", () => {
+  const states = screenStates(parseActivity(throughActivity(WRITTEN), null), 10);
+  assert.deepEqual([states.get("0:1").state, states.get("0:1").entry.result.mismatch], ["verified", 0.018]);
+});
+
+test("a journal poll that found nothing new redraws nothing and shares nothing", () => {
+  const j = new Journal(), entries = parseActivity(WRITTEN, null), later = 100 * 60 * 1000;
+  j.update(entries, later);
+  assert.deepEqual(j.update(entries, later), { share: false, redraw: false });
+});
+
+test("a finished comparison has the board's states worked out again", () => {
+  const j = new Journal(), entries = parseActivity(WRITTEN, null), later = 100 * 60 * 1000;
+  j.update(entries, later); j.restate();
+  assert.equal(j.update(entries, later).redraw, true);
+});
+
+// ---- store.js: shared state, each key's shape and clean-up ----
+
+// A store over an in-memory shared state; `writes` counts setShared calls.
+function memStore() {
+  const m = new Map(), out = { writes: 0 };
+  out.store = createStore((k) => m.get(k), (k, v) => { out.writes += 1; m.set(k, v); });
+  return out;
+}
+const DESIGN = { path: "/p/a.fig", on: null }, DAY = 86400000;
+
+test("a handoff older than HANDOFF_DAYS goes when the next one is recorded", () => {
+  const { store } = memStore();
+  store.recordHandoff(DESIGN, ["0:1"], { intent: "build", address: "t1" }, 0);
+  store.recordHandoff(DESIGN, ["0:2"], { intent: "plan", address: "t1" }, HANDOFF_DAYS * DAY + 1);
+  assert.deepEqual(Object.keys(store.handoffsOf(DESIGN)), ["0:2"]);
+});
+
+test("a handoff step that moved nothing writes nothing", () => {
+  const s = memStore();
+  s.store.recordHandoff(DESIGN, ["0:1"], { intent: "build", address: "t1" }, 5);
+  const before = s.writes;
+  assert.deepEqual([s.store.stepHandoffs(DESIGN, (h) => h), s.writes], [false, before]);
+});
+
+test("closing a design another space still has open keeps its viewer", () => {
+  const { store } = memStore();
+  store.setFile("s1", DESIGN); store.setFile("s2", DESIGN);
+  assert.equal(store.setFile("s1", null), null);
+});
+
+test("closing the last space's design hands it back so its viewer can stop", () => {
+  const { store } = memStore();
+  store.setFile("s1", DESIGN);
+  assert.deepEqual(store.setFile("s1", null), DESIGN);
+});
+
+test("sharing one design's live readers drops another design's stale ones", () => {
+  const { store } = memStore(), other = { path: "/p/b.fig", on: "box" };
+  store.shareLive(other, [{ address: "t2" }], 0);
+  store.shareLive(DESIGN, [{ address: "t1" }], 11 * 60 * 1000);
+  assert.deepEqual(store.liveOf(other), []);
+});
+
+// ---- cache.js: what the panel keeps on disk, through real sh in a temporary home ----
+
+function diskHost() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "figlens-cache-")), home = path.join(root, "home"), app = path.join(root, "app");
+  fs.mkdirSync(home); fs.mkdirSync(app);
+  const env = { ...process.env, HOME: home };
+  const run = (cmd, args) => { const r = spawnSync(cmd, args, { encoding: "utf8", env }); return { code: r.status, stdout: r.stdout, stderr: r.stderr }; };
+  return {
+    root, homeDir: home,
+    sh: async (script, args = []) => run("sh", ["-c", script, "figlens", ...args]),
+    exec: async (cmd, args) => run(cmd, args),
+    mkdir: (d, o) => fs.promises.mkdir(d, o), readdir: (d) => fs.promises.readdir(d),
+    appHome: () => app, home: () => home, hash: (t) => createHash("sha256").update(t).digest("hex").slice(0, 16),
+  };
+}
+
+test("opening a design's new revision drops its older revision's images", async () => {
+  const host = diskHost(), cache = createCache(host);
+  await cache.openRevision("abc", "abc-1");
+  fs.writeFileSync(path.join(cache.folder("abc-1"), "0-1.png"), "");
+  await cache.openRevision("abc", "abc-2");
+  assert.deepEqual(fs.readdirSync(path.dirname(cache.folder("abc-2"))), ["abc-2"]);
+});
+
+test("only the newest KEEP_IMAGES revisions' images stay across designs", async () => {
+  const host = diskHost(), cache = createCache(host);
+  for (let i = 0; i <= KEEP_IMAGES + 2; i += 1) await cache.openRevision(`d${i}`, `d${i}-1`);
+  assert.equal(fs.readdirSync(path.dirname(cache.folder("x"))).length, KEEP_IMAGES);
+});
+
+test("a kept revision is found again by its revision", async () => {
+  const host = diskHost(), cache = createCache(host), design = path.join(host.root, "a.fig");
+  fs.writeFileSync(design, "12345");
+  const stamp = (await host.sh(STAT, [design])).stdout.trim(), file = { path: design, on: null };
+  await cache.keep(file, stamp);
+  assert.equal(fs.readFileSync(await cache.kept(file, stamp), "utf8"), "12345");
+});
+
+test("measuring tells saved versions apart from copies made for agents", async () => {
+  const host = diskHost(), cache = createCache(host);
+  for (const dir of [".cache/figlens/herdr-designs/k", ".cache/figlens/herdr-revisions/k"]) {
+    fs.mkdirSync(path.join(host.homeDir, dir), { recursive: true });
+    fs.writeFileSync(path.join(host.homeDir, dir, "a.fig"), "x".repeat(4096));
+  }
+  const { copies } = await cache.measure([null], async () => null);
+  assert.deepEqual(copies.map((c) => [path.basename(c.dir), c.saved]), [["herdr-designs", false], ["herdr-revisions", true]]);
 });
