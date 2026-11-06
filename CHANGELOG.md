@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.14.0](https://github.com/runkids/figlens/compare/v0.13.1...v0.14.0) (2026-11-06)
+
+
+### New Features
+
+* **freshness:** support named Figma API accounts ([#245](https://github.com/runkids/figlens/issues/245)) ([9e12203](https://github.com/runkids/figlens/commit/9e12203014f5a4dc6c400ee969710905882e9c71))
+* **nodes:** write MCP nodes JSON to a file with out ([#242](https://github.com/runkids/figlens/issues/242)) ([4151b4b](https://github.com/runkids/figlens/commit/4151b4b2e4dda2b1edb1910f39a8380c20c205fd))
+* **pull:** support named Figma browser accounts ([#243](https://github.com/runkids/figlens/issues/243)) ([b872700](https://github.com/runkids/figlens/commit/b8727001a6137099882e50b65ff184628af779c1))
+
 ## [0.13.1](https://github.com/runkids/figlens/compare/v0.13.0...v0.13.1) (2026-11-05)
 
 
