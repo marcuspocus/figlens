@@ -75,7 +75,7 @@ pub fn run(request: &Request, state: &Path) -> Result<Value, Box<dyn Error>> {
         };
         let mut report = super::freshness::report(&listing, &|_| true, &AtomicBool::new(false))?;
         report["hint"] =
-            "nothing was downloaded; pass --only NAME (repeatable) or --stale to pull".into();
+            "nothing was downloaded; --only NAME (repeatable) pulls with your browser login and needs no API token. --stale and this freshness listing use API tokens independently of browser login: for account_not_configured, add the alias to $XDG_CONFIG_HOME/figlens/accounts.json (default ~/.config/figlens/accounts.json; Windows %LOCALAPPDATA%/figlens/config/accounts.json), e.g. {\"work\":{\"tokenEnv\":\"FIGMA_TOKEN_WORK\"}}, then set that environment variable privately; never store the token value in JSON. Unnamed entries use FIGMA_TOKEN".into();
         return Ok(report);
     }
     let sources = match &mapping {

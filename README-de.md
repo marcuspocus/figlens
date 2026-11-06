@@ -26,7 +26,7 @@ figlens macht aus gespeicherten Figma-Dateien Designkontext, mit dem dein Coding
 
 - **Mit den Quelldetails umsetzen.** Layout, Text, Stile, Variablen sowie Dev-Mode-Anmerkungen und Ready-for-dev-Status lesen; Vektor-Icons als SVG und Bilder als Assets exportieren. `bundle` sammelt Daten, Assets und Referenz-Rendering eines Frames; `verify` meldet fehlende Dateien, Schriftprüfungen und Einschränkungen der Übergabe. MCP `nodes` kann große Node-JSON-Daten mit `out` in eine Datei statt in die Antwort schreiben.
 - **Die laufende UI vergleichen.** `compare-image` vergleicht deinen Screenshot mit dem Rendering von figlens und nennt die Ebenen unter abweichenden Bereichen. Prüfe diese Unterschiede und Rendering-Warnungen; das ist keine Garantie für Pixelgenauigkeit.
-- **Designänderungen verfolgen.** `diff` vergleicht gespeicherte Versionen; `changes` und `watch` melden Aktualisierungen verfolgter lokaler Bereiche; `freshness` zeigt, wann eine gespeicherte Kopie älter ist als die Online-Datei, und `pull` speichert über deine eigene Browser-Anmeldung eine neue Kopie. Speichere eine neue `.fig` aus Figma, um Designänderungen zu übernehmen—keine Live-Synchronisierung mit Figma. Benannte Konten ordnen jedem Design separate Browserprofile und API-Token-Umgebungsvariablen zu; bestehende Standards bleiben unverändert.
+- **Designänderungen verfolgen.** `diff` vergleicht gespeicherte Versionen; `changes` und `watch` melden Aktualisierungen verfolgter lokaler Bereiche; `freshness` zeigt, wann eine gespeicherte Kopie älter ist als die Online-Datei, und `pull` speichert über deine eigene Browser-Anmeldung eine neue Kopie. Speichere eine neue `.fig` aus Figma, um Designänderungen zu übernehmen—keine Live-Synchronisierung mit Figma. Benannte Konten ordnen jedem Design separate Browserprofile und API-Token-Umgebungsvariablen zu; bestehende Standards bleiben unverändert. `figlens sources init [DIR]`: Lokale `.fig`-Dateien nach `.figlens/sources.json` eintragen, ohne vorhandene Dateien zu überschreiben; Namen stammen aus `meta.json` oder dem Dateinamen. Leere URLs vor dem Pull ausfüllen.
 
 **Offline als Grundlage.** Wähle in Figma **File > Save local copy**. Lege `design.fig` neben deinen Code. Dann genügt ein Figma-Link: Seine Node-ID wählt den Frame. Ohne gespeicherte Kopie kopierst du die Ebenen in Figma (Rechtsklick > Copy) und führst `figlens clipboard screen.fig` aus; eine Kopie enthält keine Bilder oder Vektorumrisse ([so geht's](docs/README-de.md#copy-a-selection)). Ein natives Binary liest die Datei lokal, ohne laufende Figma-App, Login oder Netzwerkaufrufe an Figma; nur die optionale `freshness`-Prüfung (mit einem konfigurierten API-Token; Standard: `FIGMA_TOKEN`) und `pull` (über deine Browser-Anmeldung) erreichen Figma.
 
@@ -193,6 +193,8 @@ Ein Agent, der die CLI nutzt, liest seine Anleitung mit `figlens workflow build`
 [CLI-Referenz](docs/README-de.md#commands)
 
 Verschiedene Figma-Konten: `figlens pull --login --account work` und optional `"account": "work"` in der Quellenzuordnung. Bisherige Standardsitzungen brauchen keine Migration. [Figma-Konten: Browser-Anmeldung und API-Token](docs/README-de.md#figma-accounts).
+
+`figlens sources init [DIR]`: Lokale `.fig`-Dateien nach `.figlens/sources.json` eintragen, ohne vorhandene Dateien zu überschreiben; Namen stammen aus `meta.json` oder dem Dateinamen. Leere URLs vor dem Pull ausfüllen.
 
 <a id="setup-skill"></a>
 

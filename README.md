@@ -26,7 +26,7 @@ figlens turns saved Figma files into design context your coding agent can act on
 
 - **Build from the source details.** Read layout, text, styles, variables, Dev Mode annotations and Ready for dev status; export vector icons as SVG and images as assets. `bundle` collects a frame's data, assets and reference render; `verify` reports missing files, font checks and handoff limitations. MCP `nodes` can save large node JSON to a file with `out` instead of returning it inline.
 - **Compare the running UI.** `compare-image` compares your screenshot with figlens's render and names the layers under differing regions. Review those differences and rendering warnings; it is not a pixel-perfect guarantee.
-- **Follow design changes.** `diff` compares saved revisions; `changes` and `watch` report updates to tracked local scopes; `freshness` tells when a saved copy is older than the online file, and `pull` saves a new copy through your own browser sign-in. Save a new `.fig` from Figma to pick up design edits—this is not live Figma sync. Named accounts route each design to separate browser profiles and API-token environment variables; existing defaults stay unchanged.
+- **Follow design changes.** `diff` compares saved revisions; `changes` and `watch` report updates to tracked local scopes; `freshness` tells when a saved copy is older than the online file, and `pull` saves a new copy through your own browser sign-in. Save a new `.fig` from Figma to pick up design edits—this is not live Figma sync. Named accounts route each design to separate browser profiles and API-token environment variables; existing defaults stay unchanged. `figlens sources init [DIR]`: Scan local `.fig` files into `.figlens/sources.json` without overwriting it; names come from `meta.json` or the filename. Fill in the blank URLs before pulling.
 
 **Offline at the foundation.** In Figma, **File > Save local copy**. Put `design.fig` next to your code. Then a Figma link is enough: its node id picks the frame. With no saved copy, copy the layers in Figma (right-click > Copy) and run `figlens clipboard screen.fig`; a copy has no images or vector outlines ([how](docs/README.md#copy-a-selection)). One native binary reads it locally, without a running Figma app, login or network calls to Figma; only the opt-in `freshness` check (with a configured API token; default: `FIGMA_TOKEN`) and `pull` (through your browser sign-in) reach Figma.
 
@@ -193,6 +193,8 @@ An agent that uses the CLI reads its guidance with `figlens workflow build` (als
 [CLI reference](docs/README.md#commands)
 
 Different Figma accounts can use `figlens pull --login --account work` and optional `"account": "work"` in the source mapping. Existing default sessions need no migration. [Figma accounts: browser login and API tokens](docs/README.md#figma-accounts).
+
+`figlens sources init [DIR]`: Scan local `.fig` files into `.figlens/sources.json` without overwriting it; names come from `meta.json` or the filename. Fill in the blank URLs before pulling.
 
 <a id="setup-skill"></a>
 

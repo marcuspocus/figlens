@@ -410,6 +410,12 @@ usage:
                                              never fails for a missing token or network. With a
                                              token, a node not found or an empty find in a mapped
                                              stale copy also says to save a new local copy
+  figlens sources init [DIR]                   scaffold DIR/.figlens/sources.json (default: cwd), never
+                                             overwrite; scan up to 4096 entries / 200 .fig files, skip
+                                             symlinks, hidden folders, node_modules and target. Names
+                                             use meta.json file_name or the filename, unique suffixes;
+                                             URLs stay blank: fill each from Figma before pulling.
+                                             Only name, url, file and optional account are valid keys.
   figlens pull [--only NAME]... [--stale] [--sources <mapping.json>] [--browser B]
           [--account NAME] | --login [--browser B] [--account NAME] | --logout [--account NAME]
                                              refresh mapped saved copies from Figma. With no --only or
@@ -441,7 +447,14 @@ usage:
                                              the npm package's helper (FIGLENS_PULL_HELPER) with
                                              playwright-core or agent-browser on PATH; --browser
                                              playwright|agent-browser picks one (default: playwright-core
-                                             when found), each with its own profile. Prints
+                                             when found), each with its own profile. Logs the backend
+                                             and fallback reason; verifies agent-browser is headed
+                                             before prompting, else fails with a Playwright alternative.
+                                             For npx: npx -y -p @runkids/figlens -p playwright-core
+                                             figlens pull --only NAME --browser playwright (Chrome
+                                             installed); or npm install --save-dev playwright-core in
+                                             this project. A separate global install is not resolved.
+                                             Prints
                                              {mapping, designs:[{name,file,state: pulled|skipped|failed,
                                              savedAt,stage,reason}]}; fails when any design failed.
   figlens update                               install the latest GitHub release over this binary
@@ -760,6 +773,16 @@ fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
                 &|_| true,
                 &std::sync::atomic::AtomicBool::new(false),
             )?;
+            writeln!(out, "{}", serde_json::to_string_pretty(&report)?)?;
+            return Ok(());
+        }
+        Some("sources") => {
+            if args.get(1).map(String::as_str) != Some("init") || args.len() > 3 {
+                return Err("figlens sources init [DIR]".into());
+            }
+            let cwd = std::env::current_dir()?;
+            let root = args.get(2).map(Path::new).unwrap_or(&cwd);
+            let report = command::sources::init(root)?;
             writeln!(out, "{}", serde_json::to_string_pretty(&report)?)?;
             return Ok(());
         }

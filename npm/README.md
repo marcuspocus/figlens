@@ -12,6 +12,8 @@ figlens turns saved Figma files into design context your coding agent can act on
 - **Compare the running UI.** `compare-image` compares your screenshot with figlens's render and names the layers under differing regions. Review those differences and rendering warnings; it is not a pixel-perfect guarantee.
 - **Follow design changes.** `diff` compares saved revisions; `changes` and `watch` report updates to tracked local scopes; `freshness` tells when a saved copy is older than the online file, and `pull` saves a new copy through your own browser sign-in. Save a new `.fig` from Figma to pick up design edits; this is not live Figma sync.
 
+`figlens sources init [DIR]` scaffolds a missing mapping without overwriting one; fill the blank URLs before pulling. Pull logs its backend and verifies headed agent-browser login. For Google Chrome with Playwright, use `npx -y -p @runkids/figlens -p playwright-core figlens pull --only NAME --browser playwright`.
+
 Give your agent a saved `.fig`. figlens reads it on the machine where the agent runs, including a remote host or CI, with no Figma app, Figma sign-in or Figma API calls (only the opt-in `freshness` check, with a configured API token (default: `FIGMA_TOKEN`), and `pull`, through your browser sign-in, reach Figma).
 
 MCP `nodes` accepts `out` to save large node JSON to a file instead of an inline reply. Named accounts route each design to separate browser profiles and API-token environment variables; existing defaults stay unchanged. See the [account setup guide](https://figlens.runkids.cc/docs/cli/#figma-accounts).

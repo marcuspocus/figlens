@@ -162,6 +162,120 @@ fn json(out: &Output) -> Value {
 }
 
 #[test]
+fn sources_init_scaffolds_names_paths_and_blank_urls_without_network() {
+    let project = Project::new(LATER);
+    std::fs::remove_file(project.root.join(".figlens/sources.json")).unwrap();
+    let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    zip.start_file("meta.json", zip::write::SimpleFileOptions::default())
+        .unwrap();
+    zip.write_all(br#"{"file_name":"Design name"}"#).unwrap();
+    let bytes = zip.finish().unwrap().into_inner();
+    std::fs::write(project.root.join("figma/a.fig"), &bytes).unwrap();
+    std::fs::write(project.root.join("figma/b.fig"), &bytes).unwrap();
+    std::fs::create_dir(project.root.join("node_modules")).unwrap();
+    std::fs::write(project.root.join("node_modules/ignored.fig"), &bytes).unwrap();
+    std::os::unix::fs::symlink(project.fig(), project.root.join("link.fig")).unwrap();
+    let report = json(&project.run(&["sources", "init"], false));
+    assert_eq!(
+        report["designs"],
+        json!([
+            {"name":"Design name", "url":"", "file":"figma/a.fig"},
+            {"name":"Design name-2", "url":"", "file":"figma/b.fig"},
+            {"name":"home", "url":"", "file":"figma/home.fig"}
+        ])
+    );
+    let mapping = std::fs::read(project.root.join(".figlens/sources.json")).unwrap();
+    assert_eq!(
+        serde_json::from_slice::<Value>(&mapping).unwrap(),
+        report["designs"]
+    );
+    assert_eq!(
+        json(&project.run(&["freshness"], false))["designs"][2]["reason"],
+        "url_unrecognized"
+    );
+    let pull = project.run(&["pull", "--only", "home"], false);
+    assert!(!pull.status.success());
+    assert!(String::from_utf8_lossy(&pull.stderr).contains("url"));
+    assert!(!project.run(&["sources", "init"], false).status.success());
+    assert_eq!(
+        std::fs::read(project.root.join(".figlens/sources.json")).unwrap(),
+        mapping
+    );
+    assert_eq!(project.calls(), "");
+}
+
+#[test]
+fn sources_init_refuses_empty_oversized_and_symlinked_output() {
+    let project = Project::new(LATER);
+    let root = project.root.join("empty");
+    std::fs::create_dir(&root).unwrap();
+    let dir = root.to_str().unwrap();
+    assert!(
+        !project
+            .run(&["sources", "init", dir], false)
+            .status
+            .success()
+    );
+    assert!(!root.join(".figlens").exists());
+    for i in 0..201 {
+        std::fs::write(root.join(format!("{i}.fig")), b"not a zip").unwrap();
+    }
+    let out = project.run(&["sources", "init", dir], false);
+    assert!(String::from_utf8_lossy(&out.stderr).contains("200 designs"));
+    assert!(!root.join(".figlens").exists());
+    std::fs::remove_file(root.join("200.fig")).unwrap();
+    std::os::unix::fs::symlink(project.root.join("figma"), root.join(".figlens")).unwrap();
+    let out = project.run(&["sources", "init", dir], false);
+    assert!(String::from_utf8_lossy(&out.stderr).contains("not a symlink"));
+    assert!(!project.root.join("figma/sources.json").exists());
+}
+
+#[test]
+fn mapping_typos_fail_in_cli_mcp_and_pull_with_entry_and_key() {
+    let project = Project::new(LATER);
+    std::fs::write(
+        project.root.join(".figlens/sources.json"),
+        r#"[{"name":"home","url":"u","file":"figma/home.fig","accout":"work"}]"#,
+    )
+    .unwrap();
+    for args in [vec!["freshness"], vec!["pull", "--only", "home"]] {
+        let out = project.run(&args, false);
+        assert!(!out.status.success());
+        let error = String::from_utf8_lossy(&out.stderr);
+        assert!(
+            error.contains("entry 0")
+                && error.contains("accout")
+                && error.contains("allowed fields"),
+            "{error}"
+        );
+    }
+    let reply = project.mcp(
+        "freshness",
+        json!({"sources":project.root.join(".figlens/sources.json")}),
+    );
+    assert_eq!(reply["result"]["isError"], true, "{reply}");
+    assert!(reply.to_string().contains("accout"), "{reply}");
+    assert_eq!(project.calls(), "");
+}
+
+#[test]
+fn pull_listing_explains_independent_api_setup_and_token_free_only() {
+    let project = Project::new(LATER);
+    std::fs::write(project.root.join(".figlens/sources.json"),
+        json!([{"name":"home","url":"https://www.figma.com/design/AbC123/","file":"figma/home.fig","account":"work"}]).to_string()).unwrap();
+    let report = json(&project.run(&["pull"], false));
+    assert_eq!(report["designs"][0]["reason"], "account_not_configured");
+    let hint = report["hint"].as_str().unwrap();
+    assert!(
+        hint.contains("--only NAME")
+            && hint.contains("needs no API token")
+            && hint.contains("accounts.json")
+            && hint.contains("tokenEnv")
+    );
+    assert_eq!(project.calls(), "");
+}
+
+#[test]
 fn freshness_lists_the_nearest_mapping_as_stale() {
     let project = Project::new(LATER);
     let report = json(&project.run(&["freshness"], true));
@@ -771,6 +885,7 @@ fn pull_targeted_logout_keeps_other_accounts_and_unqualified_logout_removes_all(
 #[test]
 fn pull_refuses_invalid_cli_and_mapped_accounts_before_the_browser() {
     let project = Project::new(LATER);
+    let before = project.saved();
     project.grouped_helper();
     for account in [
         "",
@@ -796,7 +911,7 @@ fn pull_refuses_invalid_cli_and_mapped_accounts_before_the_browser() {
         assert!(!out.status.success(), "{account}");
     }
     assert!(project.requests().is_empty());
-    assert_eq!(project.saved(), saved_copy());
+    assert_eq!(project.saved(), before);
     assert!(
         !project
             .run(&["pull", "--login", "--account"], false)

@@ -27,7 +27,9 @@ test('the pull helper says how to install either browser when neither is found',
   const cwd = scratch(t);
   const run = runHelper(cwd, { designs: [] });
   assert.equal(run.status, 1);
-  assert.match(run.stderr, /npm i -g playwright-core.*agent-browser on PATH/);
+  assert.match(run.stderr, /npm install --save-dev playwright-core/);
+  assert.match(run.stderr, /npx -y -p @runkids\/figlens -p playwright-core figlens pull/);
+  assert.doesNotMatch(run.stderr, /npm i -g playwright-core/);
 });
 
 test('the pull helper names agent-browser when it is asked for and missing', (t) => {
@@ -52,15 +54,15 @@ const flag = (name) => args[args.indexOf(name) + 1];
 const state = path.join(__dirname, 'url');
 const reply = (data) => process.stdout.write(JSON.stringify({ success: true, data }));
 const skip = new Set(['--session', '--profile', '--download-path', '--headed', '--idle-timeout', '--user-agent']);
-const rest = args.filter((a, i) => a !== '--json' && !skip.has(a) && !skip.has(args[i - 1]));
+const rest = args.filter((a, i) => a !== '--json' && !skip.has(a) && !(skip.has(args[i - 1]) && (args[i - 1] !== '--headed' || a === 'false' || a === 'true')));
 const [command, ...more] = rest;
 if (command === 'open') fs.writeFileSync(state, more[0] ?? 'about:blank');
 if (command === 'get') {
   const url = fs.readFileSync(state, 'utf8');
-  reply({ url: url.endsWith('/files') ? 'https://www.figma.com/files/recent' : url });
+  reply({ url: (url.endsWith('/files') || url.endsWith('/login')) ? 'https://www.figma.com/files/recent' : url });
 } else if (command === 'eval') {
   const js = more[0];
-  reply({ result: js === 'navigator.userAgent' ? 'Mozilla/5.0 Chrome/1' : js.includes('outerHTML') || js.includes('aria-disabled') || js.includes('Downloading') ? false : true });
+  reply({ result: js.includes('#command_line') ? (fs.existsSync(path.join(__dirname, 'headless')) ? 'chrome --headless=new --user-agent=Chrome/1' : 'chrome --remote-debugging-port=0') : js === 'navigator.userAgent' ? 'Mozilla/5.0 Chrome/1' : js.includes('outerHTML') || js.includes('aria-disabled') || js.includes('Downloading') ? false : true });
 } else {
   if (command === 'find' && more.includes('Save local copy') && !fs.existsSync(path.join(__dirname, 'hold')))
     fs.writeFileSync(path.join(flag('--download-path'), 'Home.fig'), 'fig');
@@ -98,6 +100,7 @@ test('the pull helper saves a download through agent-browser', async (t) => {
     login: false,
     designs: [{ name: 'home', url: 'https://www.figma.com/design/abc/' }],
   });
+  assert.match(run.stderr, /browser: agent-browser.*playwright-core was not found.*npx -y -p @runkids\/figlens -p playwright-core/);
   const event = JSON.parse(run.stdout);
   const calls = readFileSync(path.join(bin, 'calls'), 'utf8');
   assert.deepEqual(
@@ -131,9 +134,39 @@ test('the pull helper closes its agent-browser session when interrupted', async 
       return '';
     }
   };
-  while (!calls().includes('Save local copy')) await new Promise((resolve) => setTimeout(resolve, 50));
+  let progress = '';
+  child.stderr.on('data', (chunk) => (progress += chunk));
+  while (!progress.includes('exporting (')) await new Promise((resolve) => setTimeout(resolve, 50));
   const closed = new Promise((resolve) => child.on('close', resolve));
   child.kill('SIGINT');
   await closed;
   assert.match(calls().trim().split('\n').at(-1), /"close"/);
 });
+
+for (const headless of [false, true]) {
+  test(`agent-browser login verifies headed mode before prompting (headless=${headless})`, { timeout: 8000 }, async (t) => {
+    const cwd = scratch(t);
+    const bin = path.join(cwd, 'bin');
+    mkdirSync(bin);
+    mkdirSync(path.join(cwd, 'downloads'));
+    writeFileSync(path.join(bin, 'agent-browser'), FAKE);
+    chmodSync(path.join(bin, 'agent-browser'), 0o755);
+    if (headless) writeFileSync(path.join(bin, 'headless'), '');
+    const run = await converse(cwd, {
+      profiles: { 'agent-browser': path.join(cwd, 'ab') },
+      browser: 'agent-browser', downloads: path.join(cwd, 'downloads'), login: true, designs: [],
+    });
+    const calls = readFileSync(path.join(bin, 'calls'), 'utf8');
+    assert.match(calls, /chrome:\/\/version/);
+    if (headless) {
+      assert.match(run.stderr, /could not verify a headed Chrome window.*--browser playwright/);
+      assert.doesNotMatch(run.stderr, /window that opened/);
+      assert.doesNotMatch(calls, /figma.com\/login/);
+    } else {
+      assert.match(run.stderr, /window that opened/);
+      const open = calls.split('\n').filter(Boolean).map(JSON.parse).find((args) => args.includes('about:blank'));
+      assert.equal(open[open.indexOf('--headed') + 1], '--idle-timeout');
+    }
+    assert.match(calls.trim().split('\n').at(-1), /"close"/);
+  });
+}

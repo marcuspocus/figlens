@@ -26,7 +26,7 @@ figlens는 저장한 Figma 파일을 코딩 에이전트가 활용할 수 있는
 
 - **원본 세부 정보로 구현.** 레이아웃, 텍스트, 스타일, 변수와 Dev Mode 주석, Ready for dev 상태를 읽고 벡터 아이콘은 SVG로, 이미지는 에셋으로 내보냅니다. `bundle`은 frame의 데이터, 에셋, 참조 렌더링을 모으고, `verify`는 누락 파일, 폰트 확인 사항, 핸드오프의 한계를 보고합니다. MCP `nodes`는 `out`으로 큰 노드 JSON을 응답 대신 파일에 저장할 수 있습니다.
 - **실행 중인 UI 비교.** `compare-image`는 스크린샷을 figlens의 렌더링과 비교하고 차이가 있는 영역 아래의 레이어 이름을 알려줍니다. 차이와 렌더링 경고를 검토하세요. 픽셀 단위의 일치를 보장하지는 않습니다.
-- **디자인 변경 추적.** `diff`는 저장된 리비전을 비교하고, `changes`와 `watch`는 추적 중인 로컬 범위의 업데이트를 보고하며, `freshness`는 저장된 사본이 온라인 파일보다 오래되었는지 알려 주고, `pull`은 본인의 브라우저 로그인으로 새 사본을 저장합니다. 디자인 변경을 반영하려면 Figma에서 새 `.fig`를 저장하세요. Figma와의 실시간 동기화가 아닙니다. 이름이 있는 계정으로 디자인마다 브라우저 프로필과 API token 환경 변수를 분리할 수 있으며 기존 기본값은 유지됩니다.
+- **디자인 변경 추적.** `diff`는 저장된 리비전을 비교하고, `changes`와 `watch`는 추적 중인 로컬 범위의 업데이트를 보고하며, `freshness`는 저장된 사본이 온라인 파일보다 오래되었는지 알려 주고, `pull`은 본인의 브라우저 로그인으로 새 사본을 저장합니다. 디자인 변경을 반영하려면 Figma에서 새 `.fig`를 저장하세요. Figma와의 실시간 동기화가 아닙니다. 이름이 있는 계정으로 디자인마다 브라우저 프로필과 API token 환경 변수를 분리할 수 있으며 기존 기본값은 유지됩니다. `figlens sources init [DIR]`: 로컬 `.fig`를 검색해 `.figlens/sources.json`을 만듭니다. 기존 파일은 덮어쓰지 않으며 이름은 `meta.json` 또는 파일명에서 가져옵니다. pull 전에 빈 URL을 채우세요.
 
 **기반은 오프라인.** Figma에서 **File > Save local copy**를 선택하고 `design.fig`를 코드 옆에 두세요. 그러면 Figma 링크만 있으면 되고, 노드 ID가 프레임을 정합니다. 저장한 복사본이 없으면 Figma에서 레이어를 복사(마우스 오른쪽 클릭 > Copy)한 뒤 `figlens clipboard screen.fig`를 실행하세요. 복사본에는 이미지나 벡터 윤곽선이 없습니다 ([방법](docs/README-ko.md#copy-a-selection)). 네이티브 바이너리 하나로 로컬에서 읽으며, 실행 중인 Figma 앱이나 로그인, Figma에 대한 네트워크 호출이 필요 없습니다. 선택 사항인 `freshness` 확인(설정된 API token 사용, 기본값: `FIGMA_TOKEN`)과 `pull`(브라우저 로그인 사용)만 Figma에 접속합니다.
 
@@ -193,6 +193,8 @@ CLI를 사용하는 에이전트는 `figlens workflow build`(그 밖에 `audit`,
 [CLI 레퍼런스](docs/README-ko.md#commands)
 
 서로 다른 Figma 계정에는 `figlens pull --login --account work`와 소스 매핑의 선택적 `"account": "work"`를 사용하세요. 기존 기본 세션은 이전할 필요가 없습니다. [Figma 계정: 브라우저 로그인과 API token](docs/README-ko.md#figma-accounts).
+
+`figlens sources init [DIR]`: 로컬 `.fig`를 검색해 `.figlens/sources.json`을 만듭니다. 기존 파일은 덮어쓰지 않으며 이름은 `meta.json` 또는 파일명에서 가져옵니다. pull 전에 빈 URL을 채우세요.
 
 <a id="setup-skill"></a>
 

@@ -26,7 +26,7 @@ figlens 把儲存的 Figma 檔案轉成 coding agent 可用的設計上下文，
 
 - **依據原始細節實作。** 讀取排版、文字、樣式、variables，以及 Dev Mode 標註和 Ready for dev 狀態，匯出 SVG 向量圖示和圖片素材。`bundle` 彙集 frame 的資料、素材和參考渲染圖；`verify` 報告缺漏檔案、字型檢查事項與交接限制。 MCP `nodes` 可透過 `out` 將大型節點 JSON 存成檔案，而非直接放入回覆。
 - **比對執行中的 UI。** `compare-image` 將截圖與 figlens 的渲染結果比對，並指出差異區域下方的圖層。仍需檢查差異與渲染警告，不保證像素級一致。
-- **追蹤設計變更。** `diff` 比較儲存的版本；`changes` 與 `watch` 報告已追蹤本機範圍的更新；`freshness` 指出已儲存副本是否比線上檔案舊，`pull` 則透過你自己的瀏覽器登入儲存新副本。設計改動後需從 Figma 儲存新的 `.fig`，並非與 Figma 即時同步。 命名帳號可為每份設計分配獨立的瀏覽器 profile 與 API token 環境變數，原有預設設定保持不變。
+- **追蹤設計變更。** `diff` 比較儲存的版本；`changes` 與 `watch` 報告已追蹤本機範圍的更新；`freshness` 指出已儲存副本是否比線上檔案舊，`pull` 則透過你自己的瀏覽器登入儲存新副本。設計改動後需從 Figma 儲存新的 `.fig`，並非與 Figma 即時同步。 命名帳號可為每份設計分配獨立的瀏覽器 profile 與 API token 環境變數，原有預設設定保持不變。 `figlens sources init [DIR]`: 掃描本機 `.fig`，建立 `.figlens/sources.json`，不覆寫既有檔案；名稱取自 `meta.json` 或檔名。pull 前須填入空白 URL。
 
 **離線是基礎。** 在 Figma 選擇 **File > Save local copy**，把 `design.fig` 放在程式碼旁邊。之後只要一個 Figma 連結：其中的節點 ID 會選定畫面。沒有存下的副本時，在 Figma 複製圖層（右鍵 > Copy），再執行 `figlens clipboard screen.fig`；複製內容沒有圖片和向量輪廓（[方法](docs/README-zh-TW.md#copy-a-selection)）。一個原生執行檔在本機讀取，不必執行 Figma App、登入或對 Figma 發出網路呼叫；只有選用的 `freshness` 檢查（使用設定的 API token，預設為 `FIGMA_TOKEN`）與 `pull`（透過你的瀏覽器登入）會連到 Figma。
 
@@ -193,6 +193,8 @@ irm https://raw.githubusercontent.com/runkids/figlens/main/scripts/install.ps1 |
 [CLI 參考](docs/README-zh-TW.md#commands)
 
 不同 Figma 帳號可使用 `figlens pull --login --account work`，並在來源 mapping 選填 `"account": "work"`。既有預設 session 不需搬移。 [Figma 帳號：瀏覽器登入與 API token](docs/README-zh-TW.md#figma-accounts).
+
+`figlens sources init [DIR]`: 掃描本機 `.fig`，建立 `.figlens/sources.json`，不覆寫既有檔案；名稱取自 `meta.json` 或檔名。pull 前須填入空白 URL。
 
 <a id="setup-skill"></a>
 
