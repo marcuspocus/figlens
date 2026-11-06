@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.14.1](https://github.com/runkids/figlens/compare/v0.14.0...v0.14.1) (2026-11-06)
+
+
+* **release:** request 0.14.1 ([0e1ed6d](https://github.com/runkids/figlens/commit/0e1ed6d4890b72bdbb0d8015b6dddaf711528d5d))
+
+
+### Bug Fixes
+
+* **pull:** verify headed login and improve first-run setup ([#248](https://github.com/runkids/figlens/issues/248)) ([ad3ffb6](https://github.com/runkids/figlens/commit/ad3ffb66b427658cef739a5d2121ff60c86b6cf5))
+
 ## [0.14.0](https://github.com/runkids/figlens/compare/v0.13.1...v0.14.0) (2026-11-06)
 
 
