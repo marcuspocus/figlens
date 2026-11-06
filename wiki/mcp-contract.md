@@ -9,6 +9,7 @@ Field reference linked from [mcp](mcp.md).
 | `tree.depth` | 0 through `2^53-1` (JSON-safe); omitted means every level; past 256 levels the call fails with `parse_budget_exceeded` ([layer depth](parsing.md#layer-depth)) |
 | `inspect.depth` | 0–10 / 1 |
 | `nodes.compact`, `nodes.subtrees` | boolean / false; subtrees requires compact. Versioned lossless references instead of default REST, with the same complete-reply cap; [wire contract](discovery.md#compact-nodes) |
+| `nodes.out` | optional non-empty `.json` path, also after links resolve (else `invalid_arguments`); admitted under `--root` like `export` `out`. Writes the text the reply would carry (default or compact) through source-safe publication and replies `{path, bytes, lines}`; the default form's early reply budget and compact's construction limits still apply |
 | `find.limit`, `search.limit` | 1–200 / 20 |
 | `usages.limit`, `usages.scope` | 1–200 / 50; `0:0` |
 | `changes.limit` | revisions 1–50 / 20; with `revision`, entries (changes, then impact) 1–500 / 100; with a query `subscriptionId`, evaluations 1–50 / 20 |
@@ -43,7 +44,7 @@ Tool failures retain `isError: true` and text content; additive `_meta.figlens` 
 | `node_not_found` | Resolve again with find/tree or inspect the containing instance; retain full IDs |
 | `unsupported_node` | Target exists but that operation cannot use it; use supported inspection/export or a drawable node as directed |
 | `parse_budget_exceeded` | A named finite parsing budget was crossed; use a smaller copy or report the limit |
-| `output_write_failed` | Bundle packing or export writing failed, or an output's folder inside a root does not exist yet (the message names it, #160); create an authorized writable directory and check space/permissions |
+| `output_write_failed` | Bundle packing, export or `nodes` `out` writing failed, or an output's folder inside a root does not exist yet (the message names it, #160); create an authorized writable directory and check space/permissions |
 | `permission_denied` | Configured roots forbid the source/output; retain the restriction |
 | `workspace_busy` | Another process holds the workspace, or a lane or checkpoint quota is full; retry once clear (a quota: follow `recovery`), never kill it |
 | `storage_unavailable` | The workspace's storage is missing or offline; follow `_meta.figlens.recovery`: restore it, or with the user's confirmation recreate elsewhere |

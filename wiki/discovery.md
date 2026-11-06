@@ -27,7 +27,7 @@ Styles share by exact value, not style name or library identity. Subtrees compar
 
 ### Limits and measurement
 
-Compact construction uses a separate 64 MiB selected-node field guard and bounded expansion (2,000,000 work, 64 MiB charged expansion memory, depth 256, 10 seconds). These are finite work/allocation guards, not a peak-RSS guarantee. Hitting one returns `response_budget_exceeded`, never partial data; select a smaller node. The larger uncompressed REST value is not checked against the MCP reply cap. The complete escaped MCP reply is still limited to 8 MiB; compact CLI output has no transport cap, but shares these construction guards. Default CLI nodes remains uncapped by these guards.
+Compact construction uses a separate 64 MiB selected-node field guard and bounded expansion (2,000,000 work, 64 MiB charged expansion memory, depth 256, 10 seconds). These are finite work/allocation guards, not a peak-RSS guarantee. Hitting one returns `response_budget_exceeded`, never partial data; select a smaller node. The larger uncompressed REST value is not checked against the MCP reply cap. The complete escaped MCP reply is still limited to 8 MiB, though agent hosts show far less ([host limits](handoff-research.md#host-output-limits)); compact CLI output has no transport cap, but shares these construction guards. Default CLI nodes remains uncapped by these guards.
 
 Measured after #202 on 58 screens across four private files: per-file median serialized-JSON savings were 9.45–25.68% with styles, 10.79–27.08% with subtrees also enabled. Every selection resolved exactly. These count minified JSON bytes (wrapper included), not tokens, transport escaping or visual accuracy. Source files and per-screen output stay in gitignored `samples/issue-207/`.
 

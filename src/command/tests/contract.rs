@@ -147,6 +147,8 @@ fn discovery_and_preparation_share_defaults() {
                 name,
                 json!({"action":"ack","workspaceId":"ws_0000000000000000","consumer":"bot","cursor":"c1.00"}),
             )
+        } else if *name == "nodes" {
+            own(name, json!({"file":"a.fig","node":"0:1","out":"a.json"}))
         } else {
             own(
                 name,
@@ -417,6 +419,11 @@ fn every_tool_rejects_missing_required_fields_and_wrong_types_before_io() {
             own(
                 name,
                 json!({"action":"ack","workspaceId":"ws_0000000000000000","consumer":"bot","cursor":"c1.00"}),
+            )
+        } else if *name == "nodes" {
+            own(
+                name,
+                json!({"file":"absent.fig","node":"0:1","out":"out.json"}),
             )
         } else {
             own(

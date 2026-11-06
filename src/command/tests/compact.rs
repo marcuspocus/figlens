@@ -47,6 +47,48 @@ fn nodes_compact_cli_and_mcp_agree_without_changing_defaults() {
 }
 
 #[test]
+fn nodes_out_writes_the_reply_text_and_replies_with_its_size() {
+    let file = "examples/first-success/design.fig";
+    let dir = crate::test_support::TestDir::new();
+    for compact in [false, true] {
+        let args = json!({"file":file,"node":"0:1","compact":compact});
+        let inline = call_tool(&json!({"name":"nodes","arguments":args}), None);
+        let text = inline["content"][0]["text"].as_str().unwrap();
+        let out = dir.join(&format!("nodes-{compact}.json"));
+        let mut written = args.clone();
+        written["out"] = json!(out);
+        let reply = call_tool(&json!({"name":"nodes","arguments":written}), None);
+        assert_ne!(reply["isError"], true, "{reply}");
+        assert_eq!(std::fs::read_to_string(&out).unwrap(), text);
+        assert_eq!(
+            serde_json::from_str::<Value>(reply["content"][0]["text"].as_str().unwrap()).unwrap(),
+            json!({"path": out, "bytes": text.len(), "lines": text.lines().count()})
+        );
+    }
+}
+
+#[test]
+fn nodes_out_is_not_held_to_the_compact_reply_budget() {
+    let fig = std::path::Path::new("examples/first-success/design.fig");
+    let mut doc = figlens::Document::open(fig).unwrap();
+    let message = doc.take_message().unwrap();
+    let tree = figlens::Tree::new(&message);
+    let dir = crate::test_support::TestDir::new();
+    let nodes = |out| {
+        crate::command::Command::Nodes {
+            node: "0:1".into(),
+            budget: Some(1),
+            compact: true,
+            subtrees: false,
+            out,
+        }
+        .execute(&tree, fig)
+    };
+    assert!(nodes(None).is_err());
+    assert!(nodes(Some(dir.join("compact.json"))).is_ok());
+}
+
+#[test]
 fn nodes_compact_preflight_rejects_invalid_combinations_and_types() {
     for extra in [
         json!({"subtrees":true}),

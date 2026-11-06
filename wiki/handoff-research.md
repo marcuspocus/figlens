@@ -60,6 +60,18 @@ The resulting policy caps complete replies at 8 MiB, leaving headroom below that
 
 These are transport limits. MCP `nodes` now stops building once its selection exceeds the reply budget ([measurement](performance.md#early-mcp-nodes-budget-2026-10-29)); other tools' projections and response objects can still be constructed before the reply-size check, and expansion is bounded only for MCP `nodes` on a stored root. A pre-expansion node/work budget or streaming local-file JSON export would require separate evidence and a contract that preserves full design access. Current pixel buffers, concurrent preparation and each client's own limits remain separate.
 
+### Host output limits
+
+Measured 2026-11-06 with the 0.13.1 binary on the 58 screens of the [compact-nodes measurement](discovery.md#limits-and-measurement), each sent as one MCP `tools/call` and measured as the reply's text bytes (per-screen sizes in gitignored `samples/issue-207/host-limits-2026-11-06.json`): default MCP `nodes` text had a median of 294 KB (max 1.6 MB) and 53 exceeded 100 KB; compact 84 KB median, 28 over 100 KB; `inspect` `flat` depth 10 at most 27 KB. One 689 KB `nodes` reply, each host non-interactive with default settings:
+
+| Host | What the model received |
+|---|---|
+| Claude Code 2.1.318 | No data: a notice that the result exceeds the token limit, a spill file, and an instruction to read it in ~384-line chunks |
+| Pi 1.5.0 | About 20 KB: head and tail with the middle cut, a truncation warning and a spill file |
+| OMP 18.14.0 | The first and last 500 lines, the middle elided, and an artifact holding the rest |
+
+OpenCode was not tested; [opencode#35661](https://github.com/anomalyco/opencode/issues/35661) reports a 50 KB / 2,000-line preview. No host drops the reply, but a head-and-tail preview looks like valid design data while most layers are missing. MCP `nodes` therefore takes `out` ([behavior](mcp.md#shared-sources-and-runtime-behavior)). The default text stays pretty-printed: minifying saves a median 61% but makes the JSON one line, and these hosts preview and spill by line.
+
 ## File publication
 
 An isolated copy of the original public fixture reproduced `bundle <source> 0:1 <source>` succeeding while replacing its source. Outputs now use shared [source-safe publication](parsing.md#completed-output-publication), including exclusive sibling staging and failure cleanup. Existing output symlink targets/encoder labels remain covered; alternate hard-link publication preserves the source. This does not claim durable storage across a power loss or arbitrary directory-replacement race resistance.

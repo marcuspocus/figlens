@@ -364,7 +364,7 @@ pub const TOOLS: &[(&str, &str, &[Param])] = &[
     ),
     (
         "nodes",
-        "A node or exact instance sublayer as the per-node object of a Figma REST nodes response ({document, components, componentSets, styles, schemaVersion, _figlens}; _figlens.semantics.verification covers every node's _figlens.semantics): instances expanded, fills, strokes, effects, full text, auto-layout, masks, component data, Dev Mode annotations with labelMarkdown (named annotationCategories at the top level) and devStatus. Use it when inspect's compact summary lacks paints, masks or full text. A whole screen can be hundreds of KB; replies over the MCP reply budget fail with response_budget_exceeded instead of being truncated, so scope to a smaller node, use inspect, or write a bundle. Opt-in compact shares styles, and subtrees additionally shares templates; resolve the versioned references before passing to REST consumers. The reply budget applies to the compact result, with separate finite construction limits.",
+        "A node or exact instance sublayer as the per-node object of a Figma REST nodes response ({document, components, componentSets, styles, schemaVersion, _figlens}; _figlens.semantics.verification covers every node's _figlens.semantics): instances expanded, fills, strokes, effects, full text, auto-layout, masks, component data, Dev Mode annotations with labelMarkdown (named annotationCategories at the top level) and devStatus. Use it when inspect's compact summary lacks paints, masks or full text. A whole screen is often hundreds of KB, and agent hosts may show only part of a reply over about 20 KB, so read a screen with out, then query that file with jq or read it in parts; or scope to a smaller node, use inspect (flat for an outline), or write a bundle. Without out, replies over the MCP reply budget fail with response_budget_exceeded; with out, only a selection that outgrows that budget while being built does. Opt-in compact shares styles, and subtrees additionally shares templates; resolve the versioned references before passing to REST consumers. The reply budget applies to the compact result, with separate finite construction limits.",
         &[
             FILE,
             NODE,
@@ -379,6 +379,12 @@ pub const TOOLS: &[(&str, &str, &[Param])] = &[
                 "boolean",
                 false,
                 "with compact: true, also share repeated subtrees; {$subtree: index, placements: [...]} references subtrees templates with preorder id/absoluteBoundingBox/absoluteRenderBounds overrides; default false",
+            ),
+            (
+                "out",
+                "string",
+                false,
+                "write the JSON (the same text the reply would carry) to this .json file (other extensions are refused) and reply {path, bytes, lines} instead. Unless the user names one, use .figlens/exports/ under the project root, created with a .gitignore containing * so it stays out of Git; create the parent directory first; never overwrites the source design",
             ),
         ],
     ),
@@ -1464,6 +1470,16 @@ pub fn prepare(tool: &str, args: &Value) -> Result<PreparedCall, Failure> {
     }
     if tool == "nodes" && checked["subtrees"] == true && checked["compact"] != true {
         return Err(Failure::argument("nodes subtrees requires compact: true"));
+    }
+    // A JSON file only, so nodes out never replaces another design.
+    if tool == "nodes"
+        && checked["out"].as_str().is_some_and(|out| {
+            std::path::Path::new(out)
+                .extension()
+                .is_none_or(|ext| !ext.eq_ignore_ascii_case("json"))
+        })
+    {
+        return Err(Failure::argument("nodes out must end in .json"));
     }
     if tool == "export"
         && figlens::export::Format::of(std::path::Path::new(checked["out"].as_str().unwrap()))

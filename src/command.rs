@@ -35,8 +35,15 @@ pub enum Command {
         top_frames: bool,
     },
     Node(String),
-    /// The node, and an MCP reply budget that stops oversized JSON before it is built.
-    Nodes(String, Option<usize>, bool, bool),
+    Nodes {
+        node: String,
+        /// An MCP reply budget that stops oversized JSON before it is built.
+        budget: Option<usize>,
+        compact: bool,
+        subtrees: bool,
+        /// MCP `out`: the file that takes the JSON in place of the reply.
+        out: Option<PathBuf>,
+    },
     Find {
         query: String,
         root: String,
@@ -250,7 +257,13 @@ impl Command {
                         "nodes needs one node id and optional --compact [--subtrees]".into(),
                     );
                 }
-                Self::Nodes(ids[0].clone(), None, compact, subtrees)
+                Self::Nodes {
+                    node: ids[0].clone(),
+                    budget: None,
+                    compact,
+                    subtrees,
+                    out: None,
+                }
             }
             "find" => {
                 let query = node()?;
@@ -429,12 +442,13 @@ impl Command {
                 if subtrees && !compact {
                     return Err("nodes subtrees requires compact: true".into());
                 }
-                Self::Nodes(
-                    node()?,
-                    Some(crate::mcp::MAX_RESPONSE_BYTES),
+                Self::Nodes {
+                    node: node()?,
+                    budget: Some(crate::mcp::MAX_RESPONSE_BYTES),
                     compact,
                     subtrees,
-                )
+                    out: output.map(Path::to_owned),
+                }
             }
             "find" => Self::Find {
                 query: string("query").ok_or(USAGE)?,
@@ -509,7 +523,7 @@ impl Command {
     pub fn node(&self) -> Option<&str> {
         match self {
             Self::Tree { root, .. } => Some(root),
-            Self::Node(node) | Self::Nodes(node, ..) => Some(node),
+            Self::Node(node) | Self::Nodes { node, .. } => Some(node),
             Self::Inspect { node, .. } | Self::Bundle { node, .. } | Self::Export { node, .. } => {
                 Some(node)
             }
@@ -615,21 +629,53 @@ impl Command {
                 require_node(tree, &id)?;
                 pretty(to_json(tree.nodes[&id]))
             }
-            Self::Nodes(node, budget, shared, subtrees) => {
+            Self::Nodes {
+                node,
+                budget,
+                compact: shared,
+                subtrees,
+                out,
+            } => {
                 let id = normalize_id(&node);
                 let value = if shared {
-                    figlens::rest::resolve_compact_nodes(tree, &id, subtrees, budget)?
+                    // Compact's budget checks the finished reply, which a file does not carry.
+                    let reply = budget.filter(|_| out.is_none());
+                    figlens::rest::resolve_compact_nodes(tree, &id, subtrees, reply)?
                 } else {
                     match budget {
                         Some(bytes) => figlens::rest::resolve_nodes_within(tree, &id, bytes)?,
                         None => resolve_nodes(tree, &id)?,
                     }
                 };
-                if shared {
+                let output = if shared {
                     compact(value)
                 } else {
                     pretty(value)
+                };
+                let Some(out) = out else { return Ok(output) };
+                // A .json link must not lead to another design either.
+                let target = figlens::output::destination(&out).map_err(|e| {
+                    figlens::FigError::new(figlens::ErrorKind::OutputWrite, e.to_string())
+                })?;
+                if !target
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+                {
+                    return Err(figlens::FigError::new(
+                        figlens::ErrorKind::InvalidArguments,
+                        "nodes out must resolve to a .json file",
+                    )
+                    .into());
                 }
+                // Hosts show only part of a large reply; the file keeps the whole text.
+                let text = output.text()?;
+                figlens::output::write(fig, &out, |file| {
+                    std::io::Write::write_all(file, text.as_bytes())?;
+                    Ok(())
+                })?;
+                compact(json!({
+                    "path": out.to_string_lossy(), "bytes": text.len(), "lines": text.lines().count()
+                }))
             }
             Self::Find {
                 query,

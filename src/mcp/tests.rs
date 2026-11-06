@@ -699,3 +699,38 @@ fn a_missing_output_folder_inside_a_root_is_named_not_called_outside() {
         assert_eq!(export(out)["_meta"]["figlens"]["code"], "permission_denied");
     }
 }
+
+#[test]
+fn nodes_out_stays_inside_the_roots_and_off_the_source() {
+    let inside = test_support::TestDir::new();
+    let outside = test_support::TestDir::new();
+    let source = inside.join("design.fig");
+    std::fs::copy("examples/first-success/design.fig", &source).unwrap();
+    let before = std::fs::read(&source).unwrap();
+    let roots = [std::fs::canonicalize(inside.join("")).unwrap()];
+    let nodes = |out: PathBuf| {
+        let line = serde_json::json!({"id":1,"method":"tools/call","params":{"name":"nodes",
+            "arguments":{"file":source,"node":"0:1","out":out}}});
+        rooted_reply(&line.to_string(), &roots)["result"].clone()
+    };
+    let escaped = nodes(outside.join("nodes.json"));
+    assert_eq!(
+        escaped["_meta"]["figlens"]["code"], "permission_denied",
+        "{escaped}"
+    );
+    assert_eq!(nodes(source.clone())["isError"], true);
+    let other = inside.join("other.fig");
+    std::fs::write(&other, b"design").unwrap();
+    assert_eq!(
+        nodes(other.clone())["_meta"]["figlens"]["code"],
+        "invalid_arguments"
+    );
+    #[cfg(unix)]
+    {
+        let link = inside.join("link.json");
+        std::os::unix::fs::symlink("other.fig", &link).unwrap();
+        assert_eq!(nodes(link)["_meta"]["figlens"]["code"], "invalid_arguments");
+    }
+    assert_eq!(std::fs::read(&other).unwrap(), b"design");
+    assert_eq!(std::fs::read(&source).unwrap(), before);
+}
