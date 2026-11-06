@@ -34,17 +34,22 @@ pub struct Request<'a> {
     pub only: Vec<&'a str>,
     pub stale: bool,
     pub login: bool,
-    /// Deletes every browser profile, signing figlens out of Figma; reads no mapping.
+    /// Deletes all profiles, or just `account` when specified; reads no mapping.
     pub logout: bool,
     /// One of [`BROWSERS`]; `None` lets the helper pick what is installed.
     pub browser: Option<&'a str>,
+    /// Overrides mapped browser accounts; `None` preserves the legacy default when unmapped.
+    pub account: Option<&'a str>,
     pub start: &'a Path,
 }
 
 /// Pulls the requested designs and reports each; an error after the report means some failed.
 pub fn run(request: &Request, state: &Path) -> Result<Value, Box<dyn Error>> {
+    if let Some(account) = request.account {
+        freshness::validate_account(account)?;
+    }
     if request.logout {
-        return logout(&state.join("pull"));
+        return logout(&state.join("pull"), request.account);
     }
     // Signing in needs no project.
     let mapping = if request.login {
@@ -88,33 +93,83 @@ pub fn run(request: &Request, state: &Path) -> Result<Value, Box<dyn Error>> {
     // Held under the lock, so anything left here is from a run that stopped early.
     let _ = std::fs::remove_dir_all(&downloads);
     std::fs::create_dir_all(&downloads)?;
-    let mut profiles = serde_json::Map::new();
-    for (browser, folder) in BROWSERS {
-        let profile = dir.join(folder);
-        private_dir(&profile)?;
-        profiles.insert(browser.to_owned(), json!(profile));
+    // First appearance order; one helper invocation per account keeps both browser backends
+    // isolated without teaching the helper about account selection or changing its protocol.
+    let mut groups: Vec<(Option<&str>, Vec<&Source>)> = Vec::new();
+    if request.login {
+        groups.push((request.account, Vec::new()));
     }
-    let launch = json!({"profiles": profiles, "browser": request.browser});
-    let wanted: Vec<&Source> = selected
-        .iter()
-        .filter_map(|(s, skip)| skip.is_none().then_some(*s))
-        .collect();
-    let outcome = helper_run(&helper, &launch, &downloads, request.login, &wanted);
+    for (source, skip) in &selected {
+        if skip.is_some() {
+            continue;
+        }
+        let account = request.account.or(source.account.as_deref());
+        if let Some((_, sources)) = groups.iter_mut().find(|(a, _)| *a == account) {
+            sources.push(source);
+        } else {
+            groups.push((account, vec![source]));
+        }
+    }
+    let mut results = std::collections::HashMap::new();
+    let outcome = (|| -> Result<(), Box<dyn Error>> {
+        for (account, wanted) in groups {
+            let outcome = (|| -> Result<Outcome, Box<dyn Error>> {
+                let profile_dir = account_dir(&dir, account);
+                if account.is_some() {
+                    private_dir(&dir.join("accounts"))?;
+                    private_dir(&profile_dir)?;
+                }
+                let mut profiles = serde_json::Map::new();
+                for (browser, folder) in BROWSERS {
+                    let profile = profile_dir.join(folder);
+                    private_dir(&profile)?;
+                    profiles.insert(browser.to_owned(), json!(profile));
+                }
+                if let Some(account) = account {
+                    eprintln!("pull account: {account}");
+                }
+                let launch = json!({"profiles": profiles, "browser": request.browser});
+                helper_run(&helper, &launch, &downloads, request.login, &wanted)
+            })();
+            let (mut done, stopped) = match outcome {
+                Ok(outcome) => outcome,
+                Err(error) if request.login => return Err(error),
+                Err(error) => (std::collections::HashMap::new(), error.to_string()),
+            };
+            for source in wanted {
+                let base = json!({"name": source.name, "file": source.label});
+                results.insert(
+                    source.name.clone(),
+                    done.remove(&source.name)
+                        .unwrap_or_else(|| failed(base, "helper", &stopped)),
+                );
+            }
+        }
+        Ok(())
+    })();
     let _ = std::fs::remove_dir_all(&downloads);
-    let (mut results, stopped) = outcome?;
+    outcome?;
     let Some(mapping) = mapping else {
-        return Ok(json!({"login": "signed in"}));
+        let mut report = json!({"login": "signed in"});
+        if let Some(account) = request.account {
+            report["account"] = account.into();
+        }
+        return Ok(report);
     };
     let designs: Vec<Value> = selected
         .iter()
         .map(|(source, skip)| {
             let base = json!({"name": source.name, "file": source.label});
-            match skip {
+            let mut result = match skip {
                 Some(reason) => with(base, "skipped", reason),
                 None => results
                     .remove(&source.name)
-                    .unwrap_or_else(|| failed(base, "helper", &stopped)),
+                    .expect("each wanted design has a result"),
+            };
+            if let Some(account) = request.account.or(source.account.as_deref()) {
+                result["account"] = account.into();
             }
+            result
         })
         .collect();
     let failed = designs.iter().filter(|d| d["state"] == "failed").count();
@@ -140,19 +195,42 @@ fn lock(dir: &Path) -> Result<File, Box<dyn Error>> {
     Ok(lock)
 }
 
-/// Deletes every browser profile under the lock, so no running pull loses its browser's.
-fn logout(dir: &Path) -> Result<Value, Box<dyn Error>> {
+/// The unqualified account keeps its original profile paths and cookies.
+fn account_dir(dir: &Path, account: Option<&str>) -> PathBuf {
+    match account {
+        Some(account) => dir.join("accounts").join(format!("account-{account}")),
+        None => dir.to_owned(),
+    }
+}
+
+/// Deletes profiles under the lock, so no running pull loses its browser's.
+fn logout(dir: &Path, account: Option<&str>) -> Result<Value, Box<dyn Error>> {
     let _lock = lock(dir)?;
+    let accounts = dir.join("accounts");
+    if accounts.exists() {
+        private_dir(&accounts)?;
+    }
     let mut removed = Vec::new();
-    for (_, folder) in BROWSERS {
-        let profile = dir.join(folder);
+    let targets = match account {
+        Some(_) => vec![account_dir(dir, account)],
+        None => BROWSERS
+            .iter()
+            .map(|(_, folder)| dir.join(folder))
+            .chain(std::iter::once(accounts))
+            .collect(),
+    };
+    for profile in targets {
         if profile.exists() {
             std::fs::remove_dir_all(&profile)
                 .map_err(|e| format!("could not delete {}: {e}", profile.display()))?;
             removed.push(profile);
         }
     }
-    Ok(json!({"logout": "signed out", "removed": removed}))
+    let mut report = json!({"logout": "signed out", "removed": removed});
+    if let Some(account) = account {
+        report["account"] = account.into();
+    }
+    Ok(report)
 }
 
 /// A report in which some designs failed; the CLI prints the report, then fails.
@@ -260,6 +338,12 @@ fn select<'a>(
 
 /// A directory only this user can read: the profile holds Figma's login cookies.
 fn private_dir(dir: &Path) -> std::io::Result<()> {
+    if std::fs::symlink_metadata(dir).is_ok_and(|m| m.file_type().is_symlink()) {
+        return Err(std::io::Error::other(format!(
+            "{}: profile directories must not be symbolic links",
+            dir.display()
+        )));
+    }
     std::fs::create_dir_all(dir)?;
     #[cfg(unix)]
     {
@@ -322,8 +406,13 @@ fn helper_run(
     if let Some(relay) = relay {
         let _ = relay.join();
     }
-    read?;
-    let status = status?;
+    let status = match read.and_then(|()| status.map_err(Into::into)) {
+        Ok(status) => status,
+        Err(error) if login => return Err(error),
+        // Earlier events may already have installed copies. Keep their successful results
+        // even when a later stream or wait error leaves the rest of this account unfinished.
+        Err(error) => return Ok((results, error.to_string())),
+    };
     let last = last.lock().map(|l| l.clone()).unwrap_or_default();
     let stopped = match (status.success(), last.is_empty()) {
         (true, _) => "the helper stopped before this design".to_owned(),
@@ -332,7 +421,7 @@ fn helper_run(
     };
     if login && !status.success() {
         return Err(format!(
-            "the Figma login did not finish ({last}); run figlens pull --login again"
+            "the Figma login did not finish ({last}); retry the same login command"
         )
         .into());
     }

@@ -192,6 +192,8 @@ An agent that uses the CLI reads its guidance with `figlens workflow build` (als
 
 [CLI reference](docs/README.md#commands)
 
+Different Figma accounts can use `figlens pull --login --account work` and optional `"account": "work"` in the source mapping. Existing default sessions need no migration.
+
 <a id="setup-skill"></a>
 
 ### Agent skill (optional)

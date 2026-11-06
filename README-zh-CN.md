@@ -192,6 +192,8 @@ irm https://raw.githubusercontent.com/runkids/figlens/main/scripts/install.ps1 |
 
 [CLI 参考](docs/README-zh-CN.md#commands)
 
+不同 Figma 帐号可使用 `figlens pull --login --account work`，并在来源 mapping 选填 `"account": "work"`。现有默认 session 无需迁移。
+
 <a id="setup-skill"></a>
 
 ### Agent skill（可选）

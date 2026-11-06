@@ -507,6 +507,36 @@ fn pull_login_needs_no_mapping() {
 }
 
 impl Project {
+    /// Respond to every selected design, keeping a log of account-group requests.
+    fn grouped_helper(&self) {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::write(self.root.join("bin/download"), saved_copy_at(LATER)).unwrap();
+        let helper = self.root.join("bin/helper");
+        std::fs::write(
+            &helper,
+            r#"#!/bin/sh
+d=$(dirname "$0")
+IFS= read -r req
+printf '%s\n' "$req" >> "$d/requests"
+dl=$(printf '%s' "$req" | sed 's/.*"downloads":"\([^"]*\)".*/\1/')
+cp "$d/download" "$dl/group.fig"
+printf '%s' "$req" | grep -o '"name":"[^"]*"' | cut -d '"' -f 4 | while IFS= read -r name; do
+  printf '{"name":"%s","path":"%s/group.fig"}\n' "$name" "$dl"
+done
+"#,
+        )
+        .unwrap();
+        std::fs::set_permissions(helper, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+
+    fn requests(&self) -> Vec<Value> {
+        std::fs::read_to_string(self.root.join("bin/requests"))
+            .unwrap_or_default()
+            .lines()
+            .map(|s| serde_json::from_str(s).unwrap())
+            .collect()
+    }
+
     /// The request the stand-in helper received on its last run.
     fn request(&self) -> Value {
         let request = std::fs::read_to_string(self.root.join("bin/request")).unwrap();
@@ -598,4 +628,357 @@ fn pull_reports_why_the_helper_stopped() {
         "the helper stopped before this design: pull needs playwright-core",
         "{report}"
     );
+}
+
+#[test]
+fn pull_named_login_is_isolated_from_legacy_profiles_and_needs_no_mapping() {
+    let project = Project::new(LATER);
+    project.helper(&saved_copy_at(LATER), false);
+    let legacy_report = json(&project.run(&["pull", "--login"], false));
+    assert!(legacy_report.get("account").is_none());
+    let legacy = project.request();
+    for browser in ["playwright", "agent-browser"] {
+        let profile = Path::new(legacy["profiles"][browser].as_str().unwrap());
+        std::fs::write(profile.join("cookies"), "keep me").unwrap();
+    }
+    std::fs::remove_file(project.root.join(".figlens/sources.json")).unwrap();
+    for browser in ["playwright", "agent-browser"] {
+        let report = json(&project.run(
+            &["pull", "--login", "--account", "work", "--browser", browser],
+            false,
+        ));
+        assert_eq!(report["account"], "work");
+        let named = project.request();
+        assert!(
+            named["profiles"][browser]
+                .as_str()
+                .unwrap()
+                .contains("/accounts/account-work/")
+        );
+        assert_ne!(named["profiles"], legacy["profiles"]);
+    }
+    json(&project.run(&["pull", "--login"], false));
+    assert_eq!(project.request()["profiles"], legacy["profiles"]);
+    for browser in ["playwright", "agent-browser"] {
+        let profile = Path::new(legacy["profiles"][browser].as_str().unwrap());
+        assert_eq!(
+            std::fs::read_to_string(profile.join("cookies")).unwrap(),
+            "keep me"
+        );
+    }
+}
+
+#[test]
+fn pull_groups_mapped_accounts_and_cli_account_overrides_them() {
+    let project = Project::new(LATER);
+    project.grouped_helper();
+    project.map(json!([
+        {"name":"home", "url":"https://www.figma.com/design/AbC123/", "file":"figma/home.fig", "account":"work"},
+        {"name":"other", "url":"https://www.figma.com/design/XyZ789/", "file":"figma/other.fig", "account":"client"},
+        {"name":"third", "url":"https://www.figma.com/design/AbC456/", "file":"figma/third.fig", "account":"work"},
+        {"name":"legacy", "url":"https://www.figma.com/design/AbC789/", "file":"figma/legacy.fig"}
+    ]));
+    let args = [
+        "pull", "--only", "home", "--only", "other", "--only", "third", "--only", "legacy",
+    ];
+    let report = json(&project.run(&args, false));
+    let requests = project.requests();
+    assert_eq!(requests.len(), 3, "{requests:?}");
+    assert_eq!(requests[0]["designs"].as_array().unwrap().len(), 2);
+    assert_eq!(requests[0]["designs"][1]["name"], "third");
+    assert!(
+        requests[0]["profiles"]["playwright"]
+            .as_str()
+            .unwrap()
+            .contains("account-work/")
+    );
+    assert!(
+        requests[1]["profiles"]["playwright"]
+            .as_str()
+            .unwrap()
+            .contains("account-client/")
+    );
+    assert!(
+        requests[2]["profiles"]["playwright"]
+            .as_str()
+            .unwrap()
+            .ends_with("pull/profile")
+    );
+    for (index, name) in ["home", "other", "third", "legacy"].iter().enumerate() {
+        assert_eq!(report["designs"][index]["name"], *name);
+        assert_eq!(report["designs"][index]["state"], "pulled");
+    }
+    assert_eq!(report["designs"][0]["account"], "work");
+    assert!(report["designs"][3].get("account").is_none());
+    let mut override_args = args.to_vec();
+    override_args.extend(["--account", "override"]);
+    let report = json(&project.run(&override_args, false));
+    let requests = project.requests();
+    assert_eq!(requests.len(), 4);
+    assert_eq!(requests[3]["designs"].as_array().unwrap().len(), 4);
+    assert!(
+        requests[3]["profiles"]["playwright"]
+            .as_str()
+            .unwrap()
+            .contains("account-override/")
+    );
+    assert!(
+        report["designs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|d| d["account"] == "override")
+    );
+}
+
+#[test]
+fn pull_targeted_logout_keeps_other_accounts_and_unqualified_logout_removes_all() {
+    let project = Project::new(LATER);
+    project.helper(&saved_copy_at(LATER), false);
+    json(&project.run(&["pull", "--login"], false));
+    let legacy = project.request();
+    let mut named = Vec::new();
+    for account in ["work", "client"] {
+        json(&project.run(&["pull", "--login", "--account", account], false));
+        named.push(project.request());
+    }
+    std::fs::remove_file(project.root.join(".figlens/sources.json")).unwrap();
+    let report = json(&project.run(&["pull", "--logout", "--account", "work"], false));
+    assert_eq!(report["account"], "work");
+    for browser in ["playwright", "agent-browser"] {
+        assert!(!Path::new(named[0]["profiles"][browser].as_str().unwrap()).exists());
+        assert!(Path::new(named[1]["profiles"][browser].as_str().unwrap()).exists());
+        assert!(Path::new(legacy["profiles"][browser].as_str().unwrap()).exists());
+    }
+    json(&project.run(&["pull", "--logout", "--account", "missing"], false));
+    json(&project.run(&["pull", "--logout"], false));
+    for request in [&legacy, &named[1]] {
+        for browser in ["playwright", "agent-browser"] {
+            assert!(!Path::new(request["profiles"][browser].as_str().unwrap()).exists());
+        }
+    }
+}
+
+#[test]
+fn pull_refuses_invalid_cli_and_mapped_accounts_before_the_browser() {
+    let project = Project::new(LATER);
+    project.grouped_helper();
+    for account in [
+        "",
+        "../work",
+        "/work",
+        "work/team",
+        "work\\team",
+        ".",
+        "..",
+        "Work",
+        "-work",
+        "a b",
+        &"a".repeat(65),
+    ] {
+        for mode in ["--login", "--logout"] {
+            let out = project.run(&["pull", mode, "--account", account], false);
+            assert!(!out.status.success(), "{account:?}");
+        }
+    }
+    for account in [json!(null), json!(1), json!("../work"), json!("")] {
+        project.map(json!([{"name":"home", "url":"https://www.figma.com/design/AbC123/", "file":"figma/home.fig", "account":account}]));
+        let out = project.run(&["pull", "--only", "home"], false);
+        assert!(!out.status.success(), "{account}");
+    }
+    assert!(project.requests().is_empty());
+    assert_eq!(project.saved(), saved_copy());
+    assert!(
+        !project
+            .run(&["pull", "--login", "--account"], false)
+            .status
+            .success()
+    );
+}
+
+#[test]
+fn pull_stale_uses_one_token_and_skips_account_permission_failures() {
+    use std::os::unix::fs::PermissionsExt;
+    let project = Project::new(LATER);
+    project.grouped_helper();
+    project.map(json!([
+        {"name":"home", "url":"https://www.figma.com/design/AbC123/", "file":"figma/home.fig", "account":"work"},
+        {"name":"other", "url":"https://www.figma.com/design/XyZ789/", "file":"figma/other.fig", "account":"client"}
+    ]));
+    std::fs::write(project.root.join("figma/other.fig"), saved_copy()).unwrap();
+    let curl = project.root.join("bin/curl");
+    std::fs::write(&curl, "#!/bin/sh\nd=$(dirname \"$0\")\necho \"$*\" >> \"$d/calls\"\ncat >> \"$d/tokens\"\ncase \"$*\" in *XyZ789*) printf '{}\\n403';; *) cat \"$d/body\"; printf '\\n200';; esac\n").unwrap();
+    std::fs::set_permissions(curl, std::fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(
+        !project
+            .run(&["pull", "--stale", "--account", "work"], false)
+            .status
+            .success()
+    );
+    assert!(project.requests().is_empty());
+    let report = json(&project.run(&["pull", "--stale"], true));
+    assert_eq!(report["designs"][0]["state"], "pulled");
+    assert_eq!(
+        report["designs"][1]["reason"],
+        "staleness unknown: token_rejected"
+    );
+    assert_eq!(project.requests().len(), 1);
+    assert_eq!(
+        std::fs::read(project.root.join("figma/other.fig")).unwrap(),
+        saved_copy()
+    );
+    let tokens = std::fs::read_to_string(project.root.join("bin/tokens")).unwrap();
+    assert_eq!(tokens.matches("X-Figma-Token: test-token").count(), 2);
+    assert!(!project.calls().contains("test-token"));
+    assert!(!report.to_string().contains("test-token"));
+    // MCP freshness accepts account-bearing mappings but does not use browser credentials.
+    let reply = project.mcp(
+        "freshness",
+        json!({"sources":project.root.join(".figlens/sources.json")}),
+    );
+    assert_ne!(reply["result"]["isError"], true, "{reply}");
+}
+
+#[test]
+fn pull_keeps_failed_account_copies_and_continues_other_accounts() {
+    let project = Project::new(LATER);
+    project.grouped_helper();
+    let helper = project.root.join("bin/helper");
+    let script = std::fs::read_to_string(&helper).unwrap().replace(
+        "cp \"$d/download\" \"$dl/group.fig\"",
+        "case \"$req\" in *account-work/*) echo 'account cannot export' >&2; exit 1;; esac\ncp \"$d/download\" \"$dl/group.fig\"",
+    );
+    std::fs::write(helper, script).unwrap();
+    project.map(json!([
+        {"name":"home", "url":"https://www.figma.com/design/AbC123/", "file":"figma/home.fig", "account":"work"},
+        {"name":"other", "url":"https://www.figma.com/design/XyZ789/", "file":"figma/other.fig", "account":"client"}
+    ]));
+    let out = project.run(&["pull", "--only", "home", "--only", "other"], false);
+    assert!(!out.status.success());
+    let report: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(report["designs"][0]["state"], "failed", "{report}");
+    assert_eq!(report["designs"][1]["state"], "pulled", "{report}");
+    assert_eq!(project.saved(), saved_copy());
+    assert_eq!(project.requests().len(), 2);
+}
+
+#[test]
+fn pull_keeps_completed_account_results_when_the_helper_stream_breaks() {
+    let project = Project::new(LATER);
+    let newer = saved_copy_at(LATER);
+    project.helper(&newer, false);
+    let helper = project.root.join("bin/helper");
+    let mut script = std::fs::read_to_string(&helper).unwrap();
+    script.push_str("printf '\\377\\n'\n");
+    std::fs::write(helper, script).unwrap();
+    project.map(json!([
+        {"name":"home", "url":"https://www.figma.com/design/AbC123/", "file":"figma/home.fig", "account":"work"},
+        {"name":"other", "url":"https://www.figma.com/design/XyZ789/", "file":"figma/other.fig", "account":"work"}
+    ]));
+    std::fs::write(project.root.join("figma/other.fig"), saved_copy()).unwrap();
+    let out = project.run(&["pull", "--only", "home", "--only", "other"], false);
+    assert!(!out.status.success());
+    let report: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(report["designs"][0]["state"], "pulled", "{report}");
+    assert_eq!(report["designs"][1]["state"], "failed", "{report}");
+    assert_eq!(project.saved(), newer);
+    assert_eq!(
+        std::fs::read(project.root.join("figma/other.fig")).unwrap(),
+        saved_copy()
+    );
+}
+
+#[test]
+fn pull_keeps_completed_results_and_continues_after_profile_preparation_fails() {
+    use std::os::unix::fs::symlink;
+    let project = Project::new(LATER);
+    let newer = saved_copy_at(LATER);
+    project.helper(&newer, false);
+    json(&project.run(&["pull", "--login"], false));
+    let request = project.request();
+    let pull = Path::new(request["profiles"]["playwright"].as_str().unwrap())
+        .parent()
+        .unwrap();
+    std::fs::create_dir_all(pull.join("accounts")).unwrap();
+    let outside = project.root.join("outside");
+    std::fs::create_dir(&outside).unwrap();
+    symlink(&outside, pull.join("accounts/account-client")).unwrap();
+    project.grouped_helper();
+    project.map(json!([
+        {"name":"home", "url":"https://www.figma.com/design/AbC123/", "file":"figma/home.fig", "account":"work"},
+        {"name":"other", "url":"https://www.figma.com/design/XyZ789/", "file":"figma/other.fig", "account":"client"},
+        {"name":"third", "url":"https://www.figma.com/design/Third123/", "file":"figma/third.fig"}
+    ]));
+    std::fs::write(project.root.join("figma/other.fig"), saved_copy()).unwrap();
+    let out = project.run(
+        &[
+            "pull", "--only", "home", "--only", "other", "--only", "third",
+        ],
+        false,
+    );
+    assert!(!out.status.success());
+    let report: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(report["designs"][0]["state"], "pulled", "{report}");
+    assert_eq!(report["designs"][1]["state"], "failed", "{report}");
+    assert_eq!(report["designs"][1]["account"], "client", "{report}");
+    assert_eq!(report["designs"][2]["state"], "pulled", "{report}");
+    assert_eq!(project.saved(), newer);
+    assert_eq!(
+        std::fs::read(project.root.join("figma/third.fig")).unwrap(),
+        newer
+    );
+    assert_eq!(
+        std::fs::read(project.root.join("figma/other.fig")).unwrap(),
+        saved_copy()
+    );
+    assert_eq!(project.requests().len(), 2);
+    assert!(std::fs::read_dir(outside).unwrap().next().is_none());
+}
+
+#[test]
+fn pull_named_login_failure_preserves_account_recovery_guidance() {
+    let project = Project::new(LATER);
+    project.helper(&saved_copy_at(LATER), false);
+    std::fs::write(
+        project.root.join("bin/helper"),
+        "#!/bin/sh\nread -r req\necho 'login cancelled' >&2\nexit 1\n",
+    )
+    .unwrap();
+    let out = project.run(&["pull", "--login", "--account", "work"], false);
+    assert!(!out.status.success());
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("retry the same login command"), "{stderr}");
+    assert!(
+        !stderr.contains("run figlens pull --login again"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn pull_refuses_symbolic_account_directories() {
+    use std::os::unix::fs::symlink;
+    let project = Project::new(LATER);
+    project.helper(&saved_copy_at(LATER), false);
+    json(&project.run(&["pull", "--login"], false));
+    let request = project.request();
+    let pull = Path::new(request["profiles"]["playwright"].as_str().unwrap())
+        .parent()
+        .unwrap();
+    let outside = project.root.join("outside");
+    std::fs::create_dir(&outside).unwrap();
+    std::fs::write(outside.join("keep"), "keep").unwrap();
+    symlink(&outside, pull.join("accounts")).unwrap();
+    for args in [
+        vec!["pull", "--login", "--account", "work"],
+        vec!["pull", "--logout", "--account", "work"],
+        vec!["pull", "--logout"],
+    ] {
+        let out = project.run(&args, false);
+        assert!(!out.status.success(), "{out:?}");
+    }
+    assert_eq!(
+        std::fs::read_to_string(outside.join("keep")).unwrap(),
+        "keep"
+    );
+    assert!(!outside.join("account-work").exists());
 }

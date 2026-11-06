@@ -37,6 +37,25 @@ pub struct Source {
     /// The `file` exactly as the mapping wrote it, for replies.
     pub label: String,
     pub file: PathBuf,
+    /// Optional browser account alias for `pull`; never an API credential.
+    pub account: Option<String>,
+}
+
+/// A portable, case-stable alias, not a path or a credential. Profile folders add a prefix so
+/// aliases such as `con` remain safe on Windows too.
+pub fn validate_account(account: &str) -> Result<(), &'static str> {
+    if account.is_empty()
+        || account.len() > 64
+        || !account.as_bytes()[0].is_ascii_lowercase() && !account.as_bytes()[0].is_ascii_digit()
+        || !account
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-' || b == b'_')
+    {
+        return Err(
+            "account must be 1-64 lowercase ASCII letters, digits, '-' or '_', starting with a letter or digit",
+        );
+    }
+    Ok(())
 }
 
 /// The nearest `.figlens/sources.json` at or above `start` that `allowed` admits.
@@ -86,11 +105,20 @@ pub fn read_mapping(path: &Path) -> Result<Vec<Source>, Box<dyn Error>> {
                     .ok_or_else(|| format!("{shown}: entry {i} needs a non-empty string {key}"))
             };
             let label = field("file")?;
+            let account = match item.get("account") {
+                None => None,
+                Some(_) => {
+                    let account = field("account")?;
+                    validate_account(&account).map_err(|e| format!("{shown}: entry {i}: {e}"))?;
+                    Some(account)
+                }
+            };
             Ok(Source {
                 name: field("name")?,
                 url: field("url")?,
                 file: root.join(&label),
                 label,
+                account,
             })
         })
         .collect()
@@ -470,6 +498,7 @@ mod tests {
             url: URL.into(),
             label: "home.fig".into(),
             file,
+            account: None,
         }
     }
     const SAVED: &str = "2026-10-21T18:27:49.965Z";

@@ -72,6 +72,7 @@ pub fn report(
                 url: url.to_owned(),
                 label: label.to_owned(),
                 file: file.to_owned(),
+                account: None,
             };
             (None, vec![check(&source)])
         }

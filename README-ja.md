@@ -192,6 +192,8 @@ CLI を使うエージェントは `figlens workflow build`（ほかに `audit`�
 
 [CLI リファレンス](docs/README-ja.md#commands)
 
+異なる Figma アカウントには `figlens pull --login --account work` とソースマッピングの任意項目 `"account": "work"` を使います。既存の既定セッションの移行は不要です。
+
 <a id="setup-skill"></a>
 
 ### エージェント skill（任意）

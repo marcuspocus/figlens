@@ -402,8 +402,8 @@ usage:
                                              never fails for a missing token or network. With a
                                              token, a node not found or an empty find in a mapped
                                              stale copy also says to save a new local copy
-  figlens pull [--only NAME]... [--stale] [--sources <mapping.json>] [--browser B] | --login
-          [--browser B] | --logout
+  figlens pull [--only NAME]... [--stale] [--sources <mapping.json>] [--browser B]
+          [--account NAME] | --login [--browser B] [--account NAME] | --logout [--account NAME]
                                              refresh mapped saved copies from Figma. With no --only or
                                              --stale it downloads nothing and lists each design's
                                              freshness. --only NAME (repeatable) picks designs; --stale
@@ -415,9 +415,15 @@ usage:
                                              below the mapping's folder, one name per design. --login
                                              opens a visible window to sign in (a pull opens it too when
                                              the session has expired); signing in there may sign you out
-                                             of Figma elsewhere. --logout deletes the browser profiles
-                                             (signing figlens out), runs alone and prints {logout,
-                                             removed}. Needs Node, Chrome and
+                                             of Figma elsewhere. --account NAME overrides each mapping
+                                             entry's optional account (1-64 lowercase ASCII letters,
+                                             digits, '-' or '_', starting with a letter or digit).
+                                             Without either, existing profiles and sessions are reused.
+                                             Accounts isolate browser sessions, not FIGMA_TOKEN; --stale
+                                             uses that one token and skips unknown permissions.
+                                             --logout deletes all default and named profiles; with
+                                             --account it deletes only that account's profiles.
+                                             Prints {logout,removed}. Needs Node, Chrome and
                                              the npm package's helper (FIGLENS_PULL_HELPER) with
                                              playwright-core or agent-browser on PATH; --browser
                                              playwright|agent-browser picks one (default: playwright-core
@@ -739,7 +745,7 @@ fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
         }
         Some("pull") => {
             let (mut only, mut sources, mut stale, mut login) = (Vec::new(), None, false, false);
-            let (mut logout, mut browser) = (false, None);
+            let (mut logout, mut browser, mut account) = (false, None, None);
             let mut rest = args[1..].iter();
             while let Some(arg) = rest.next() {
                 match arg.as_str() {
@@ -752,6 +758,11 @@ fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
                     "--stale" => stale = true,
                     "--login" => login = true,
                     "--logout" => logout = true,
+                    "--account" => {
+                        let name = rest.next().ok_or("--account needs a name")?.as_str();
+                        figlens::freshness::validate_account(name)?;
+                        account = Some(name);
+                    }
                     "--browser" => {
                         let name = rest.next().ok_or("--browser needs a name")?.as_str();
                         if !command::pull::BROWSERS.iter().any(|(b, _)| *b == name) {
@@ -772,7 +783,10 @@ fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
             if logout
                 && (login || stale || browser.is_some() || sources.is_some() || !only.is_empty())
             {
-                return Err("--logout only deletes the browser profiles; pass it alone".into());
+                return Err(
+                    "--logout only deletes browser profiles; use alone or with --account NAME"
+                        .into(),
+                );
             }
             let cwd = std::env::current_dir()?;
             let storage = figlens::workspace::storage(None)?;
@@ -783,6 +797,7 @@ fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
                 login,
                 logout,
                 browser,
+                account,
                 start: &cwd,
             };
             return match command::pull::run(&request, storage.state_dir()) {

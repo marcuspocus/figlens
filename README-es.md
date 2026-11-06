@@ -192,6 +192,8 @@ Un agent que usa la CLI lee su guía con `figlens workflow build` (también `aud
 
 [Referencia de la CLI](docs/README-es.md#commands)
 
+Distintas cuentas Figma: `figlens pull --login --account work` y el campo opcional `"account": "work"` en el mapeo. Las sesiones predeterminadas existentes no necesitan migración.
+
 <a id="setup-skill"></a>
 
 ### Skill para agents (opcional)
