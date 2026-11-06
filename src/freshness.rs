@@ -97,6 +97,12 @@ pub fn read_mapping(path: &Path) -> Result<Vec<Source>, Box<dyn Error>> {
         .iter()
         .enumerate()
         .map(|(i, item)| {
+            let object = item
+                .as_object()
+                .ok_or_else(|| format!("{shown}: entry {i} must be an object"))?;
+            if let Some(key) = object.keys().find(|key| !matches!(key.as_str(), "name" | "url" | "file" | "account")) {
+                return Err(format!("{shown}: entry {i}: unknown field {key:?}; allowed fields: name, url, file, account").into());
+            }
             let field = |key: &str| {
                 item[key]
                     .as_str()
@@ -115,7 +121,10 @@ pub fn read_mapping(path: &Path) -> Result<Vec<Source>, Box<dyn Error>> {
             };
             Ok(Source {
                 name: field("name")?,
-                url: field("url")?,
+                url: item["url"]
+                    .as_str()
+                    .ok_or_else(|| format!("{shown}: entry {i} needs a string url (fill it after sources init)"))?
+                    .to_owned(),
                 file: root.join(&label),
                 label,
                 account,
@@ -138,6 +147,27 @@ pub fn file_key(url: &str) -> Option<&str> {
         (Some("branch"), Some(branch)) if is_key(branch) => Some(branch),
         _ => Some(key),
     }
+}
+
+/// A saved copy's display name, for a sources scaffold; never infer its online URL.
+pub fn saved_name(fig: &Path) -> Option<String> {
+    let mut archive = crate::open_zip(fig).ok()?;
+    let mut text = String::new();
+    archive
+        .by_name("meta.json")
+        .ok()?
+        .take(META_BYTES + 1)
+        .read_to_string(&mut text)
+        .ok()?;
+    if text.len() as u64 > META_BYTES {
+        return None;
+    }
+    let value: Value = serde_json::from_str(&text).ok()?;
+    value["file_name"]
+        .as_str()
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(str::to_owned)
 }
 
 /// When Figma saved this local copy: `exported_at` from its `meta.json`.

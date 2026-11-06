@@ -26,7 +26,7 @@ figlens は保存した Figma ファイルを、coding agent が活用できる�
 
 - **元の詳細情報から実装。** レイアウト、テキスト、スタイル、variables、Dev Mode の注釈と Ready for dev の状態を読み取り、ベクターアイコンを SVG、画像を素材として書き出します。`bundle` は frame のデータ、素材、参照レンダリングをまとめ、`verify` は欠けたファイル、フォントの確認事項、ハンドオフの制限を報告します。 MCP `nodes` は `out` で大きなノード JSON を応答内ではなくファイルに保存できます。
 - **動作中の UI と比較。** `compare-image` はスクリーンショットを figlens のレンダリングと比較し、差分領域の下にあるレイヤー名を返します。差分とレンダリングの警告を確認してください。ピクセル単位の一致を保証するものではありません。
-- **デザインの変更を追跡。** `diff` は保存したリビジョンを比較し、`changes` と `watch` は追跡中のローカルスコープの更新を報告し、`freshness` は保存したコピーがオンラインのファイルより古いかを示し、`pull` はご自身のブラウザーのサインインを通じて新しいコピーを保存します。デザインの変更を取り込むには Figma から新しい `.fig` を保存します。Figma とのライブ同期ではありません。 名前付きアカウントでデザインごとにブラウザープロファイルと API token の環境変数を分けられます。既存の既定値は変わりません。
+- **デザインの変更を追跡。** `diff` は保存したリビジョンを比較し、`changes` と `watch` は追跡中のローカルスコープの更新を報告し、`freshness` は保存したコピーがオンラインのファイルより古いかを示し、`pull` はご自身のブラウザーのサインインを通じて新しいコピーを保存します。デザインの変更を取り込むには Figma から新しい `.fig` を保存します。Figma とのライブ同期ではありません。 名前付きアカウントでデザインごとにブラウザープロファイルと API token の環境変数を分けられます。既存の既定値は変わりません。 `figlens sources init [DIR]`: ローカルの `.fig` を走査して `.figlens/sources.json` を作成します。既存ファイルは上書きせず、名前は `meta.json` またはファイル名から取得します。pull の前に空の URL を入力してください。
 
 **基盤はオフライン。** Figma で **File > Save local copy** を選び、`design.fig` をコードの隣に置きます。あとは Figma のリンクがあれば十分で、そのノード ID でフレームが決まります。保存したコピーがない場合は、Figma でレイヤーをコピー（右クリック > Copy）して `figlens clipboard screen.fig` を実行します。コピーには画像もベクターのアウトラインも含まれません（[手順](docs/README-ja.md#copy-a-selection)）。ネイティブバイナリ 1 つでローカルに読み取り、起動中の Figma アプリ、ログイン、Figma へのネットワーク呼び出しは不要です。Figma にアクセスするのは、オプションの `freshness` チェック（設定済み API token を使用、既定は `FIGMA_TOKEN`）と `pull`（ブラウザーのサインインを使用）だけです。
 
@@ -193,6 +193,8 @@ CLI を使うエージェントは `figlens workflow build`（ほかに `audit`�
 [CLI リファレンス](docs/README-ja.md#commands)
 
 異なる Figma アカウントには `figlens pull --login --account work` とソースマッピングの任意項目 `"account": "work"` を使います。既存の既定セッションの移行は不要です。 [Figma アカウント：ブラウザログインと API token](docs/README-ja.md#figma-accounts).
+
+`figlens sources init [DIR]`: ローカルの `.fig` を走査して `.figlens/sources.json` を作成します。既存ファイルは上書きせず、名前は `meta.json` またはファイル名から取得します。pull の前に空の URL を入力してください。
 
 <a id="setup-skill"></a>
 

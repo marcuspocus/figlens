@@ -18,14 +18,14 @@ import path from 'node:path';
 const LOGIN_WAIT = 10 * 60_000;
 const EXPORT_WAIT = 10 * 60_000;
 const EDITOR_WAIT = 120_000;
-const INSTALL = 'npm i -g playwright-core, or add it to this project';
+const INSTALL = 'install Google Chrome and run npm install --save-dev playwright-core in this project, or use npx -y -p @runkids/figlens -p playwright-core figlens pull --browser playwright (append your --login/--only and --account options)';
 
 const log = (line) => process.stderr.write(`figlens pull: ${line}\n`);
 const emit = (event) => process.stdout.write(`${JSON.stringify(event)}\n`);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// The package keeps no dependencies; playwright-core comes from beside it (a global install)
-// or from the project the pull runs in.
+// Resolve beside the helper (including npx -p packages) or from the current project.
+// A separate global installation is not in Node's module resolution path.
 function findPlaywright() {
   for (const from of [import.meta.url, path.join(process.cwd(), 'package.json')]) {
     try {
@@ -169,12 +169,25 @@ function agentBrowser(request, found) {
     flags = [
       '--profile', request.profiles['agent-browser'],
       '--download-path', saving,
-      '--headed', String(!headless),
+      ...(headless ? ['--headed', 'false'] : ['--headed']),
       // Polling keeps the session busy; this only ends a daemon this helper could not close.
       '--idle-timeout', '10m',
       ...(userAgent ? ['--user-agent', userAgent] : []),
     ];
     await run(['open', 'about:blank']);
+    if (!headless) {
+      // The user agent is deliberately normalized below, so it cannot prove headed mode.
+      // Chrome's internal page reports the actual flags even when a daemon reused a browser.
+      try {
+        await run(['open', 'chrome://version']);
+        const command = (await run(['eval', 'document.querySelector("#command_line")?.textContent'])).result;
+        if (typeof command !== 'string' || !command.trim() || /--headless(?:[=\s]|$)/.test(command))
+          throw new Error('headless or unverified launch');
+      } catch {
+        close();
+        throw new Error(`agent-browser could not verify a headed Chrome window; retry with --browser playwright: ${INSTALL}`);
+      }
+    }
     await run(['set', 'viewport', '1440', '900']);
     if (!userAgent) {
       const agent = (await run(['eval', 'navigator.userAgent'])).result;
@@ -228,10 +241,19 @@ function agentBrowser(request, found) {
 }
 
 function chooseBrowser(request) {
-  if (request.browser === 'agent-browser') return agentBrowser(request, hasAgentBrowser());
+  if (request.browser === 'agent-browser') {
+    log('browser: agent-browser (explicit --browser)');
+    return agentBrowser(request, hasAgentBrowser());
+  }
   const playwright = findPlaywright();
-  if (request.browser === 'playwright' || playwright) return playwrightBrowser(request, playwright);
-  if (hasAgentBrowser()) return agentBrowser(request, true);
+  if (request.browser === 'playwright' || playwright) {
+    log(`browser: playwright (${request.browser ? 'explicit --browser' : 'playwright-core found'})`);
+    return playwrightBrowser(request, playwright);
+  }
+  if (hasAgentBrowser()) {
+    log(`browser: agent-browser (fallback: playwright-core was not found beside the helper or in this project); for Playwright, ${INSTALL}`);
+    return agentBrowser(request, true);
+  }
   throw new Error(`pull needs playwright-core or the agent-browser CLI: ${INSTALL}, or put agent-browser on PATH`);
 }
 

@@ -22,6 +22,7 @@ pub mod index;
 #[cfg(test)]
 mod instance_tests;
 pub mod pull;
+pub mod sources;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
