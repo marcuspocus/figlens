@@ -12,7 +12,7 @@ figlens turns saved Figma files into design context your coding agent can act on
 - **Compare the running UI.** `compare-image` compares your screenshot with figlens's render and names the layers under differing regions. Review those differences and rendering warnings; it is not a pixel-perfect guarantee.
 - **Follow design changes.** `diff` compares saved revisions; `changes` and `watch` report updates to tracked local scopes; `freshness` tells when a saved copy is older than the online file, and `pull` saves a new copy through your own browser sign-in. Save a new `.fig` from Figma to pick up design edits; this is not live Figma sync.
 
-Give your agent a saved `.fig`. figlens reads it on the machine where the agent runs, including a remote host or CI, with no Figma app, Figma sign-in or Figma API calls (only the opt-in `freshness` check, with your `FIGMA_TOKEN`, and `pull`, through your browser sign-in, reach Figma).
+Give your agent a saved `.fig`. figlens reads it on the machine where the agent runs, including a remote host or CI, with no Figma app, Figma sign-in or Figma API calls (only the opt-in `freshness` check, with a configured API token (default: `FIGMA_TOKEN`), and `pull`, through your browser sign-in, reach Figma).
 
 ## Start with Pi
 

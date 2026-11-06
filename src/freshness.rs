@@ -278,35 +278,61 @@ impl Credential {
     }
 }
 
-/// Resolves an explicit alias only through per-user accounts.json, never by probing accounts.
-/// Unnamed requests bypass that file entirely, preserving existing FIGMA_TOKEN users.
-pub fn credential(account: Option<&str>) -> Credential {
-    let mut credential = Credential {
-        account: account.map(str::to_owned),
-        variable: None,
-        value: Err("account_not_configured"),
-    };
-    let variable = match account {
-        None => Ok(TOKEN_VAR.to_owned()),
-        Some(account) => account_variable(account),
-    };
-    match variable {
-        Ok(variable) => {
-            credential.value = std::env::var(&variable)
-                .ok()
-                .filter(|t| !t.is_empty())
-                .ok_or("no_token");
-            credential.variable = Some(variable);
-        }
-        Err(reason) => credential.value = Err(reason),
-    }
-    credential
+/// One operation's validated registry snapshot, loaded only for named requests.
+#[derive(Default)]
+pub struct Credentials {
+    accounts: Option<Result<HashMap<String, String>, &'static str>>,
 }
 
-fn account_variable(account: &str) -> Result<String, &'static str> {
-    validate_account(account).map_err(|_| "account_config_invalid")?;
-    let storage = crate::workspace::storage(None).map_err(|_| "account_config_invalid")?;
-    let path = storage.config_dir().join("accounts.json");
+impl Credentials {
+    /// Resolves named aliases without fallback; unnamed requests never read the registry.
+    pub fn resolve(&mut self, account: Option<&str>) -> Credential {
+        let variable = match account {
+            None => Ok(TOKEN_VAR.to_owned()),
+            Some(account) => {
+                if validate_account(account).is_err() {
+                    Err("account_config_invalid")
+                } else {
+                    self.accounts
+                        .get_or_insert_with(read_accounts)
+                        .as_ref()
+                        .map_err(|reason| *reason)
+                        .and_then(|accounts| {
+                            accounts
+                                .get(account)
+                                .cloned()
+                                .ok_or("account_not_configured")
+                        })
+                }
+            }
+        };
+        match variable {
+            Ok(variable) => Credential {
+                account: account.map(str::to_owned),
+                value: std::env::var(&variable)
+                    .ok()
+                    .filter(|t| !t.is_empty())
+                    .ok_or("no_token"),
+                variable: Some(variable),
+            },
+            Err(reason) => Credential {
+                account: account.map(str::to_owned),
+                variable: None,
+                value: Err(reason),
+            },
+        }
+    }
+}
+
+/// Resolves one request, including live hint lookups; no registry snapshot survives the call.
+pub fn credential(account: Option<&str>) -> Credential {
+    Credentials::default().resolve(account)
+}
+
+fn read_accounts() -> Result<HashMap<String, String>, &'static str> {
+    let path = crate::workspace::config_root()
+        .map_err(|_| "account_config_invalid")?
+        .join("accounts.json");
     let file = match std::fs::File::open(path) {
         Ok(file) => file,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Err("account_not_configured"),
@@ -325,6 +351,7 @@ fn account_variable(account: &str) -> Result<String, &'static str> {
         return Err("account_config_invalid");
     }
     // Validate the entire file, including unselected entries, without echoing its contents.
+    let mut variables = HashMap::new();
     for (name, entry) in accounts {
         validate_account(name).map_err(|_| "account_config_invalid")?;
         let fields = entry.as_object().ok_or("account_config_invalid")?;
@@ -335,12 +362,9 @@ fn account_variable(account: &str) -> Result<String, &'static str> {
         if fields.len() != 1 || !valid_token_env(variable) {
             return Err("account_config_invalid");
         }
+        variables.insert(name.clone(), variable.to_owned());
     }
-    accounts
-        .get(account)
-        .and_then(|entry| entry["tokenEnv"].as_str())
-        .map(str::to_owned)
-        .ok_or("account_not_configured")
+    Ok(variables)
 }
 
 fn valid_token_env(name: &str) -> bool {

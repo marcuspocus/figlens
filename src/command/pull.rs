@@ -327,10 +327,11 @@ fn select<'a>(
         )
         .into());
     }
+    let mut credentials = freshness::Credentials::default();
     Ok(chosen
         .into_iter()
         .map(|s| {
-            let credential = freshness::credential(request.account.or(s.account.as_deref()));
+            let credential = credentials.resolve(request.account.or(s.account.as_deref()));
             let report = freshness::check("curl", s, credential.value.as_deref().map_err(|e| *e));
             let pull = report["state"] == "stale" || report["reason"] == "file_missing";
             let skip = (!pull).then(|| match report["state"].as_str() {

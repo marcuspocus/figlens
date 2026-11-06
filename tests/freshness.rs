@@ -1044,6 +1044,14 @@ esac
     let overridden = json(&run(&["freshness", "--account", "work"]));
     assert_eq!(overridden["designs"][1]["account"], "work");
     assert_eq!(overridden["designs"][1]["reason"], "token_rejected");
+    let direct_default = json(&run(&[
+        "freshness",
+        project.fig().to_str().unwrap(),
+        "--url",
+        "https://www.figma.com/design/AbC123/",
+    ]));
+    assert_eq!(direct_default["designs"][0]["reason"], "no_token");
+    assert!(direct_default["designs"][0].get("account").is_none());
     let direct = json(&run(&[
         "freshness",
         project.fig().to_str().unwrap(),
@@ -1058,6 +1066,43 @@ esac
     assert_eq!(pulled["designs"][1]["state"], "pulled");
     assert_eq!(project.requests().len(), 2);
     assert!(!project.calls().contains("-secret"));
+}
+
+#[test]
+fn named_api_registry_is_snapshotted_per_operation_and_needs_only_config_root() {
+    let project = Project::new(LATER);
+    project.accounts(json!({"work":{"tokenEnv":"FIGMA_TOKEN"}}));
+    project.map(json!([
+        {"name":"home", "url":"https://www.figma.com/design/AbC123/", "file":"figma/home.fig", "account":"work"},
+        {"name":"other", "url":"https://www.figma.com/design/XyZ789/", "file":"figma/other.fig", "account":"work"}
+    ]));
+    std::fs::write(project.root.join("figma/other.fig"), saved_copy()).unwrap();
+    let out = project
+        .command(&["freshness"], true)
+        .env_remove("HOME")
+        .env_remove("XDG_STATE_HOME")
+        .env_remove("XDG_CACHE_HOME")
+        .env_remove("XDG_DATA_HOME")
+        .output()
+        .unwrap();
+    assert_eq!(json(&out)["designs"][0]["state"], "stale");
+
+    std::fs::write(
+        project.root.join("bin/curl"),
+        r#"#!/bin/sh
+d=$(dirname "$0")
+cat >/dev/null
+cat "$d/body"
+printf '\n200'
+printf '{}' > "$XDG_CONFIG_HOME/figlens/accounts.json"
+"#,
+    )
+    .unwrap();
+    let first = json(&project.run(&["freshness"], true));
+    assert_eq!(first["designs"][0]["state"], "stale");
+    assert_eq!(first["designs"][1]["state"], "stale");
+    let next = json(&project.run(&["freshness"], true));
+    assert_eq!(next["designs"][0]["reason"], "account_not_configured");
 }
 
 #[test]

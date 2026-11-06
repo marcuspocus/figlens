@@ -336,6 +336,8 @@ figlens pull --only web --account work
 
 没有 `--account` 时按每份设计的 mapping 别名路由；未填 `account` 的项目使用原有默认帐号，而非最后登录的帐号。`--account work` 覆盖所有选中设计的浏览器 profile 与 API 路由。单独 `pull`（包括 `pull --account work`）只列状态，不下载。`--only` 无需 API token。混合帐号使用隔离 profile 顺序执行，失败时不尝试其他帐号。
 
+直接使用 `freshness file.fig --url URL`（MCP：`file` + `url`）会绕过 mapping：未加 `--account`/`account` 时使用默认 `FIGMA_TOKEN`，即使该文件已有 mapping 帐号。
+
 缺配置或别名为 `account_not_configured`，配置不可读或无效为 `account_config_invalid`，环境变量缺少或为空为 `no_token`，API 401/403 为 `token_rejected`。命名帐号不回退到 `FIGMA_TOKEN`；可显式配置 `tokenEnv: "FIGMA_TOKEN"` 共享。`--stale` 跳过未知的现有副本，命名／混合选择仍可下载缺失副本。全为默认帐号且无 `FIGMA_TOKEN` 时保留原有错误。无法检查 API 时使用 `--only NAME`。
 
 `freshness --account work`（也支持直接 `--url`）和 MCP `freshness` 的 `account: "work"` 覆盖 API 路由。缺失节点／空 find 的自动提示使用 mapping 帐号。命名 freshness 项目增加 `account`、`tokenVar`（无法解析时为 null）、`tokenSet`；顶层字段仍仅描述默认 `FIGMA_TOKEN`，不是所有帐号总状态。`tokenSet` 表示有值，不代表有权限。

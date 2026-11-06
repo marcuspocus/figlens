@@ -28,7 +28,7 @@ figlens は保存した Figma ファイルを、coding agent が活用できる�
 - **動作中の UI と比較。** `compare-image` はスクリーンショットを figlens のレンダリングと比較し、差分領域の下にあるレイヤー名を返します。差分とレンダリングの警告を確認してください。ピクセル単位の一致を保証するものではありません。
 - **デザインの変更を追跡。** `diff` は保存したリビジョンを比較し、`changes` と `watch` は追跡中のローカルスコープの更新を報告し、`freshness` は保存したコピーがオンラインのファイルより古いかを示し、`pull` はご自身のブラウザーのサインインを通じて新しいコピーを保存します。デザインの変更を取り込むには Figma から新しい `.fig` を保存します。Figma とのライブ同期ではありません。
 
-**基盤はオフライン。** Figma で **File > Save local copy** を選び、`design.fig` をコードの隣に置きます。あとは Figma のリンクがあれば十分で、そのノード ID でフレームが決まります。保存したコピーがない場合は、Figma でレイヤーをコピー（右クリック > Copy）して `figlens clipboard screen.fig` を実行します。コピーには画像もベクターのアウトラインも含まれません（[手順](docs/README-ja.md#copy-a-selection)）。ネイティブバイナリ 1 つでローカルに読み取り、起動中の Figma アプリ、ログイン、Figma へのネットワーク呼び出しは不要です。Figma にアクセスするのは、オプションの `freshness` チェック（`FIGMA_TOKEN` を使用）と `pull`（ブラウザーのサインインを使用）だけです。
+**基盤はオフライン。** Figma で **File > Save local copy** を選び、`design.fig` をコードの隣に置きます。あとは Figma のリンクがあれば十分で、そのノード ID でフレームが決まります。保存したコピーがない場合は、Figma でレイヤーをコピー（右クリック > Copy）して `figlens clipboard screen.fig` を実行します。コピーには画像もベクターのアウトラインも含まれません（[手順](docs/README-ja.md#copy-a-selection)）。ネイティブバイナリ 1 つでローカルに読み取り、起動中の Figma アプリ、ログイン、Figma へのネットワーク呼び出しは不要です。Figma にアクセスするのは、オプションの `freshness` チェック（設定済み API token を使用、既定は `FIGMA_TOKEN`）と `pull`（ブラウザーのサインインを使用）だけです。
 
 <a id="start"></a>
 

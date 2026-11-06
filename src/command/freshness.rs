@@ -37,8 +37,9 @@ pub fn report(
     }
     let token = freshness::token();
     let started = Instant::now();
-    let check = |source: &Source| {
-        let credential = freshness::credential(request.account.or(source.account.as_deref()));
+    let mut credentials = freshness::Credentials::default();
+    let mut check = |source: &Source| {
+        let credential = credentials.resolve(request.account.or(source.account.as_deref()));
         let annotate = |mut report| {
             credential.annotate(&mut report);
             report

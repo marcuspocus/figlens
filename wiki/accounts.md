@@ -27,7 +27,7 @@ Load this for browser/API alias routing or `accounts.json`. An account is a loca
    ]
    ```
 
-Aliases are 1–64 lowercase ASCII letters, digits, `_` or `-`, starting with a letter or digit. Environment references are 1–128 ASCII letters, digits or `_`, starting with a letter or `_`. The registry is a JSON object of at most 200 entries/1 MiB; each entry has exactly one `tokenEnv` string. Invalid fields, aliases or references invalidate the whole registry. The reader never echoes its contents. It is global, so the same alias across projects uses the same profile and environment reference.
+Aliases are 1–64 lowercase ASCII letters, digits, `_` or `-`, starting with a letter or digit. Environment references are 1–128 ASCII letters, digits or `_`, starting with a letter or `_`. The registry is a JSON object of at most 200 entries/1 MiB; each entry has exactly one `tokenEnv` string. Invalid fields, aliases or references invalidate the whole registry. The reader never echoes its contents. Resolve only the config root, not unrelated state/cache/data roots. Lazily validate the registry once per listing/selection; the next operation reads it again, including live MCP hints. It is global, so the same alias across projects uses the same profile and environment reference.
 
 ## Routing and failures
 
@@ -41,6 +41,8 @@ Aliases are 1–64 lowercase ASCII letters, digits, `_` or `-`, starting with a 
 | `freshness [file.fig] --account work` | Override mapping API routing; also works with `--url URL` or `--sources PATH`. MCP uses `account: "work"`. |
 | Missing-node/empty-find hint | Use the mapped account, with no command override. No resolved token means no hint request. |
 
+A direct `freshness file.fig --url URL` (MCP `file` + `url`) bypasses the mapping; without an explicit account it uses default `FIGMA_TOKEN`, even for a mapped file.
+
 Without an override, each design uses its mapped alias; an unmapped alias field means the legacy default, not whichever account signed in most recently. Never guess accounts or probe another on access denial. Named accounts do not fall back to `FIGMA_TOKEN`, even when it is set. A named registry entry may explicitly reference `FIGMA_TOKEN` if the user wants that token.
 
 Missing registry or alias yields `unknown/account_not_configured`; an unreadable, oversized or invalid registry yields `unknown/account_config_invalid`; absent/empty environment token yields `unknown/no_token`. Invalid token characters yield `token_invalid`, and API 401/403 yields `token_rejected`. Local file/metadata problems are checked first and may take precedence. Existing unknown copies are skipped by `--stale`; missing copies remain eligible in named/mixed selections. For compatibility, an entirely default selection with no `FIGMA_TOKEN` still fails `--stale` before browser work. Use `--only NAME` when API access is unavailable.
@@ -51,6 +53,6 @@ Named freshness rows add `account`, `tokenVar` (null if unresolved) and `tokenSe
 
 ## Consumers and verification
 
-CLI freshness, bare pull, `pull --stale` and stale hints share `src/freshness.rs` credential resolution. MCP exposes the same optional override; Pi, OpenCode and OMP discover it dynamically. Herdr's CLI reads inherit its environment and use mapping routing; no browser tool is added. The browser helper receives profile paths, never API tokens, so its protocol is unchanged.
+CLI freshness, bare pull, `pull --stale` and stale hints share `src/freshness.rs` credential resolution. MCP exposes the same optional override; Pi, OpenCode and OMP discover it dynamically. Herdr's CLI reads inherit its environment and use mapping routing; no browser tool is added. The browser helper JSON protocol contains profile paths and no API token fields, so it is unchanged; the child still inherits the process environment.
 
 `tests/freshness.rs` exercises separate token values through curl stdin, CLI/MCP overrides, missing/invalid registries, no fallback, default compatibility, token absence/rejection, browser grouping and a changed registry within one live MCP hint cache. Tokens never appear in curl arguments or reports. No real multi-account Figma login/export is exercised in CI.

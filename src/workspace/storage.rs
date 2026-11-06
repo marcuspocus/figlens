@@ -104,11 +104,6 @@ impl Storage {
         &self.defaults.state.path
     }
 
-    /// The per-user configuration folder; independent of workspace storage. Nothing is created.
-    pub fn config_dir(&self) -> &Path {
-        &self.defaults.config.path
-    }
-
     /// Limits every report, search and job to sources under `roots` (canonical paths).
     pub fn confined(mut self, roots: &[PathBuf]) -> Self {
         if !roots.is_empty() {
@@ -133,6 +128,45 @@ pub(super) const KINDS: [(&str, &str, &str); 4] = [
     ("cache", "XDG_CACHE_HOME", ".cache"),
     ("data", "XDG_DATA_HOME", ".local/share"),
 ];
+
+/// Resolves only the per-user configuration root; unrelated roots are not required.
+pub fn config_root() -> Result<PathBuf> {
+    default_root(
+        KINDS[0],
+        &|name| std::env::var_os(name),
+        cfg!(windows),
+        &local_app_data,
+    )
+    .map(|root| root.path)
+}
+
+fn default_root(
+    (kind, xdg, home): (&str, &str, &str),
+    env: &dyn Fn(&str) -> Option<OsString>,
+    windows: bool,
+    known: &dyn Fn() -> Option<PathBuf>,
+) -> Result<Root> {
+    let absolute = |name: &str| env(name).map(PathBuf::from).filter(|p| p.is_absolute());
+    if let Some(dir) = absolute(xdg) {
+        return Ok(Root {
+            path: dir.join("figlens"),
+            rule: xdg.into(),
+        });
+    }
+    if windows {
+        return windows_root(kind, absolute("LOCALAPPDATA"), known);
+    }
+    let base = absolute("HOME").ok_or_else(|| {
+            fail(
+                ErrorKind::InvalidArguments,
+                format!("no {kind} directory: HOME is not an absolute path; set HOME or {xdg} (config is needed even with --storage)"),
+            )
+        })?;
+    Ok(Root {
+        path: base.join(home).join("figlens"),
+        rule: "HOME".into(),
+    })
+}
 
 /// Resolves the default roots from the environment and validates `explicit`. Nothing is
 /// created here.
@@ -166,35 +200,13 @@ pub(super) fn resolve(
         // Checked now: a prepare must not build a database it cannot remember.
         utf8(dir)?;
     }
-    let absolute = |name: &str| env(name).map(PathBuf::from).filter(|p| p.is_absolute());
-    let default = |(kind, xdg, home): (&str, &str, &str)| -> Result<Root> {
-        if let Some(dir) = absolute(xdg) {
-            return Ok(Root {
-                path: dir.join("figlens"),
-                rule: xdg.into(),
-            });
-        }
-        if windows {
-            return windows_root(kind, absolute("LOCALAPPDATA"), known);
-        }
-        let base = absolute("HOME").ok_or_else(|| {
-            fail(
-                ErrorKind::InvalidArguments,
-                format!("no {kind} directory: HOME is not an absolute path; set HOME or {xdg} (config is needed even with --storage)"),
-            )
-        })?;
-        Ok(Root {
-            path: base.join(home).join("figlens"),
-            rule: "HOME".into(),
-        })
-    };
     let [config, state, cache, data] = KINDS;
     Ok(Storage {
         defaults: Roots {
-            config: default(config)?,
-            state: default(state)?,
-            cache: default(cache)?,
-            data: default(data)?,
+            config: default_root(config, env, windows, known)?,
+            state: default_root(state, env, windows, known)?,
+            cache: default_root(cache, env, windows, known)?,
+            data: default_root(data, env, windows, known)?,
         },
         explicit: explicit.map(Path::to_path_buf),
         visible: None,

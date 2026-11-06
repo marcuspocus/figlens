@@ -336,6 +336,8 @@ figlens pull --only web --account work
 
 未加 `--account` 時，每份設計稿使用 mapping 的別名；未填 `account` 的項目使用舊有預設帳號，不是最後登入的帳號。`--account work` 覆寫所有選取設計稿的瀏覽器 profile 與 API 路由。單獨 `pull`（含 `pull --account work`）只列狀態，不下載。`--only` 不需 API token。混合帳號以隔離的 profile 依序執行，權限失敗時不會嘗試其他帳號。
 
+直接使用 `freshness file.fig --url URL`（MCP：`file` + `url`）會略過 mapping：未加 `--account`/`account` 時使用預設 `FIGMA_TOKEN`，即使該檔案已有 mapping 帳號。
+
 缺設定檔或別名為 `account_not_configured`，設定檔無法讀取或格式錯誤為 `account_config_invalid`，環境變數缺少或空值為 `no_token`，API 401/403 為 `token_rejected`。具名帳號不會退回 `FIGMA_TOKEN`；可明確設定 `tokenEnv: "FIGMA_TOKEN"` 共用。`--stale` 跳過未知的既有副本，具名／混合選取仍可下載缺少的副本。全為預設帳號且無 `FIGMA_TOKEN` 時，保留原本報錯行為。無 API 權限時可用 `--only NAME`。
 
 `freshness --account work`（含直接指定 `--url`）及 MCP `freshness` 的 `account: "work"` 可覆寫 API 路由。找不到節點或 find 無結果的自動提示使用 mapping 帳號。具名 freshness 項目增加 `account`、`tokenVar`（未解析時為 null）、`tokenSet`；頂層 `tokenVar`／`tokenSet` 仍只描述預設 `FIGMA_TOKEN`，不是所有帳號的總狀態。`tokenSet` 只代表有值，不代表已授權。

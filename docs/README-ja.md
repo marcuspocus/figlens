@@ -336,6 +336,8 @@ figlens pull --only web --account work
 
 `--account` なしでは各デザインの mapping の別名を使い、`account` のない項目は従来の既定を使います。最後にログインしたアカウントではありません。`--account work` は選択した全デザインのブラウザと API の選択を上書きします。単独の `pull`（`pull --account work` も）は一覧のみで、ダウンロードしません。`--only` に API token は不要。混在アカウントは隔離プロファイルで順番に実行し、失敗しても他のアカウントを試しません。
 
+直接 `freshness file.fig --url URL`（MCP: `file` + `url`）を指定すると mapping を参照しません。`--account`/`account` がなければ、そのファイルに別名があっても既定の `FIGMA_TOKEN` を使います。
+
 設定／別名なしは `account_not_configured`、読取不能／不正な設定は `account_config_invalid`、環境変数なし／空は `no_token`、API 401/403 は `token_rejected`。名前付きアカウントは `FIGMA_TOKEN` にフォールバックしません。明示的な `tokenEnv: "FIGMA_TOKEN"` は可能です。`--stale` は不明な既存コピーをスキップし、名前付き／混在の選択では欠損コピーを取得できます。すべて既定で token がない場合は従来のエラーを維持します。API 確認ができない場合は `--only NAME`。
 
 `freshness --account work`（直接の `--url` も可）と MCP `freshness` の `account: "work"` は API の選択を上書きします。ノード欠損／空 find の自動ヒントは mapping のアカウントを使用します。名前付き freshness 行には `account`、`tokenVar`（未解決時 null）、`tokenSet` を追加します。最上位の token フィールドは既定 `FIGMA_TOKEN` のみを示し、全アカウントの集計ではありません。`tokenSet` は値の存在であり、権限の証明ではありません。

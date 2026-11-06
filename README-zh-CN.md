@@ -28,7 +28,7 @@ figlens 把保存的 Figma 文件转成 coding agent 可用的设计上下文，
 - **比对运行中的 UI。** `compare-image` 将截图与 figlens 的渲染结果比对，并指出差异区域下方的图层。仍需检查差异与渲染警告，不保证像素级一致。
 - **追踪设计变更。** `diff` 比较保存的版本；`changes` 与 `watch` 报告已追踪本地范围的更新；`freshness` 指出已保存副本是否比在线文件旧，`pull` 则通过你自己的浏览器登录保存新副本。设计改动后需从 Figma 保存新的 `.fig`，并非与 Figma 实时同步。
 
-**离线是基础。** 在 Figma 中选择 **File > Save local copy**，把 `design.fig` 放在代码旁边。之后只需一个 Figma 链接：其中的节点 ID 会选定画面。没有保存的副本时，在 Figma 中复制图层（右键 > Copy），再运行 `figlens clipboard screen.fig`；复制内容不含图片和矢量轮廓（[方法](docs/README-zh-CN.md#copy-a-selection)）。一个原生可执行文件在本地读取，无需运行 Figma 应用、登录或向 Figma 发出网络请求；只有可选的 `freshness` 检查（使用你的 `FIGMA_TOKEN`）和 `pull`（通过你的浏览器登录）会访问 Figma。
+**离线是基础。** 在 Figma 中选择 **File > Save local copy**，把 `design.fig` 放在代码旁边。之后只需一个 Figma 链接：其中的节点 ID 会选定画面。没有保存的副本时，在 Figma 中复制图层（右键 > Copy），再运行 `figlens clipboard screen.fig`；复制内容不含图片和矢量轮廓（[方法](docs/README-zh-CN.md#copy-a-selection)）。一个原生可执行文件在本地读取，无需运行 Figma 应用、登录或向 Figma 发出网络请求；只有可选的 `freshness` 检查（使用配置的 API token，默认 `FIGMA_TOKEN`）和 `pull`（通过你的浏览器登录）会访问 Figma。
 
 <a id="start"></a>
 

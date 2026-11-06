@@ -502,7 +502,7 @@ pub const TOOLS: &[(&str, &str, &[Param])] = &[
                 "url",
                 "string",
                 false,
-                "with file: the Figma file URL it was saved from, instead of a mapping",
+                "with file: the Figma file URL it was saved from, bypassing mapping and its account; uses FIGMA_TOKEN unless account overrides it",
             ),
             (
                 "account",

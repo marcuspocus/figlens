@@ -1,6 +1,6 @@
 # Build Figma screens in Pi from a local `.fig`
 
-Save the design from Figma, put it next to your code, describe the screen. Pi finds the frame, reads layout, text and assets, and builds it with your project's components. It can then compare the running UI with the design's render, and report what changed between saved revisions of the `.fig`. No Figma app or login, and no API calls except the opt-in `freshness` check with your `FIGMA_TOKEN` and `figlens pull`, which saves new copies through your browser sign-in. Works on a remote machine.
+Save the design from Figma, put it next to your code, describe the screen. Pi finds the frame, reads layout, text and assets, and builds it with your project's components. It can then compare the running UI with the design's render, and report what changed between saved revisions of the `.fig`. No Figma app or login, and no API calls except the opt-in `freshness` check with a configured API token (default: `FIGMA_TOKEN`) and `figlens pull`, which saves new copies through your browser sign-in. Works on a remote machine.
 
 **[Website](https://figlens.runkids.cc/)** · [Pi guide](https://figlens.runkids.cc/docs/pi/) · [Docs](https://figlens.runkids.cc/docs/)
 

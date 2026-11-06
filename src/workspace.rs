@@ -361,7 +361,7 @@ pub use registry::{
     Outcome, PrepareOptions, add, add_dir, add_remote, list_add, prepare, relocate, remove, reset,
     status,
 };
-pub use storage::{Locator, Root, Roots, Select, Storage, storage};
+pub use storage::{Locator, Root, Roots, Select, Storage, config_root, storage};
 
 pub mod watch;
 

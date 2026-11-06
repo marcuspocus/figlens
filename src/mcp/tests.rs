@@ -89,7 +89,12 @@ fn freshness_is_a_read_only_open_world_tool_over_a_mapping_or_one_file() {
         (tool["annotations"].clone(), params),
         (
             serde_json::json!({"readOnlyHint": true, "openWorldHint": true}),
-            vec!["file".to_owned(), "sources".to_owned(), "url".to_owned()]
+            vec![
+                "account".to_owned(),
+                "file".to_owned(),
+                "sources".to_owned(),
+                "url".to_owned()
+            ]
         )
     );
 }

@@ -336,6 +336,8 @@ figlens pull --only web --account work
 
 Ohne `--account` gilt pro Design der zugeordnete Alias; ohne `account` gilt der bisherige Standard, nicht das zuletzt angemeldete Konto. `--account work` überschreibt Browserprofil und API-Auswahl aller ausgewählten Designs. Ein bloßes `pull`, auch `pull --account work`, listet nur und lädt nichts. `--only` braucht kein API-Token. Gemischte Konten laufen nacheinander in isolierten Profilen; bei Fehlern wird kein anderes Konto probiert.
 
+Bei direktem `freshness file.fig --url URL` (MCP: `file` + `url`) wird das Mapping umgangen: Ohne `--account`/`account` gilt `FIGMA_TOKEN`, auch wenn die Datei einen zugeordneten Alias hat.
+
 Fehlende Datei/Alias: `account_not_configured`; ungültige/unlesbare Konfiguration: `account_config_invalid`; fehlender/leerer Umgebungswert: `no_token`; API 401/403: `token_rejected`. Benannte Konten fallen nie auf `FIGMA_TOKEN` zurück; ausdrücklich `tokenEnv: "FIGMA_TOKEN"` ist möglich. `--stale` überspringt unbekannte vorhandene Kopien; fehlende Kopien bleiben bei benannter/gemischter Auswahl möglich. Eine reine Standardauswahl ohne `FIGMA_TOKEN` behält den bisherigen Fehler. Ohne API-Zugriff `--only NAME` nutzen.
 
 `freshness --account work` (auch mit direkter `--url`) und MCP `freshness` mit `account: "work"` überschreiben die API-Auswahl. Automatische Hinweise bei fehlenden Nodes/leerer Suche nutzen die Zuordnung. Benannte Freshness-Zeilen ergänzen `account`, `tokenVar` (null bei fehlender Auflösung), `tokenSet`. Die obersten Token-Felder beschreiben nur Standard-`FIGMA_TOKEN`, nicht alle Konten. `tokenSet` bedeutet vorhanden, nicht autorisiert.

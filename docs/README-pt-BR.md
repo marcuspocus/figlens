@@ -336,6 +336,8 @@ figlens pull --only web --account work
 
 Sem `--account`, cada design usa seu alias no mapeamento; sem `account`, usa o padrão antigo, não a última conta conectada. `--account work` substitui perfil e roteamento API de todos os designs selecionados. `pull` sozinho, inclusive `pull --account work`, apenas lista, sem baixar. `--only` não precisa de token API. Contas mistas rodam sequencialmente em perfis isolados; uma falha nunca tenta outra conta.
 
+Com `freshness file.fig --url URL` direto (MCP: `file` + `url`), o mapeamento é ignorado: sem `--account`/`account`, usa `FIGMA_TOKEN`, mesmo que o arquivo tenha um alias associado.
+
 Arquivo/alias ausente: `account_not_configured`; configuração ilegível/inválida: `account_config_invalid`; variável ausente/vazia: `no_token`; API 401/403: `token_rejected`. Contas nomeadas nunca recorrem a `FIGMA_TOKEN`; `tokenEnv: "FIGMA_TOKEN"` pode ser explícito. `--stale` ignora cópias existentes desconhecidas; ausentes continuam elegíveis em seleções nomeadas/mistas. Uma seleção só padrão sem `FIGMA_TOKEN` mantém o erro antigo. Sem API, use `--only NAME`.
 
 `freshness --account work` (também com `--url` direta) e MCP `freshness` com `account: "work"` substituem a rota API. Avisos automáticos de nó ausente/find vazio usam a conta do mapeamento. Linhas nomeadas acrescentam `account`, `tokenVar` (null se não resolvido), `tokenSet`. Campos superiores descrevem apenas o `FIGMA_TOKEN` padrão, não todas as contas. `tokenSet` significa presente, não autorizado.

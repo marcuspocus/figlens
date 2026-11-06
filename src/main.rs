@@ -392,7 +392,8 @@ usage:
                                              file: the designs in the nearest .figlens/sources.json (a
                                              list of {name,url,file}, file relative to the project
                                              root, or to the folder of a mapping outside .figlens/),
-                                             one file, or one file with its URL.
+                                             one file, or one file with its URL. --url bypasses mapping;
+                                             without --account it uses default FIGMA_TOKEN.
                                              Saved time is exported_at in the copy's meta.json; online
                                              time is last_touched_at from the REST file metadata,
                                              read with curl and an environment token (scope
