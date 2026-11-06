@@ -484,7 +484,7 @@ pub const TOOLS: &[(&str, &str, &[Param])] = &[
     ),
     (
         "freshness",
-        "Tell whether saved .fig copies are older than their online Figma files, before concluding a design lacks a frame: the designs in a mapping (a JSON list of {name, url, file}, file relative to the project root for .figlens/sources.json, else to the mapping's folder), one file found in the nearest .figlens/sources.json at or above it, or one file with its url. Saved time is exported_at in the copy's meta.json; online time is last_touched_at from Figma's REST file metadata, read with the server's FIGMA_TOKEN environment variable (never an argument or output). Each design is stale, current or unknown with a reason (no_token, no_saved_time, not_mapped, file_missing, url_unrecognized, offline, token_rejected, file_not_found, rate_limited, curl_unavailable, outside_roots, unexpected_response, token_invalid, deadline when a listing ran out of its 60 s, cancelled). A stale copy needs the user to save a new local copy (File > Save local copy); nothing is downloaded. With a token, a node not found or an empty find in a mapped stale copy carries the same hint.",
+        "Tell whether saved .fig copies are older than their online Figma files, before concluding a design lacks a frame: the designs in a mapping (a JSON list of {name, url, file}, file relative to the project root for .figlens/sources.json, else to the mapping's folder), one file found in the nearest .figlens/sources.json at or above it, or one file with its url. Saved time is exported_at in the copy's meta.json; online time is last_touched_at from Figma's REST file metadata, read with an environment token (never an argument or output). The optional account overrides the mapping's account; named accounts resolve tokenEnv in the server user's figlens config/accounts.json, and unnamed entries keep FIGMA_TOKEN. Missing named config/token never falls back. Per-design account/tokenVar/tokenSet describe named routes; top-level tokenVar/tokenSet describe only default FIGMA_TOKEN. Each design is stale, current or unknown with a reason (no_token, account_not_configured, account_config_invalid, no_saved_time, not_mapped, file_missing, url_unrecognized, offline, token_rejected, file_not_found, rate_limited, curl_unavailable, outside_roots, unexpected_response, token_invalid, deadline when a listing ran out of its 60 s, cancelled). A stale copy needs the user to save a new local copy (File > Save local copy); nothing is downloaded. With a token, a node not found or an empty find in a mapped stale copy carries the same hint.",
         &[
             (
                 "sources",
@@ -503,6 +503,12 @@ pub const TOOLS: &[(&str, &str, &[Param])] = &[
                 "string",
                 false,
                 "with file: the Figma file URL it was saved from, instead of a mapping",
+            ),
+            (
+                "account",
+                "string",
+                false,
+                "account alias overriding every checked entry, including file with url; 1-64 lowercase ASCII letters, digits, '-' or '_', starting with a letter or digit; tokenEnv is configured in the server user's accounts.json",
             ),
         ],
     ),
@@ -865,9 +871,9 @@ pub fn output_schema(tool: &str) -> Option<serde_json::Value> {
         "freshness" => (
             serde_json::json!({
                 "mapping": {"type": ["string", "null"]},
-                "tokenVar": {"type": "string"},
-                "tokenSet": {"type": "boolean"},
-                "designs": {"type": "array", "items": {"type": "object"}, "description": "name, file (as mapped or given), savedAt, onlineModifiedAt, onlineVersion, state stale|current|unknown, reason when unknown"},
+                "tokenVar": {"type": "string", "description": "legacy default FIGMA_TOKEN only, not an aggregate of named accounts"},
+                "tokenSet": {"type": "boolean", "description": "whether default FIGMA_TOKEN is nonempty"},
+                "designs": {"type": "array", "items": {"type": "object"}, "description": "name, file (as mapped or given), savedAt, onlineModifiedAt, onlineVersion, state stale|current|unknown, reason when unknown; named routes add account, tokenVar (null when unresolved), tokenSet; never token values"},
             }),
             ["mapping", "tokenVar", "tokenSet", "designs"].as_slice(),
         ),

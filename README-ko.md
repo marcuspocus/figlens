@@ -192,7 +192,7 @@ CLI를 사용하는 에이전트는 `figlens workflow build`(그 밖에 `audit`,
 
 [CLI 레퍼런스](docs/README-ko.md#commands)
 
-서로 다른 Figma 계정에는 `figlens pull --login --account work`와 소스 매핑의 선택적 `"account": "work"`를 사용하세요. 기존 기본 세션은 이전할 필요가 없습니다.
+서로 다른 Figma 계정에는 `figlens pull --login --account work`와 소스 매핑의 선택적 `"account": "work"`를 사용하세요. 기존 기본 세션은 이전할 필요가 없습니다. [Figma 계정: 브라우저 로그인과 API token](docs/README-ko.md#figma-accounts).
 
 <a id="setup-skill"></a>
 

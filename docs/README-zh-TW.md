@@ -270,8 +270,8 @@ Pi、OpenCode 和 OMP 透過各自的 opt-in 入口使用同一個索引，works
 | `compare-image <file> <node> <screenshot.png>` | 將實作畫面的截圖與依其縮放渲染的 node 比對（`--scale`、`--limit`、`--out diff.png`、`--full-page` 用於比 frame 短的整頁截圖，`--ignore` 用於內容來自資料的圖層，`--threshold` 用於看出淺色邊框；`image: true` 標記圖片填充；MCP `compare_image`）。輸出 `mismatch`、`nonTextMismatch` 與差異最大的區域（node 像素座標），每個區域附上其下最深的圖層；`text: true` 表示區域位於文字上（多為字型替代，需逐一檢查） |
 | `node <file> <node>` | 單一原始 `.fig` 節點 |
 | `clipboard [copied.html] <out.fig>` | 用於沒有已存 `.fig` 的情況：在 Figma 選取圖層並複製（右鍵 > Copy，或 Cmd/Ctrl+C），再執行此指令，把剪貼簿轉成每個指令都能讀取的 `.fig`；貼到其他地方只會得到圖層的文字。讀取系統剪貼簿（macOS；Windows PowerShell 5.1 與 Linux `wl-paste`/`xclip` 未驗證）或已存的剪貼簿 HTML 檔。節點 ID 與來源檔案相同，並包含用到的元件。回報 `missingImages`、`missingComponents` 和 `layersWithoutOutlines`：複製內容沒有圖片位元組和向量輪廓，因此 export 和 bundle 會在缺少它們的地方發出警告。不會覆寫既有檔案。有已存的 `.fig` 時，改為把 Figma 連結當作節點傳入：可保留圖片和向量 |
-| `freshness [<file.fig> [--url URL] \| --sources <mapping.json>]` | 在斷定設計缺少某個 frame 之前，先確認每份已存副本是否比線上 Figma 檔案舊：檢查最近的 `.figlens/sources.json` 中的設計（`{name, url, file}` 清單，`file` 相對於 repository 根目錄；`.figlens/` 以外的 `--sources` 對照檔則相對於它自己的資料夾）、單一檔案，或附上 URL 的單一檔案。比較副本 `meta.json` 中的 `exported_at` 與線上的 `last_touched_at`（以 `curl` 和 `FIGMA_TOKEN` 中的 personal access token 讀取，scope 為 `file_metadata:read`）；輸出 `stale`、`current` 或附原因的 `unknown`，缺少 token 或網路時也不會失敗。設定 token 後，在已對應且過期的副本中找不到節點或 `find` 沒有結果時，也會提示重新儲存本機副本（MCP `freshness`） |
-| `pull [--only NAME]... [--stale] [--sources <mapping.json>] [--browser B] [--account NAME] \| --login [--browser B] [--account NAME] \| --logout [--account NAME]` | 根據最近的 `.figlens/sources.json`（或 `--sources`）重新整理已對應的儲存副本。未指定 `--only` 或 `--stale` 時不會下載任何內容，只列出每個設計的新舊狀態。`--only` 選擇設計，`--stale` 只抓取過期或缺少的副本（需要 `FIGMA_TOKEN`）。由專用的 Chrome profile 執行 **File > Save local copy**；下載內容必須能解碼，且 `exported_at` 不早於目前副本，才會以原子方式取代；檢查失敗則保留舊副本；失敗時會指出所在階段（`open`、`editor`、`menu`、`export`、`download`、`install`）。`--login` 開啟可見視窗以登入（工作階段過期時 pull 也會開啟）；在其中登入可能會讓你在另一台裝置上登出 Figma。`--logout` 刪除所有舊版及具名帳號的 profile；`--logout --account work` 只刪除 `work`。需要 Node、Chrome，以及 `playwright-core` (`npm i -g @runkids/figlens playwright-core`) 或 `PATH` 中的 [`agent-browser`](https://agent-browser.dev/) CLI 擇一；`--browser playwright\|agent-browser` 擇一使用（預設：找得到時用 `playwright-core`），兩者各有獨立的 profile，因此切換後需要重新登入；僅支援英文 Figma 介面。僅 CLI。`--account work` 優先於 mapping 中選用的 `account`；兩者皆未設定時沿用既有預設 profile 和 cookies，不需搬移或重新登入。不同帳號使用隔離的 profile 依序執行，失敗時不會嘗試其他帳號。別名限 1–64 個小寫 ASCII 字母、數字、`_` 或 `-`，首字元須為字母或數字。瀏覽器帳號不會選擇 API token：`--stale` 仍使用單一 `FIGMA_TOKEN`，跳過狀態未知的既有副本（包含 401/403）；token 無權檢查時請用 `--only`。 |
+| `freshness [<file.fig> [--url URL] \| --sources <mapping.json>] [--account NAME]` | 在斷定設計缺少某個 frame 之前，先確認每份已存副本是否比線上 Figma 檔案舊：檢查最近的 `.figlens/sources.json` 中的設計（`{name, url, file}` 清單，`file` 相對於 repository 根目錄；`.figlens/` 以外的 `--sources` 對照檔則相對於它自己的資料夾）、單一檔案，或附上 URL 的單一檔案。比較副本 `meta.json` 中的 `exported_at` 與線上的 `last_touched_at`（以 `curl` 和 `FIGMA_TOKEN` / `tokenEnv` 中的 personal access token 讀取，scope 為 `file_metadata:read`）；輸出 `stale`、`current` 或附原因的 `unknown`，缺少 token 或網路時也不會失敗。設定 token 後，在已對應且過期的副本中找不到節點或 `find` 沒有結果時，也會提示重新儲存本機副本（MCP `freshness`） |
+| `pull [--only NAME]... [--stale] [--sources <mapping.json>] [--browser B] [--account NAME] \| --login [--browser B] [--account NAME] \| --logout [--account NAME]` | 根據最近的 `.figlens/sources.json`（或 `--sources`）重新整理已對應的儲存副本。未指定 `--only` 或 `--stale` 時不會下載任何內容，只列出每個設計的新舊狀態。`--only` 選擇設計，`--stale` 只抓取過期或缺少的副本。由專用的 Chrome profile 執行 **File > Save local copy**；下載內容必須能解碼，且 `exported_at` 不早於目前副本，才會以原子方式取代；檢查失敗則保留舊副本；失敗時會指出所在階段（`open`、`editor`、`menu`、`export`、`download`、`install`）。`--login` 開啟可見視窗以登入（工作階段過期時 pull 也會開啟）；在其中登入可能會讓你在另一台裝置上登出 Figma。`--logout` 刪除所有舊版及具名帳號的 profile；`--logout --account work` 只刪除 `work`。需要 Node、Chrome，以及 `playwright-core` (`npm i -g @runkids/figlens playwright-core`) 或 `PATH` 中的 [`agent-browser`](https://agent-browser.dev/) CLI 擇一；`--browser playwright\|agent-browser` 擇一使用（預設：找得到時用 `playwright-core`），兩者各有獨立的 profile，因此切換後需要重新登入；僅支援英文 Figma 介面。僅 CLI。帳號路由與 token 設定詳見下方說明。 |
 | `index prepare\|refresh\|rebuild\|clear\|status\|add\|remove\|relocate\|reset\|track\|untrack\|embed\|visual` | 使用者 figlens state 目錄中的本機 workspace，或位於 workspace 之後會記住的 `--storage DIR` 下。`prepare <file> --scope NODE` 為該範圍建立一次搜尋索引；之後 `search --file <file>`（或 `--workspace DIR`）不再解析檔案，跨 workspace 的所有來源統一排序作答。`refresh` 重建有變更的檔案，`rebuild` 重建全部或單一 `--source`/`--scope`，`clear` 刪除未使用的索引；新索引就緒前繼續使用舊索引。`reset` 只刪除 workspace 資料庫，不會刪除設計、匯出或記住的位置。`track --scope NODE` 從 baseline 建置開始記錄該範圍的變更；`untrack` 停止記錄並保留歷史。 `embed` 用已設定的模型嵌入已發布的範圍（使用 CPU 與記憶體）；僅在需要 workspace 語意搜尋時執行。 `visual --scope NODE` 為圖片搜尋渲染該已發布範圍的畫面與元件，設定視覺模型時一併嵌入；僅在需要 workspace 視覺搜尋時執行。 |
 | `jobs status\|cancel <jobId>` | 查看或取消索引建置；`cancel` 在建置停止後才返回 |
 | `changes --file <file>\|--id ID\|--workspace DIR [--source ID] [--scope NODE] [--consumer NAME\|--subscription ID\|--cursor C] [--revision R] [--limit N]` | 已追蹤範圍記錄的變更，從最舊開始：每次發布的建置一個修訂（baseline 或 changes），含涵蓋狀況及依變更類型與 facet 的計數；每個 changes 修訂都有 `impact` 摘要，說明變更波及的圖層（schema 7 之前為 null）；`--revision` 分頁列出該修訂變更的節點，再列出 impact 列出的圖層（`entry` 標明是哪一種）；`tracking` 指出哪些範圍需要 `index refresh` 才能記錄變更。唯讀 |
@@ -297,3 +297,47 @@ Pi、OpenCode 和 OMP 透過各自的 opt-in 入口使用同一個索引，works
 node 引數可接受 `12:345`、`12-345`，或帶有 `?node-id=` 的 Figma URL。`<file>` 也可以是 `gs://bucket/object`，會用你的 `gcloud` 登入下載並快取。固定 object 交接、所需存取權限與更新限制，請參閱 [GCS 快照操作說明](../wiki/gcs.md)。每次 CLI 呼叫都會解碼檔案；MCP 只重用最後讀取且未變更的本機檔案，遠端輸入仍會重新解析。執行 `figlens --help` 查看完整 CLI 用法，或執行 `figlens inspect --help`（也可用 `-h`）只看該指令的項目。`index add gs://bucket/object` 會登錄該 generation 的固定副本並回報 `remote {uri, generation}`；只有 add 會執行 gcloud。
 
 `inspect` 包含已記錄的文字尺寸調整、截斷、最大行數與裝飾。Dev Mode 標註出現在對應節點的 `annotations`（純文字 `label` 預覽、釘選的 `properties`、`categoryId`；`nodes` 另含 `labelMarkdown`），並附上有名稱的 `annotationCategories`；Ready for dev 的 frame 和 section 帶 `devStatus`，`--flat` 會標出兩者；測量列在 `handoffDiagnostics`。沒有 auto-layout 的父層會帶 `childSpacing: "derived"`：子層之間的間距是座標差，不是 auto-layout 規則；`constraints` 仍可能固定它們。`handoffDiagnostics` 會列出已儲存但尚未輸出的語意、數量、範例及[涵蓋限制](../wiki/semantics.md#known-handoff-gaps)。`_figlens.semantics` 只列出來源已儲存的欄位（缺少條目即表示未儲存）；這些對應未與 Figma 比對，每個回應會在最上層的 `_figlens.semantics.verification` 說明一次。grid auto layout 的 frame 會帶列欄數、間距和已儲存的軌道尺寸（`_figlens.gridTracks`）。輸出會保護來源，完整寫入後才替換目標。MCP 請求行上限為 1 MiB，完整回應上限為 8 MiB，超限會明確回報錯誤；CLI 仍可輸出完整 JSON。
+
+<a id="figma-accounts"></a>
+
+### Figma 帳號：瀏覽器登入與 API token
+
+帳號是本機別名，不代表已驗證的 Figma 身分。瀏覽器登入負責下載副本；API token 只檢查 metadata，兩者須各自設定並具備相符權限。既有使用者未指定帳號時，沿用原本 cookies 與 `FIGMA_TOKEN`，不需搬移、設定檔或重新登入。
+
+全域 `accounts.json` 放在 `$XDG_CONFIG_HOME/figlens/accounts.json`，未設定時為 `~/.config/figlens/accounts.json`。Windows 使用 `%LOCALAPPDATA%/figlens/config/accounts.json`，除非以 `XDG_CONFIG_HOME` 覆寫。只記錄環境變數名稱，絕不存 token 值：
+
+```json
+{
+  "work": {"tokenEnv": "FIGMA_TOKEN_WORK"},
+  "client": {"tokenEnv": "FIGMA_TOKEN_CLIENT"}
+}
+```
+
+私下將這些環境變數設為具 `file_metadata:read` 的 personal access token，並讓 CLI shell 或 MCP host/server 繼承。不要把密鑰貼進指令、工具參數、日誌或提交的檔案。瀏覽器登入不會產生 token。專案提交的 `.figlens/sources.json` 為各設計稿指定別名（`file` 相對於專案根目錄）：
+
+```json
+[
+  {"name":"app","url":"https://www.figma.com/design/WorkKey/","file":"designs/app.fig","account":"work"},
+  {"name":"web","url":"https://www.figma.com/design/ClientKey/","file":"designs/web.fig","account":"client"},
+  {"name":"old","url":"https://www.figma.com/design/DefaultKey/","file":"designs/old.fig"}
+]
+```
+
+```sh
+figlens pull --login --account work
+figlens pull --login --account client
+figlens pull
+figlens pull --only app --only web
+figlens pull --stale
+figlens freshness --account work
+figlens freshness designs/web.fig --account client
+figlens pull --only web --account work
+```
+
+未加 `--account` 時，每份設計稿使用 mapping 的別名；未填 `account` 的項目使用舊有預設帳號，不是最後登入的帳號。`--account work` 覆寫所有選取設計稿的瀏覽器 profile 與 API 路由。單獨 `pull`（含 `pull --account work`）只列狀態，不下載。`--only` 不需 API token。混合帳號以隔離的 profile 依序執行，權限失敗時不會嘗試其他帳號。
+
+缺設定檔或別名為 `account_not_configured`，設定檔無法讀取或格式錯誤為 `account_config_invalid`，環境變數缺少或空值為 `no_token`，API 401/403 為 `token_rejected`。具名帳號不會退回 `FIGMA_TOKEN`；可明確設定 `tokenEnv: "FIGMA_TOKEN"` 共用。`--stale` 跳過未知的既有副本，具名／混合選取仍可下載缺少的副本。全為預設帳號且無 `FIGMA_TOKEN` 時，保留原本報錯行為。無 API 權限時可用 `--only NAME`。
+
+`freshness --account work`（含直接指定 `--url`）及 MCP `freshness` 的 `account: "work"` 可覆寫 API 路由。找不到節點或 find 無結果的自動提示使用 mapping 帳號。具名 freshness 項目增加 `account`、`tokenVar`（未解析時為 null）、`tokenSet`；頂層 `tokenVar`／`tokenSet` 仍只描述預設 `FIGMA_TOKEN`，不是所有帳號的總狀態。`tokenSet` 只代表有值，不代表已授權。
+
+別名限 1–64 個小寫 ASCII 字母、數字、`_` 或 `-`，首字元須為字母或數字；環境變數名稱限 1–128 個 ASCII 字母、數字或 `_`，以字母或 `_` 開頭。設定檔上限 200 帳號／1 MiB，各帳號只能有 `tokenEnv` 欄位；任一錯誤會使整份設定無效。`pull --logout --account work` 只刪除該帳號的瀏覽器 profile；單獨 `--logout` 刪除所有預設與具名 profile，但不刪設定或 token。

@@ -104,6 +104,11 @@ impl Storage {
         &self.defaults.state.path
     }
 
+    /// The per-user configuration folder; independent of workspace storage. Nothing is created.
+    pub fn config_dir(&self) -> &Path {
+        &self.defaults.config.path
+    }
+
     /// Limits every report, search and job to sources under `roots` (canonical paths).
     pub fn confined(mut self, roots: &[PathBuf]) -> Self {
         if !roots.is_empty() {

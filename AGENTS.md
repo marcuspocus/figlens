@@ -37,7 +37,9 @@ python3 scripts/ai-context.py check     # validate paths, headings, links, orpha
 |---|---|
 | `mcp` | Changing MCP instructions, tool discovery or workflow guidance |
 | `gcs` | Changing the `gs://` snapshot handoff, its download cache or refresh |
-| `freshness` | Changing `freshness`, `pull`, the `.figlens/sources.json` mapping or the stale hint on a missing node |
+| `freshness` | Changing metadata comparison, the sources mapping or stale hints |
+| `pull` | Changing browser pull, profiles, helper or login/logout |
+| `accounts` | Changing browser/API alias routing, accounts.json or environment references |
 | `performance` | Measuring load time and memory, the perf baseline, cache or decode cost |
 | `parsing` | Changing untrusted container/schema/value decoding or parsing budgets |
 | `fig-format` | Changing decoding, instance expansion, emitted REST fields or variables |

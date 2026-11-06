@@ -270,8 +270,8 @@ Pi, OpenCode, OMP는 각자의 opt-in 진입점으로 같은 인덱스를 쓰며
 | `compare-image <file> <node> <screenshot.png>` | 구현한 화면의 스크린샷을 그 배율로 렌더링한 node와 비교 (`--scale`, `--limit`, `--out diff.png`, frame보다 짧은 전체 페이지 캡처에는 `--full-page`, 데이터에서 오는 콘텐츠 레이어에는 `--ignore`, 옅은 테두리를 보려면 `--threshold`; `image: true`는 이미지 채우기 영역; MCP `compare_image`). `mismatch`, `nonTextMismatch`와 가장 큰 차이 영역을 node 픽셀 좌표로 출력하고 각 영역 아래의 가장 깊은 레이어를 표시합니다. `text: true`는 텍스트 위의 영역입니다(대개 대체 글꼴이지만 각각 확인하세요) |
 | `node <file> <node>` | 원시 `.fig` 노드 하나 |
 | `clipboard [copied.html] <out.fig>` | 저장한 `.fig`가 없을 때 사용: Figma에서 레이어를 선택해 복사(마우스 오른쪽 클릭 > Copy 또는 Cmd/Ctrl+C)한 뒤 이 명령을 실행하면 클립보드가 모든 명령이 읽는 `.fig`로 변환됨. 다른 곳에 붙여넣으면 레이어의 텍스트만 나옴. 시스템 클립보드(macOS, Windows PowerShell 5.1과 Linux `wl-paste`/`xclip`은 미검증) 또는 저장한 클립보드 HTML 파일을 읽음. 노드 ID는 원본과 같고 사용된 컴포넌트도 포함. `missingImages`, `missingComponents`, `layersWithoutOutlines`를 보고: 복사본에는 이미지 바이트와 벡터 윤곽선이 없으므로 export와 bundle은 그것 없이 그린 곳을 경고. 기존 파일은 덮어쓰지 않음. 저장한 `.fig`가 있으면 대신 Figma 링크를 노드로 전달: 이미지와 벡터가 유지됨 |
-| `freshness [<file.fig> [--url URL] \| --sources <mapping.json>]` | 디자인에 프레임이 없다고 판단하기 전에 저장된 사본이 온라인 Figma 파일보다 오래되었는지 확인합니다. 대상은 가장 가까운 `.figlens/sources.json`의 디자인(`{name, url, file}` 목록, `file`은 저장소 루트 기준 상대 경로이며, `.figlens/` 밖의 `--sources` 매핑은 자기 폴더 기준), 파일 하나, 또는 URL을 지정한 파일 하나입니다. 사본 `meta.json`의 `exported_at`을 `curl`과 `FIGMA_TOKEN`의 personal access token(스코프 `file_metadata:read`)으로 읽은 온라인 `last_touched_at`과 비교하여 `stale`, `current` 또는 이유가 붙은 `unknown`을 출력하며, 토큰이나 네트워크가 없어도 실패하지 않습니다. 토큰이 있으면 매핑된 오래된 사본에서 노드를 찾지 못하거나 `find` 결과가 없을 때 로컬 사본을 다시 저장하라고 알려 줍니다(MCP `freshness`) |
-| `pull [--only NAME]... [--stale] [--sources <mapping.json>] [--browser B] [--account NAME] \| --login [--browser B] [--account NAME] \| --logout [--account NAME]` | 가장 가까운 `.figlens/sources.json`(또는 `--sources`)에서 매핑된 저장 사본을 새로 고칩니다. `--only`나 `--stale`이 없으면 아무것도 내려받지 않고 각 디자인의 최신 여부를 나열합니다. `--only`는 디자인을 고르고, `--stale`은 오래되었거나 없는 사본만 가져옵니다(`FIGMA_TOKEN` 필요). 전용 Chrome 프로필이 **File > Save local copy**를 실행하며, 다운로드는 디코딩되어야 하고 현재 사본보다 오래되지 않은 `exported_at`을 가져야 사본을 원자적으로 교체합니다. 검사에 실패하면 기존 사본을 유지하고, 실패 시 해당 단계 이름(`open`, `editor`, `menu`, `export`, `download`, `install`)을 알려 줍니다. `--login`은 로그인용 창을 띄웁니다(세션이 만료되면 pull도 창을 띄웁니다). 그 창에서 로그인하면 다른 기기의 Figma에서 로그아웃될 수 있습니다. `--logout`은 기존 및 이름 지정 계정의 모든 프로필을 삭제합니다. `--logout --account work`는 `work`만 삭제합니다. Node, Chrome, 그리고 `playwright-core`(`npm i -g @runkids/figlens playwright-core`) 또는 `PATH`의 [`agent-browser`](https://agent-browser.dev/) CLI 중 하나가 필요합니다. `--browser playwright\|agent-browser`로 하나를 고르며(기본값: 찾으면 `playwright-core`), 각각 자체 프로필을 유지하므로 전환하면 다시 로그인해야 합니다. Figma UI는 영어만 지원합니다. CLI 전용. `--account work`는 매핑의 선택적 `account`보다 우선하며, 둘 다 없으면 기본 프로필과 쿠키를 이전이나 재로그인 없이 재사용합니다. 계정별 격리 프로필로 순차 실행하며 실패 시 다른 계정을 시도하지 않습니다. 별칭은 소문자 ASCII 문자, 숫자, `_`, `-` 1–64자로, 첫 글자는 문자나 숫자입니다. 브라우저 계정은 API token을 선택하지 않습니다. `--stale`은 단일 `FIGMA_TOKEN`을 사용하며 상태 불명인 기존 사본(401/403 포함)을 건너뜁니다. token에 권한이 없으면 `--only`를 사용하세요. |
+| `freshness [<file.fig> [--url URL] \| --sources <mapping.json>] [--account NAME]` | 디자인에 프레임이 없다고 판단하기 전에 저장된 사본이 온라인 Figma 파일보다 오래되었는지 확인합니다. 대상은 가장 가까운 `.figlens/sources.json`의 디자인(`{name, url, file}` 목록, `file`은 저장소 루트 기준 상대 경로이며, `.figlens/` 밖의 `--sources` 매핑은 자기 폴더 기준), 파일 하나, 또는 URL을 지정한 파일 하나입니다. 사본 `meta.json`의 `exported_at`을 `curl`과 `FIGMA_TOKEN` / `tokenEnv`의 personal access token(스코프 `file_metadata:read`)으로 읽은 온라인 `last_touched_at`과 비교하여 `stale`, `current` 또는 이유가 붙은 `unknown`을 출력하며, 토큰이나 네트워크가 없어도 실패하지 않습니다. 토큰이 있으면 매핑된 오래된 사본에서 노드를 찾지 못하거나 `find` 결과가 없을 때 로컬 사본을 다시 저장하라고 알려 줍니다(MCP `freshness`) |
+| `pull [--only NAME]... [--stale] [--sources <mapping.json>] [--browser B] [--account NAME] \| --login [--browser B] [--account NAME] \| --logout [--account NAME]` | 가장 가까운 `.figlens/sources.json`(또는 `--sources`)에서 매핑된 저장 사본을 새로 고칩니다. `--only`나 `--stale`이 없으면 아무것도 내려받지 않고 각 디자인의 최신 여부를 나열합니다. `--only`는 디자인을 고르고, `--stale`은 오래되었거나 없는 사본만 가져옵니다. 전용 Chrome 프로필이 **File > Save local copy**를 실행하며, 다운로드는 디코딩되어야 하고 현재 사본보다 오래되지 않은 `exported_at`을 가져야 사본을 원자적으로 교체합니다. 검사에 실패하면 기존 사본을 유지하고, 실패 시 해당 단계 이름(`open`, `editor`, `menu`, `export`, `download`, `install`)을 알려 줍니다. `--login`은 로그인용 창을 띄웁니다(세션이 만료되면 pull도 창을 띄웁니다). 그 창에서 로그인하면 다른 기기의 Figma에서 로그아웃될 수 있습니다. `--logout`은 기존 및 이름 지정 계정의 모든 프로필을 삭제합니다. `--logout --account work`는 `work`만 삭제합니다. Node, Chrome, 그리고 `playwright-core`(`npm i -g @runkids/figlens playwright-core`) 또는 `PATH`의 [`agent-browser`](https://agent-browser.dev/) CLI 중 하나가 필요합니다. `--browser playwright\|agent-browser`로 하나를 고르며(기본값: 찾으면 `playwright-core`), 각각 자체 프로필을 유지하므로 전환하면 다시 로그인해야 합니다. Figma UI는 영어만 지원합니다. CLI 전용. 계정 라우팅과 token 설정은 아래를 참고하세요. |
 | `index prepare\|refresh\|rebuild\|clear\|status\|add\|remove\|relocate\|reset\|track\|untrack\|embed\|visual` | 사용자별 figlens state 디렉터리 또는 workspace가 이후 기억하는 `--storage DIR` 아래의 로컬 workspace. `prepare <file> --scope NODE`로 해당 범위의 검색 인덱스를 한 번 만들면, 이후 `search --file <file>`(또는 `--workspace DIR`)은 다시 파싱하지 않고 workspace의 모든 소스를 함께 순위 매겨 답합니다. `refresh`는 변경된 파일을, `rebuild`는 전부(또는 `--source`/`--scope` 하나)를 다시 만들고, `clear`는 쓰지 않는 인덱스를 지웁니다. 새 인덱스가 준비될 때까지 이전 인덱스가 계속 쓰입니다. `reset`은 workspace 데이터베이스만 지우며 디자인, 내보내기, 기억된 위치는 건드리지 않습니다. `track --scope NODE`는 baseline 빌드부터 그 스코프의 변경을 기록하고, `untrack`은 기록을 남긴 채 중단합니다. `embed`는 게시된 스코프를 설정된 모델로 임베딩합니다(CPU와 메모리 사용). workspace 시맨틱 검색이 필요할 때만 실행하세요. `visual --scope NODE`는 게시된 스코프의 화면과 컴포넌트를 이미지 검색용으로 렌더링하고, 비전 프로필이 설정되면 임베딩도 합니다. workspace 이미지 검색이 필요할 때만 실행하세요. |
 | `jobs status\|cancel <jobId>` | 인덱스 빌드 상태 확인 또는 취소. `cancel`은 빌드가 멈춘 뒤에 반환합니다 |
 | `changes --file <file>\|--id ID\|--workspace DIR [--source ID] [--scope NODE] [--consumer NAME\|--subscription ID\|--cursor C] [--revision R] [--limit N]` | 추적 중인 스코프에 기록된 변경을 오래된 순으로 반환합니다. 게시된 빌드마다 리비전 하나(baseline 또는 changes)와 커버리지, 변경 종류·facet별 개수를 포함합니다. changes 리비전마다 변경이 닿는 레이어의 `impact` 요약이 있습니다(스키마 7 이전은 null). `--revision`은 그 리비전의 변경된 노드와 이어서 impact가 나열한 레이어를 페이지로 나눕니다(`entry`가 어느 쪽인지 알려 줍니다). `tracking`은 변경을 기록하려면 `index refresh`가 필요한 스코프를 알려 줍니다. 읽기 전용 |
@@ -297,3 +297,47 @@ Pi, OpenCode, OMP는 각자의 opt-in 진입점으로 같은 인덱스를 쓰며
 노드 인수는 `12:345`, `12-345`, `?node-id=`가 있는 Figma URL을 받을 수 있습니다. `<file>`에 `gs://bucket/object`도 지정할 수 있으며 `gcloud` 로그인으로 다운로드하고 캐시합니다. 고정 객체를 통한 전달, 필요한 접근 권한과 갱신 제한은 [GCS 스냅샷 가이드](../wiki/gcs.md)를 참고하세요. CLI 호출은 매번 파일을 디코딩합니다. MCP는 마지막으로 읽은 변경 없는 로컬 파일만 재사용합니다. 원격 입력은 다시 파싱합니다. 전체 CLI 사용법은 `figlens --help`, 명령 하나의 항목은 `figlens inspect --help`(`-h`도 가능)를 실행하세요. `index add gs://bucket/object`는 해당 generation의 고정된 사본을 등록하고 `remote {uri, generation}`을 보고하며, gcloud는 add만 실행합니다.
 
 `inspect`에는 기록된 텍스트 크기 조정, 잘림, 최대 줄 수와 장식이 포함됩니다. Dev Mode 주석은 각 노드의 `annotations`(일반 텍스트 `label` 미리 보기, 고정된 `properties`, `categoryId`; `nodes`는 `labelMarkdown`도 포함)에 담기고 이름이 있는 `annotationCategories`가 함께 제공됩니다. Ready for dev 프레임과 섹션에는 `devStatus`가 붙고 `--flat`은 둘 다 표시합니다. 측정은 `handoffDiagnostics`에 보고됩니다. auto-layout이 없는 부모에는 `childSpacing: "derived"`가 붙습니다. 자식 사이의 간격은 좌표 차이이며 auto-layout 규칙이 아닙니다. `constraints`가 고정할 수는 있습니다. `handoffDiagnostics`는 저장되었지만 출력되지 않는 의미 정보를 개수, 예시, [범위 제한](../wiki/semantics.md#known-handoff-gaps)과 함께 보고합니다. `_figlens.semantics`에는 소스가 저장된 필드만 나옵니다(항목이 없으면 저장되지 않은 것입니다). 이 매핑이 Figma와 비교되지 않았다는 점은 응답마다 한 번, 최상위 `_figlens.semantics.verification`에 표시됩니다. grid auto layout 프레임에는 행·열 수, 간격, 저장된 트랙 크기(`_figlens.gridTracks`)가 포함됩니다. 출력은 원본을 보호하고 쓰기가 완료된 뒤 대상을 교체합니다. MCP 요청 행은 1 MiB, 전체 응답은 8 MiB로 제한되며 초과하면 명시적인 오류를 반환합니다. CLI에서는 전체 JSON을 계속 출력할 수 있습니다.
+
+<a id="figma-accounts"></a>
+
+### Figma 계정: 브라우저 로그인과 API token
+
+계정은 로컬 별칭이며 검증된 Figma 신원이 아닙니다. 브라우저 로그인은 사본 다운로드, API token은 metadata 확인에 사용되므로 각각 권한을 설정하세요. 계정 없는 기존 사용자는 이전 cookies와 `FIGMA_TOKEN`을 그대로 사용하며 이전·설정 파일·재로그인이 필요 없습니다.
+
+전역 `accounts.json` 위치는 `$XDG_CONFIG_HOME/figlens/accounts.json`, 미설정 시 `~/.config/figlens/accounts.json`입니다. Windows는 `%LOCALAPPDATA%/figlens/config/accounts.json`이며 `XDG_CONFIG_HOME`으로 재정의할 수 있습니다. token 값이 아닌 환경 변수 이름만 저장하세요:
+
+```json
+{
+  "work": {"tokenEnv": "FIGMA_TOKEN_WORK"},
+  "client": {"tokenEnv": "FIGMA_TOKEN_CLIENT"}
+}
+```
+
+`file_metadata:read` 권한의 personal access token을 비공개로 환경 변수에 설정하고 CLI shell 또는 MCP host/server가 상속하도록 하세요. 비밀을 명령, 도구 인수, 로그, 커밋 파일에 넣지 마세요. 브라우저 로그인은 token을 만들지 않습니다. 프로젝트 `.figlens/sources.json`에 디자인별 별칭을 추가하세요(`file`은 프로젝트 루트 기준):
+
+```json
+[
+  {"name":"app","url":"https://www.figma.com/design/WorkKey/","file":"designs/app.fig","account":"work"},
+  {"name":"web","url":"https://www.figma.com/design/ClientKey/","file":"designs/web.fig","account":"client"},
+  {"name":"old","url":"https://www.figma.com/design/DefaultKey/","file":"designs/old.fig"}
+]
+```
+
+```sh
+figlens pull --login --account work
+figlens pull --login --account client
+figlens pull
+figlens pull --only app --only web
+figlens pull --stale
+figlens freshness --account work
+figlens freshness designs/web.fig --account client
+figlens pull --only web --account work
+```
+
+`--account`가 없으면 각 디자인의 mapping 계정을 쓰며 `account`가 없는 항목은 마지막 로그인 계정이 아닌 기존 기본 계정을 사용합니다. `--account work`는 선택한 모든 디자인의 브라우저와 API 라우팅을 재정의합니다. 단독 `pull`과 `pull --account work`는 목록만 보여주고 다운로드하지 않습니다. `--only`에는 API token이 필요 없습니다. 혼합 계정은 격리된 프로필에서 순서대로 실행하며 실패 시 다른 계정을 시도하지 않습니다.
+
+설정/별칭 누락은 `account_not_configured`, 읽을 수 없거나 잘못된 설정은 `account_config_invalid`, 환경 변수 누락/빈 값은 `no_token`, API 401/403은 `token_rejected`입니다. 이름 지정 계정은 `FIGMA_TOKEN`으로 대체되지 않으며 명시적인 `tokenEnv: "FIGMA_TOKEN"`만 가능합니다. `--stale`은 알 수 없는 기존 사본을 건너뛰고 이름 지정/혼합 선택의 누락 사본은 다운로드할 수 있습니다. 모두 기본 계정이고 token이 없으면 기존 오류를 유지합니다. API 확인이 불가능하면 `--only NAME`을 사용하세요.
+
+`freshness --account work`(직접 `--url`도 가능)와 MCP `freshness`의 `account: "work"`는 API 라우팅을 재정의합니다. 노드 누락/빈 find 자동 힌트는 mapping 계정을 사용합니다. 이름 지정 freshness 행에는 `account`, `tokenVar`(미해결 시 null), `tokenSet`이 추가됩니다. 최상위 token 필드는 기본 `FIGMA_TOKEN`만 설명하며 전체 계정 상태가 아닙니다. `tokenSet`은 값 존재만 의미하며 권한을 보장하지 않습니다.
+
+별칭은 소문자 ASCII 문자·숫자·`_`·`-` 1–64자, 첫 글자는 문자나 숫자입니다. 환경 변수 이름은 ASCII 문자·숫자·`_` 1–128자이며 문자나 `_`로 시작합니다. 설정 한도는 200계정/1 MiB, 각 항목에는 `tokenEnv`만 허용하며 잘못된 항목은 전체 설정을 무효화합니다. `pull --logout --account work`는 해당 브라우저 프로필만, 단독 `--logout`은 모든 기본/이름 지정 프로필을 삭제합니다. 설정이나 token은 삭제하지 않습니다.

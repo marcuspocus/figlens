@@ -192,7 +192,7 @@ Un agent qui utilise la CLI lit son guide avec `figlens workflow build` (ainsi q
 
 [Référence de la CLI](docs/README-fr.md#commands)
 
-Différents comptes Figma : `figlens pull --login --account work` et le champ facultatif `"account": "work"` dans la correspondance des sources. Aucune migration des sessions par défaut existantes.
+Différents comptes Figma : `figlens pull --login --account work` et le champ facultatif `"account": "work"` dans la correspondance des sources. Aucune migration des sessions par défaut existantes. [Comptes Figma : navigateur et tokens API](docs/README-fr.md#figma-accounts).
 
 <a id="setup-skill"></a>
 

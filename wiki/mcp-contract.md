@@ -26,7 +26,7 @@ Field reference linked from [mcp](mcp.md).
 | `compare_image.fullPage` | boolean / false; true lets a screenshot shorter than the node compare, its missing rows a differing region |
 | `compare_image.ignore` | comma-separated ids of layers strictly inside `node`, at least one; their render boxes leave every count |
 | `compare_image.threshold` | 1–254 / 48 per-channel difference |
-| `freshness.sources`, `freshness.file`, `freshness.url` | all optional strings; `sources` (a mapping) or `file` is required, never both; `url` only with `file`; `gs://` refused. Missing token, network or mapping entry is `state: unknown` with a `reason`, not a failure ([freshness](freshness.md)) |
+| `freshness.sources`, `freshness.file`, `freshness.url`, `freshness.account` | all optional strings; `sources` (a mapping) or `file` is required, never both; `url` only with `file`; `account` overrides mapped API routing ([accounts](accounts.md)); `gs://` refused. Missing token, network or mapping entry is `state: unknown` with a `reason`, not a failure ([freshness](freshness.md)) |
 | `variables.format` | `rest` (default) or `dtcg`; DTCG requires nonempty `collection`, `mode`, `out`, takes optional `aliasModes` (`{collectionId: modeId}`, non-empty strings) and forbids `node`; REST rejects export selectors/output |
 
 `tree`/`find`/`search` root defaults to `0:0`; booleans default false. `tree` `topFrames: true` ignores `depth` and returns the screens under the root (rule in the `discovery` topic): `id TYPE "name"` lines whose JSON-escaped names keep one id per line, or with `json` a flat array of entries without children plus `page` and innermost `section`. With `json`, children of a page or section (and every `topFrames` entry) add `firstText`. Search queries take at most 256 characters and 64 distinct terms (a CJK run of n characters is n-1 bigrams), types 16 names, scopes 1 KiB and cursors offset 100,000 (past it `hasMore` stays true without a `nextCursor`, so narrow the query); a page whose estimated copied names, paths and snippets exceed 8 MiB is refused with `response_budget_exceeded` before results are built (the serialized-reply cap above still applies), so lower `limit` or narrow `node`; `scripts/measure-search.py` measures cold CLI, MCP first and warm search cost and peak RSS on one approved input. File/output strings are nonempty; find queries contain non-whitespace. Export extensions follow the existing case-insensitive encoder selection, including `.jpeg`. Search type remains a free-form, case-insensitive plugin type, not an invented enum. Successful outputs and CLI parameter order remain unchanged.
@@ -63,7 +63,7 @@ See the [GCS cookbook](gcs.md) for download versus parsed-tree caching and [boun
 
 ## Stale hint on design tools
 
-A `node_not_found` failure keeps its code and recovery and gains a "save a new local copy" sentence, and a `find` with no results gains `freshness` (the design report plus `hint`), only when `FIGMA_TOKEN` is set and the mapped copy is older than its online file; details in [freshness](freshness.md#stale-hint).
+A `node_not_found` failure keeps its code and recovery and gains a "save a new local copy" sentence, and a `find` with no results gains `freshness` (the design report plus `hint`), only when the mapped account's environment token is set and the mapped copy is older than its online file; details in [freshness](freshness.md#stale-hint).
 
 ## verify font lookup
 

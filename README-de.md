@@ -192,7 +192,7 @@ Ein Agent, der die CLI nutzt, liest seine Anleitung mit `figlens workflow build`
 
 [CLI-Referenz](docs/README-de.md#commands)
 
-Verschiedene Figma-Konten: `figlens pull --login --account work` und optional `"account": "work"` in der Quellenzuordnung. Bisherige Standardsitzungen brauchen keine Migration.
+Verschiedene Figma-Konten: `figlens pull --login --account work` und optional `"account": "work"` in der Quellenzuordnung. Bisherige Standardsitzungen brauchen keine Migration. [Figma-Konten: Browser-Anmeldung und API-Token](docs/README-de.md#figma-accounts).
 
 <a id="setup-skill"></a>
 

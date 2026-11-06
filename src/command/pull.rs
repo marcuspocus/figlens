@@ -71,6 +71,7 @@ pub fn run(request: &Request, state: &Path) -> Result<Value, Box<dyn Error>> {
             file: None,
             url: None,
             start: None,
+            account: request.account,
         };
         let mut report = super::freshness::report(&listing, &|_| true, &AtomicBool::new(false))?;
         report["hint"] =
@@ -310,19 +311,27 @@ fn select<'a>(
             .into());
         }
     }
-    let chosen = chosen.into_iter();
     if !request.stale {
-        return Ok(chosen.map(|s| (s, None)).collect());
+        return Ok(chosen.into_iter().map(|s| (s, None)).collect());
     }
-    let token = freshness::token().ok_or_else(|| {
-        format!(
+    // Preserve the legacy no-token error for an entirely unnamed selection. Named and mixed
+    // selections report individual credential failures without blocking usable accounts.
+    if chosen
+        .iter()
+        .all(|s| request.account.or(s.account.as_deref()).is_none())
+        && freshness::token().is_none()
+    {
+        return Err(format!(
             "--stale compares online times, which needs {}",
             freshness::TOKEN_VAR
         )
-    })?;
+        .into());
+    }
     Ok(chosen
+        .into_iter()
         .map(|s| {
-            let report = freshness::check("curl", s, Ok(&token));
+            let credential = freshness::credential(request.account.or(s.account.as_deref()));
+            let report = freshness::check("curl", s, credential.value.as_deref().map_err(|e| *e));
             let pull = report["state"] == "stale" || report["reason"] == "file_missing";
             let skip = (!pull).then(|| match report["state"].as_str() {
                 Some("current") => "current".to_owned(),
