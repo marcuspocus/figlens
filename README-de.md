@@ -28,7 +28,7 @@ figlens macht aus gespeicherten Figma-Dateien Designkontext, mit dem dein Coding
 - **Die laufende UI vergleichen.** `compare-image` vergleicht deinen Screenshot mit dem Rendering von figlens und nennt die Ebenen unter abweichenden Bereichen. Prüfe diese Unterschiede und Rendering-Warnungen; das ist keine Garantie für Pixelgenauigkeit.
 - **Designänderungen verfolgen.** `diff` vergleicht gespeicherte Versionen; `changes` und `watch` melden Aktualisierungen verfolgter lokaler Bereiche; `freshness` zeigt, wann eine gespeicherte Kopie älter ist als die Online-Datei, und `pull` speichert über deine eigene Browser-Anmeldung eine neue Kopie. Speichere eine neue `.fig` aus Figma, um Designänderungen zu übernehmen—keine Live-Synchronisierung mit Figma.
 
-**Offline als Grundlage.** Wähle in Figma **File > Save local copy**. Lege `design.fig` neben deinen Code. Dann genügt ein Figma-Link: Seine Node-ID wählt den Frame. Ohne gespeicherte Kopie kopierst du die Ebenen in Figma (Rechtsklick > Copy) und führst `figlens clipboard screen.fig` aus; eine Kopie enthält keine Bilder oder Vektorumrisse ([so geht's](docs/README-de.md#copy-a-selection)). Ein natives Binary liest die Datei lokal, ohne laufende Figma-App, Login oder Netzwerkaufrufe an Figma; nur die optionale `freshness`-Prüfung (mit deinem `FIGMA_TOKEN`) und `pull` (über deine Browser-Anmeldung) erreichen Figma.
+**Offline als Grundlage.** Wähle in Figma **File > Save local copy**. Lege `design.fig` neben deinen Code. Dann genügt ein Figma-Link: Seine Node-ID wählt den Frame. Ohne gespeicherte Kopie kopierst du die Ebenen in Figma (Rechtsklick > Copy) und führst `figlens clipboard screen.fig` aus; eine Kopie enthält keine Bilder oder Vektorumrisse ([so geht's](docs/README-de.md#copy-a-selection)). Ein natives Binary liest die Datei lokal, ohne laufende Figma-App, Login oder Netzwerkaufrufe an Figma; nur die optionale `freshness`-Prüfung (mit einem konfigurierten API-Token; Standard: `FIGMA_TOKEN`) und `pull` (über deine Browser-Anmeldung) erreichen Figma.
 
 <a id="start"></a>
 
@@ -192,7 +192,7 @@ Ein Agent, der die CLI nutzt, liest seine Anleitung mit `figlens workflow build`
 
 [CLI-Referenz](docs/README-de.md#commands)
 
-Verschiedene Figma-Konten: `figlens pull --login --account work` und optional `"account": "work"` in der Quellenzuordnung. Bisherige Standardsitzungen brauchen keine Migration.
+Verschiedene Figma-Konten: `figlens pull --login --account work` und optional `"account": "work"` in der Quellenzuordnung. Bisherige Standardsitzungen brauchen keine Migration. [Figma-Konten: Browser-Anmeldung und API-Token](docs/README-de.md#figma-accounts).
 
 <a id="setup-skill"></a>
 

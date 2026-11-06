@@ -54,8 +54,16 @@
         }
       ]
     },
+    "pull": {
+      "description": "Changing browser pull, profiles, the helper or login/logout.",
+      "sources": [{"path": "wiki/pull.md"}]
+    },
+    "accounts": {
+      "description": "Changing browser/API alias routing, accounts.json or environment references.",
+      "sources": [{"path": "wiki/accounts.md"}]
+    },
     "freshness": {
-      "description": "Changing freshness, the .figlens/sources.json mapping or the stale hint on a missing node.",
+      "description": "Changing metadata comparison, the sources mapping or stale hints.",
       "sources": [
         {
           "path": "wiki/freshness.md"

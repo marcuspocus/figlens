@@ -3,7 +3,7 @@
 //! The saved side is `exported_at` in the copy's `meta.json`, which Figma's Save local copy
 //! writes; file times change on every checkout or copy, so they are never used. The online side
 //! is `last_touched_at` from `GET /v1/files/:key/meta` (Tier 3, scope `file_metadata:read`),
-//! fetched with `curl` and a personal access token from `FIGMA_TOKEN`. The token reaches curl on
+//! fetched with `curl` and an account-routed personal access token. The token reaches curl on
 //! stdin, never its command line, and never appears in output. Without a token, a saved time or
 //! a recognizable URL, nothing is fetched and the state is `unknown`.
 
@@ -37,7 +37,7 @@ pub struct Source {
     /// The `file` exactly as the mapping wrote it, for replies.
     pub label: String,
     pub file: PathBuf,
-    /// Optional browser account alias for `pull`; never an API credential.
+    /// Optional browser and API account alias; never a credential.
     pub account: Option<String>,
 }
 
@@ -260,6 +260,120 @@ pub fn token() -> Option<String> {
     std::env::var(TOKEN_VAR).ok().filter(|t| !t.is_empty())
 }
 
+/// One account's API credential. Values never appear in reports or process arguments.
+pub struct Credential {
+    pub account: Option<String>,
+    pub variable: Option<String>,
+    pub value: Result<String, &'static str>,
+}
+
+impl Credential {
+    /// Keeps the legacy default report shape; named reports explain their credential route.
+    pub fn annotate(&self, report: &mut Value) {
+        if let Some(account) = &self.account {
+            report["account"] = account.as_str().into();
+            report["tokenVar"] = self.variable.clone().into();
+            report["tokenSet"] = self.value.is_ok().into();
+        }
+    }
+}
+
+/// One operation's validated registry snapshot, loaded only for named requests.
+#[derive(Default)]
+pub struct Credentials {
+    accounts: Option<Result<HashMap<String, String>, &'static str>>,
+}
+
+impl Credentials {
+    /// Resolves named aliases without fallback; unnamed requests never read the registry.
+    pub fn resolve(&mut self, account: Option<&str>) -> Credential {
+        let variable = match account {
+            None => Ok(TOKEN_VAR.to_owned()),
+            Some(account) => {
+                if validate_account(account).is_err() {
+                    Err("account_config_invalid")
+                } else {
+                    self.accounts
+                        .get_or_insert_with(read_accounts)
+                        .as_ref()
+                        .map_err(|reason| *reason)
+                        .and_then(|accounts| {
+                            accounts
+                                .get(account)
+                                .cloned()
+                                .ok_or("account_not_configured")
+                        })
+                }
+            }
+        };
+        match variable {
+            Ok(variable) => Credential {
+                account: account.map(str::to_owned),
+                value: std::env::var(&variable)
+                    .ok()
+                    .filter(|t| !t.is_empty())
+                    .ok_or("no_token"),
+                variable: Some(variable),
+            },
+            Err(reason) => Credential {
+                account: account.map(str::to_owned),
+                variable: None,
+                value: Err(reason),
+            },
+        }
+    }
+}
+
+/// Resolves one request, including live hint lookups; no registry snapshot survives the call.
+pub fn credential(account: Option<&str>) -> Credential {
+    Credentials::default().resolve(account)
+}
+
+fn read_accounts() -> Result<HashMap<String, String>, &'static str> {
+    let path = crate::workspace::config_root()
+        .map_err(|_| "account_config_invalid")?
+        .join("accounts.json");
+    let file = match std::fs::File::open(path) {
+        Ok(file) => file,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Err("account_not_configured"),
+        Err(_) => return Err("account_config_invalid"),
+    };
+    let mut bytes = Vec::new();
+    file.take(MAPPING_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "account_config_invalid")?;
+    if bytes.len() as u64 > MAPPING_BYTES {
+        return Err("account_config_invalid");
+    }
+    let value: Value = serde_json::from_slice(&bytes).map_err(|_| "account_config_invalid")?;
+    let accounts = value.as_object().ok_or("account_config_invalid")?;
+    if accounts.len() > MAX_ENTRIES {
+        return Err("account_config_invalid");
+    }
+    // Validate the entire file, including unselected entries, without echoing its contents.
+    let mut variables = HashMap::new();
+    for (name, entry) in accounts {
+        validate_account(name).map_err(|_| "account_config_invalid")?;
+        let fields = entry.as_object().ok_or("account_config_invalid")?;
+        let variable = fields
+            .get("tokenEnv")
+            .and_then(Value::as_str)
+            .ok_or("account_config_invalid")?;
+        if fields.len() != 1 || !valid_token_env(variable) {
+            return Err("account_config_invalid");
+        }
+        variables.insert(name.clone(), variable.to_owned());
+    }
+    Ok(variables)
+}
+
+fn valid_token_env(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 128
+        && (name.as_bytes()[0].is_ascii_alphabetic() || name.as_bytes()[0] == b'_')
+        && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
+}
+
 /// A mapping's path and the entry naming a file, when one does.
 pub type Mapped = (PathBuf, Option<Source>);
 
@@ -286,17 +400,33 @@ pub fn source_for(
 const HINT_TTL: Duration = Duration::from_secs(60);
 
 /// A copy's stale report by path and file stamp, so a re-saved copy is checked again.
-type HintCache = HashMap<(PathBuf, Option<SystemTime>, u64), (Instant, Option<Value>)>;
+type HintCache = HashMap<(PathBuf, Option<SystemTime>, u64, [u8; 32]), (Instant, Option<Value>)>;
 static HINTS: Mutex<Option<HintCache>> = Mutex::new(None);
 
 /// The mapped design `fig` belongs to, checked online, only when it is known to be stale.
 /// No token, no mapping or an unmapped file makes no network call; an answer is reused for
 /// `HINT_TTL`.
 pub fn stale(fig: &Path, allowed: &dyn Fn(&Path) -> bool) -> Option<Value> {
-    let token = token()?;
+    use sha2::{Digest, Sha256};
     let fig = std::fs::canonicalize(fig).ok()?;
+    // Resolve and authorize the mapping before consulting the cache. Account, URL, environment
+    // and config edits must not reuse a different credential's result on an unchanged copy.
+    let (_, source) = source_for(&fig, allowed).ok()??;
+    let source = source?;
+    let credential = credential(source.account.as_deref());
+    let token = credential.value.as_ref().ok()?;
+    let context = serde_json::to_vec(&json!([
+        source.name,
+        source.label,
+        source.url,
+        credential.account,
+        credential.variable,
+        token
+    ]))
+    .ok()?;
+    let digest: [u8; 32] = Sha256::digest(&context).into();
     let meta = std::fs::metadata(&fig).ok()?;
-    let key = (fig.clone(), meta.modified().ok(), meta.len());
+    let key = (fig.clone(), meta.modified().ok(), meta.len(), digest);
     // Held across the request, so concurrent misses (on any copy) wait and reuse its answer.
     let mut hints = HINTS.lock().ok()?;
     let hints = hints.get_or_insert_with(HashMap::new);
@@ -304,13 +434,9 @@ pub fn stale(fig: &Path, allowed: &dyn Fn(&Path) -> bool) -> Option<Value> {
     if let Some((_, report)) = hints.get(&key) {
         return report.clone();
     }
-    let report = match source_for(&fig, allowed) {
-        Ok(Some((_, Some(source)))) => {
-            let report = check("curl", &source, Ok(&token));
-            (report["state"] == "stale").then_some(report)
-        }
-        _ => None,
-    };
+    let mut report = check("curl", &source, Ok(token));
+    credential.annotate(&mut report);
+    let report = (report["state"] == "stale").then_some(report);
     hints.insert(key, (Instant::now(), report.clone()));
     report
 }

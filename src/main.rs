@@ -387,16 +387,24 @@ usage:
                                              warnings}: a copy carries no image bytes or vector
                                              outlines, so exports warn where they draw without them.
                                              With a saved .fig, pass a Figma link as the node instead
-  figlens freshness [<file.fig> [--url URL] | --sources <mapping.json>]
+  figlens freshness [<file.fig> [--url URL] | --sources <mapping.json>] [--account NAME]
                                              whether each saved copy is older than its online Figma
                                              file: the designs in the nearest .figlens/sources.json (a
                                              list of {name,url,file}, file relative to the project
                                              root, or to the folder of a mapping outside .figlens/),
-                                             one file, or one file with its URL.
+                                             one file, or one file with its URL. --url bypasses mapping;
+                                             without --account it uses default FIGMA_TOKEN.
                                              Saved time is exported_at in the copy's meta.json; online
                                              time is last_touched_at from the REST file metadata,
-                                             read with curl and a token in FIGMA_TOKEN (scope
-                                             file_metadata:read). Prints {mapping,tokenVar,tokenSet,
+                                             read with curl and an environment token (scope
+                                             file_metadata:read). --account overrides mapped account;
+                                             unnamed entries keep FIGMA_TOKEN. Named aliases resolve
+                                             tokenEnv in $XDG_CONFIG_HOME/figlens/accounts.json,
+                                             else ~/.config/figlens/accounts.json (Windows instead:
+                                             %LOCALAPPDATA%/figlens/config/accounts.json).
+                                             Example: {\"work\":{\"tokenEnv\":\"FIGMA_TOKEN_WORK\"}}.
+                                             Missing alias/config/token never tries another account.
+                                             Prints {mapping,tokenVar,tokenSet,
                                              designs:[{name,file,savedAt,onlineModifiedAt,
                                              onlineVersion,state: stale|current|unknown,reason}]};
                                              never fails for a missing token or network. With a
@@ -407,7 +415,7 @@ usage:
                                              refresh mapped saved copies from Figma. With no --only or
                                              --stale it downloads nothing and lists each design's
                                              freshness. --only NAME (repeatable) picks designs; --stale
-                                             pulls only stale or missing copies (needs FIGMA_TOKEN). A
+                                             pulls only stale or missing copies (account API token). A
                                              dedicated browser profile runs File > Save local copy; the
                                              download must decode and carry an exported_at no older than
                                              the current copy, then replaces the file atomically, and a
@@ -419,8 +427,14 @@ usage:
                                              entry's optional account (1-64 lowercase ASCII letters,
                                              digits, '-' or '_', starting with a letter or digit).
                                              Without either, existing profiles and sessions are reused.
-                                             Accounts isolate browser sessions, not FIGMA_TOKEN; --stale
-                                             uses that one token and skips unknown permissions.
+                                             The same alias routes separate API tokens via accounts.json;
+                                             browser login never creates a token or proves its identity.
+                                             --stale skips unknown existing copies (missing config/token,
+                                             401/403); missing files remain eligible. --only needs no token.
+                                             Mixed account groups run sequentially, never falling back.
+                                             Top-level freshness tokenVar/tokenSet describe FIGMA_TOKEN;
+                                             named designs add account, tokenVar (null if unresolved),
+                                             tokenSet. Config contains env names only, never token values.
                                              --logout deletes all default and named profiles; with
                                              --account it deletes only that account's profiles.
                                              Prints {logout,removed}. Needs Node, Chrome and
@@ -716,11 +730,16 @@ fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
             return Ok(());
         }
         Some("freshness") => {
-            let (mut file, mut url, mut sources) = (None, None, None);
+            let (mut file, mut url, mut sources, mut account) = (None, None, None, None);
             let mut rest = args[1..].iter();
             while let Some(arg) = rest.next() {
                 match arg.as_str() {
                     "--url" => url = Some(rest.next().ok_or("--url needs a Figma URL")?.as_str()),
+                    "--account" => {
+                        let name = rest.next().ok_or("--account needs a name")?.as_str();
+                        figlens::freshness::validate_account(name)?;
+                        account = Some(name);
+                    }
                     "--sources" => {
                         sources = Some(Path::new(rest.next().ok_or("--sources needs a path")?))
                     }
@@ -734,6 +753,7 @@ fn dispatch(args: Vec<String>, out: &mut String) -> Result<(), Box<dyn Error>> {
                 file: file.map(|f| (Path::new(f), f)),
                 url,
                 start: Some(&cwd),
+                account,
             };
             let report = command::freshness::report(
                 &request,

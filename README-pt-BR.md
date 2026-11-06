@@ -28,7 +28,7 @@ O figlens transforma arquivos salvos do Figma em contexto de design que seu codi
 - **Comparar a UI em execução.** `compare-image` compara sua captura com a renderização do figlens e identifica as camadas sob as regiões diferentes. Revise essas diferenças e os avisos de renderização; não é uma garantia de fidelidade pixel a pixel.
 - **Acompanhar mudanças no design.** `diff` compara revisões salvas; `changes` e `watch` informam atualizações em escopos locais monitorados; `freshness` indica quando uma cópia salva é mais antiga que o arquivo online, e `pull` salva uma nova cópia por meio do seu próprio login no navegador. Salve um novo `.fig` no Figma para incorporar alterações; não é sincronização em tempo real com o Figma.
 
-**Offline como base.** No Figma, **File > Save local copy**. Coloque `design.fig` ao lado do seu código. Depois disso, um link do Figma basta: o id do nó escolhe o frame. Sem uma cópia salva, copie as camadas no Figma (clique direito > Copy) e execute `figlens clipboard screen.fig`; uma cópia não traz imagens nem contornos vetoriais ([como](docs/README-pt-BR.md#copy-a-selection)). Um binário nativo o lê localmente, sem app do Figma em execução, login ou chamadas de rede ao Figma; só a verificação opcional `freshness` (com seu `FIGMA_TOKEN`) e `pull` (pelo seu login no navegador) chegam ao Figma.
+**Offline como base.** No Figma, **File > Save local copy**. Coloque `design.fig` ao lado do seu código. Depois disso, um link do Figma basta: o id do nó escolhe o frame. Sem uma cópia salva, copie as camadas no Figma (clique direito > Copy) e execute `figlens clipboard screen.fig`; uma cópia não traz imagens nem contornos vetoriais ([como](docs/README-pt-BR.md#copy-a-selection)). Um binário nativo o lê localmente, sem app do Figma em execução, login ou chamadas de rede ao Figma; só a verificação opcional `freshness` (com um token API configurado; padrão: `FIGMA_TOKEN`) e `pull` (pelo seu login no navegador) chegam ao Figma.
 
 <a id="start"></a>
 
@@ -192,7 +192,7 @@ Um agent que usa a CLI lê o guia com `figlens workflow build` (também `audit`,
 
 [Referência da CLI](docs/README-pt-BR.md#commands)
 
-Diferentes contas Figma: `figlens pull --login --account work` e o campo opcional `"account": "work"` no mapeamento. Sessões padrão existentes não precisam de migração.
+Diferentes contas Figma: `figlens pull --login --account work` e o campo opcional `"account": "work"` no mapeamento. Sessões padrão existentes não precisam de migração. [Contas Figma: navegador e tokens API](docs/README-pt-BR.md#figma-accounts).
 
 <a id="setup-skill"></a>
 

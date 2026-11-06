@@ -61,6 +61,12 @@ impl Project {
         Self { root }
     }
 
+    fn accounts(&self, value: Value) {
+        let dir = self.root.join("config/figlens");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("accounts.json"), value.to_string()).unwrap();
+    }
+
     fn fig(&self) -> PathBuf {
         self.root.join("figma/home.fig")
     }
@@ -75,6 +81,9 @@ impl Project {
             .env("PATH", std::env::join_paths(dirs).unwrap())
             .env_remove("FIGMA_TOKEN")
             .env("XDG_STATE_HOME", self.root.join("state"))
+            .env("XDG_CONFIG_HOME", self.root.join("config"))
+            .env_remove("FIGMA_TOKEN_WORK")
+            .env_remove("FIGMA_TOKEN_CLIENT")
             .env("FIGLENS_PULL_HELPER", self.root.join("bin/helper"));
         if token {
             command.env("FIGMA_TOKEN", "test-token");
@@ -797,7 +806,7 @@ fn pull_refuses_invalid_cli_and_mapped_accounts_before_the_browser() {
 }
 
 #[test]
-fn pull_stale_uses_one_token_and_skips_account_permission_failures() {
+fn pull_stale_routes_configured_tokens_and_skips_account_permission_failures() {
     use std::os::unix::fs::PermissionsExt;
     let project = Project::new(LATER);
     project.grouped_helper();
@@ -806,14 +815,15 @@ fn pull_stale_uses_one_token_and_skips_account_permission_failures() {
         {"name":"other", "url":"https://www.figma.com/design/XyZ789/", "file":"figma/other.fig", "account":"client"}
     ]));
     std::fs::write(project.root.join("figma/other.fig"), saved_copy()).unwrap();
+    project
+        .accounts(json!({"work":{"tokenEnv":"FIGMA_TOKEN"}, "client":{"tokenEnv":"FIGMA_TOKEN"}}));
     let curl = project.root.join("bin/curl");
     std::fs::write(&curl, "#!/bin/sh\nd=$(dirname \"$0\")\necho \"$*\" >> \"$d/calls\"\ncat >> \"$d/tokens\"\ncase \"$*\" in *XyZ789*) printf '{}\\n403';; *) cat \"$d/body\"; printf '\\n200';; esac\n").unwrap();
     std::fs::set_permissions(curl, std::fs::Permissions::from_mode(0o755)).unwrap();
-    assert!(
-        !project
-            .run(&["pull", "--stale", "--account", "work"], false)
-            .status
-            .success()
+    let no_token = json(&project.run(&["pull", "--stale", "--account", "work"], false));
+    assert_eq!(
+        no_token["designs"][0]["reason"],
+        "staleness unknown: no_token"
     );
     assert!(project.requests().is_empty());
     let report = json(&project.run(&["pull", "--stale"], true));
@@ -831,7 +841,7 @@ fn pull_stale_uses_one_token_and_skips_account_permission_failures() {
     assert_eq!(tokens.matches("X-Figma-Token: test-token").count(), 2);
     assert!(!project.calls().contains("test-token"));
     assert!(!report.to_string().contains("test-token"));
-    // MCP freshness accepts account-bearing mappings but does not use browser credentials.
+    // MCP freshness shares the token routing, never browser cookies.
     let reply = project.mcp(
         "freshness",
         json!({"sources":project.root.join(".figlens/sources.json")}),
@@ -981,4 +991,229 @@ fn pull_refuses_symbolic_account_directories() {
         "keep"
     );
     assert!(!outside.join("account-work").exists());
+}
+
+#[test]
+fn named_api_tokens_route_lists_pulls_and_overrides_without_default_token() {
+    use std::os::unix::fs::PermissionsExt;
+    let project = Project::new(LATER);
+    project.grouped_helper();
+    project.accounts(
+        json!({"work":{"tokenEnv":"FIGMA_TOKEN_WORK"}, "client":{"tokenEnv":"FIGMA_TOKEN_CLIENT"}}),
+    );
+    project.map(json!([
+        {"name":"home", "url":"https://www.figma.com/design/AbC123/", "file":"figma/home.fig", "account":"work"},
+        {"name":"other", "url":"https://www.figma.com/design/XyZ789/", "file":"figma/other.fig", "account":"client"}
+    ]));
+    std::fs::write(project.root.join("figma/other.fig"), saved_copy()).unwrap();
+    let curl = project.root.join("bin/curl");
+    std::fs::write(
+        &curl,
+        r#"#!/bin/sh
+d=$(dirname "$0")
+echo "$*" >> "$d/calls"
+header=$(cat)
+case "$*:$header" in
+  *AbC123*work-secret*|*XyZ789*client-secret*) cat "$d/body"; printf '\n200';;
+  *) printf '{}\n403';;
+esac
+"#,
+    )
+    .unwrap();
+    std::fs::set_permissions(curl, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let run = |args: &[&str]| {
+        project
+            .command(args, false)
+            .env("FIGMA_TOKEN_WORK", "work-secret")
+            .env("FIGMA_TOKEN_CLIENT", "client-secret")
+            .output()
+            .unwrap()
+    };
+    for args in [vec!["freshness"], vec!["pull"]] {
+        let out = run(&args);
+        let report = json(&out);
+        assert_eq!(report["tokenSet"], false);
+        assert_eq!(report["designs"][0]["state"], "stale");
+        assert_eq!(report["designs"][1]["state"], "stale");
+        assert_eq!(report["designs"][0]["tokenVar"], "FIGMA_TOKEN_WORK");
+        assert_eq!(report["designs"][1]["tokenVar"], "FIGMA_TOKEN_CLIENT");
+        assert!(!report.to_string().contains("-secret"));
+        assert!(!String::from_utf8_lossy(&out.stderr).contains("-secret"));
+    }
+    assert!(project.requests().is_empty());
+    let overridden = json(&run(&["freshness", "--account", "work"]));
+    assert_eq!(overridden["designs"][1]["account"], "work");
+    assert_eq!(overridden["designs"][1]["reason"], "token_rejected");
+    let direct_default = json(&run(&[
+        "freshness",
+        project.fig().to_str().unwrap(),
+        "--url",
+        "https://www.figma.com/design/AbC123/",
+    ]));
+    assert_eq!(direct_default["designs"][0]["reason"], "no_token");
+    assert!(direct_default["designs"][0].get("account").is_none());
+    let direct = json(&run(&[
+        "freshness",
+        project.fig().to_str().unwrap(),
+        "--url",
+        "https://www.figma.com/design/AbC123/",
+        "--account",
+        "work",
+    ]));
+    assert_eq!(direct["designs"][0]["state"], "stale");
+    let pulled = json(&run(&["pull", "--stale"]));
+    assert_eq!(pulled["designs"][0]["state"], "pulled");
+    assert_eq!(pulled["designs"][1]["state"], "pulled");
+    assert_eq!(project.requests().len(), 2);
+    assert!(!project.calls().contains("-secret"));
+}
+
+#[test]
+fn named_api_registry_is_snapshotted_per_operation_and_needs_only_config_root() {
+    let project = Project::new(LATER);
+    project.accounts(json!({"work":{"tokenEnv":"FIGMA_TOKEN"}}));
+    project.map(json!([
+        {"name":"home", "url":"https://www.figma.com/design/AbC123/", "file":"figma/home.fig", "account":"work"},
+        {"name":"other", "url":"https://www.figma.com/design/XyZ789/", "file":"figma/other.fig", "account":"work"}
+    ]));
+    std::fs::write(project.root.join("figma/other.fig"), saved_copy()).unwrap();
+    let out = project
+        .command(&["freshness"], true)
+        .env_remove("HOME")
+        .env_remove("XDG_STATE_HOME")
+        .env_remove("XDG_CACHE_HOME")
+        .env_remove("XDG_DATA_HOME")
+        .output()
+        .unwrap();
+    assert_eq!(json(&out)["designs"][0]["state"], "stale");
+
+    std::fs::write(
+        project.root.join("bin/curl"),
+        r#"#!/bin/sh
+d=$(dirname "$0")
+cat >/dev/null
+cat "$d/body"
+printf '\n200'
+printf '{}' > "$XDG_CONFIG_HOME/figlens/accounts.json"
+"#,
+    )
+    .unwrap();
+    let first = json(&project.run(&["freshness"], true));
+    assert_eq!(first["designs"][0]["state"], "stale");
+    assert_eq!(first["designs"][1]["state"], "stale");
+    let next = json(&project.run(&["freshness"], true));
+    assert_eq!(next["designs"][0]["reason"], "account_not_configured");
+}
+
+#[test]
+fn named_api_failures_never_fall_back_and_default_ignores_invalid_config() {
+    let project = Project::new(LATER);
+    project.map(json!([{"name":"home", "url":"https://www.figma.com/design/AbC123/", "file":"figma/home.fig", "account":"work"}]));
+    let missing = json(&project.run(&["freshness"], true));
+    assert_eq!(missing["designs"][0]["reason"], "account_not_configured");
+    assert_eq!(missing["designs"][0]["tokenVar"], Value::Null);
+    project.accounts(json!({"work":{"tokenEnv":"FIGMA_TOKEN_WORK"}}));
+    let missing = json(&project.run(&["freshness"], true));
+    assert_eq!(missing["designs"][0]["reason"], "no_token");
+    assert_eq!(missing["designs"][0]["tokenSet"], false);
+    assert!(project.calls().is_empty());
+    for invalid in [
+        json!({"work":{"tokenEnv":"not a variable"}}),
+        json!({"work":{"tokenEnv":"1BAD"}}),
+        json!({"work":{"tokenEnv":"FIGMA_TOKEN", "token":"private-value"}}),
+        json!({"../work":{"tokenEnv":"FIGMA_TOKEN"}}),
+        json!([]),
+    ] {
+        project.accounts(invalid);
+        let out = project.run(&["freshness"], true);
+        let report = json(&out);
+        assert_eq!(report["designs"][0]["reason"], "account_config_invalid");
+        assert!(!report.to_string().contains("private-value"));
+        assert!(project.calls().is_empty());
+    }
+    project.map(json!([{"name":"home", "url":"https://www.figma.com/design/AbC123/", "file":"figma/home.fig"}]));
+    let default = json(&project.run(&["freshness"], true));
+    assert_eq!(default["designs"][0]["state"], "stale");
+    assert!(default["designs"][0].get("account").is_none());
+    for args in [
+        vec!["freshness", "--account", "../bad"],
+        vec!["freshness", "--account"],
+    ] {
+        assert!(!project.run(&args, true).status.success());
+    }
+}
+
+#[test]
+fn mcp_freshness_and_stale_hints_use_mapped_account_without_fallback() {
+    let project = Project::new(LATER);
+    project.accounts(json!({"work":{"tokenEnv":"FIGMA_TOKEN"}}));
+    project.map(json!([{"name":"home", "url":"https://www.figma.com/design/AbC123/", "file":"figma/home.fig", "account":"work"}]));
+    let replies = project.mcp_all(&[
+        ("freshness", json!({"file":project.fig()})),
+        (
+            "freshness",
+            json!({"file":project.fig(), "account":"unknown"}),
+        ),
+        (
+            "find",
+            json!({"file":project.fig(),"query":"impossible-name"}),
+        ),
+        (
+            "find",
+            json!({"file":project.fig(),"query":"impossible-name"}),
+        ),
+    ]);
+    let report = &replies[0]["result"]["structuredContent"];
+    assert_eq!(report["designs"][0]["account"], "work", "{replies:?}");
+    assert_eq!(report["designs"][0]["state"], "stale");
+    assert_eq!(
+        replies[1]["result"]["structuredContent"]["designs"][0]["reason"],
+        "account_not_configured"
+    );
+    for reply in &replies[2..] {
+        assert_eq!(
+            reply["result"]["structuredContent"]["freshness"]["account"], "work",
+            "{reply}"
+        );
+    }
+    assert_eq!(project.calls().matches("api.figma.com").count(), 2);
+    // A registry change in one live server must invalidate the unchanged copy's hint.
+    let curl = project.root.join("bin/curl");
+    let script = std::fs::read_to_string(&curl).unwrap();
+    let config = project.root.join("config/figlens/accounts.json");
+    let next = json!({"work":{"tokenEnv":"FIGMA_TOKEN_WORK"}});
+    std::fs::write(
+        &curl,
+        format!("{script}\nprintf '%s' '{next}' > '{}'\n", config.display()),
+    )
+    .unwrap();
+    let replies = project.mcp_all(&[
+        (
+            "find",
+            json!({"file":project.fig(),"query":"impossible-name"}),
+        ),
+        (
+            "find",
+            json!({"file":project.fig(),"query":"impossible-name"}),
+        ),
+    ]);
+    assert!(
+        replies[0]["result"]["structuredContent"]
+            .get("freshness")
+            .is_some()
+    );
+    assert!(
+        replies[1]["result"]["structuredContent"]
+            .get("freshness")
+            .is_none()
+    );
+    let reply = project.mcp(
+        "find",
+        json!({"file":project.fig(),"query":"impossible-name"}),
+    );
+    assert!(
+        reply["result"]["structuredContent"]
+            .get("freshness")
+            .is_none()
+    );
 }

@@ -270,8 +270,8 @@ Pi、OpenCode、OMP は、それぞれのオプトイン用エントリから同
 | `compare-image <file> <node> <screenshot.png>` | 実装した画面のスクリーンショットを、そのスケールで描画した node と比較（`--scale`、`--limit`、`--out diff.png`、frame より短いフルページキャプチャには `--full-page`、データ由来のコンテンツのレイヤーには `--ignore`、薄い枠線を見るには `--threshold`、`image: true` は画像塗りの領域、MCP `compare_image`）。`mismatch`、`nonTextMismatch` と、差分の大きい領域を node のピクセル座標で出力し、各領域の下にある最も深いレイヤーを示します。`text: true` はテキスト上の領域です（多くはフォント代替。各領域を確認してください） |
 | `node <file> <node>` | `.fig` の生ノード 1 つ |
 | `clipboard [copied.html] <out.fig>` | 保存した `.fig` がないとき向け: Figma でレイヤーを選択してコピー（右クリック > Copy、または Cmd/Ctrl+C）し、これを実行してクリップボードを全コマンドが読める `.fig` に変換する。ほかの場所に貼り付けても得られるのはレイヤーのテキストだけ。システムのクリップボード（macOS。Windows PowerShell 5.1 と Linux の `wl-paste`/`xclip` は未検証）か、保存したクリップボードの HTML ファイルを読む。ノード ID は元ファイルと同じで、使用中のコンポーネントも含む。`missingImages`、`missingComponents`、`layersWithoutOutlines` を報告: コピーには画像バイトもベクターのアウトラインも含まれないため、export と bundle はそれらなしで描いた箇所を警告する。既存ファイルは置き換えない。保存した `.fig` がある場合は、代わりに Figma リンクをノードとして渡す。画像とベクターが残る |
-| `freshness [<file.fig> [--url URL] \| --sources <mapping.json>]` | デザインにフレームがないと判断する前に、保存済みコピーがオンラインの Figma ファイルより古いかを確認します。対象は最寄りの `.figlens/sources.json` のデザイン（`{name, url, file}` のリスト。`file` はリポジトリのルートからの相対パス。`.figlens/` 外の `--sources` マッピングはそのフォルダーからの相対パス）、1 つのファイル、または URL を指定した 1 つのファイルです。コピーの `meta.json` にある `exported_at` を、`curl` と `FIGMA_TOKEN` の personal access token（スコープ `file_metadata:read`）で取得したオンラインの `last_touched_at` と比較し、`stale`、`current`、または理由付きの `unknown` を出力します。トークンやネットワークがなくても失敗しません。トークンがあれば、対応付けられた古いコピーでノードが見つからないときや `find` が空のときにも、ローカルコピーの保存し直しを案内します（MCP `freshness`） |
-| `pull [--only NAME]... [--stale] [--sources <mapping.json>] [--browser B] [--account NAME] \| --login [--browser B] [--account NAME] \| --logout [--account NAME]` | 最寄りの `.figlens/sources.json`（または `--sources`）からマッピングされた保存済みコピーを更新します。`--only` も `--stale` も指定しない場合は何もダウンロードせず、各デザインの鮮度を一覧表示します。`--only` はデザインを選び、`--stale` は古い、または存在しないコピーだけを取得します（`FIGMA_TOKEN` が必要）。専用の Chrome プロファイルが **File > Save local copy** を実行します。ダウンロードはデコードでき、現在のコピーより古くない `exported_at` を持つ必要があり、その場合にコピーをアトミックに置き換えます。チェックに失敗した場合は古いコピーを残し、失敗時はその段階名（`open`、`editor`、`menu`、`export`、`download`、`install`）が示されます。`--login` はサインイン用に表示ウィンドウを開きます（セッションが切れている場合は pull も開きます）。そこでサインインすると、別のデバイスの Figma からサインアウトされることがあります。`--logout` は従来および名前付きの全プロファイルを削除します。`--logout --account work` は `work` のみを削除します。Node、Chrome、および `playwright-core`（`npm i -g @runkids/figlens playwright-core`）または `PATH` 上の [`agent-browser`](https://agent-browser.dev/) CLI のいずれかが必要です。`--browser playwright\|agent-browser` でどちらかを選び（既定: 見つかれば `playwright-core`）、それぞれ別のプロファイルを持つため、切り替えると再度サインインが必要になります。Figma の UI は英語のみ対応。CLI のみ。`--account work` はマッピングの任意項目 `account` より優先され、両方ない場合は既定のプロファイルと Cookie を移行・再ログインなしで再利用します。アカウントごとの隔離プロファイルで順次実行し、失敗しても別のアカウントを試しません。別名は小文字 ASCII 英字、数字、`_`、`-` の1～64文字で、先頭は英字か数字です。ブラウザのアカウントは API token を選びません。`--stale` は単一の `FIGMA_TOKEN` を使い、状態不明の既存コピー（401/403を含む）をスキップします。token に権限がない場合は `--only` を使ってください。 |
+| `freshness [<file.fig> [--url URL] \| --sources <mapping.json>] [--account NAME]` | デザインにフレームがないと判断する前に、保存済みコピーがオンラインの Figma ファイルより古いかを確認します。対象は最寄りの `.figlens/sources.json` のデザイン（`{name, url, file}` のリスト。`file` はリポジトリのルートからの相対パス。`.figlens/` 外の `--sources` マッピングはそのフォルダーからの相対パス）、1 つのファイル、または URL を指定した 1 つのファイルです。コピーの `meta.json` にある `exported_at` を、`curl` と `FIGMA_TOKEN` / `tokenEnv` の personal access token（スコープ `file_metadata:read`）で取得したオンラインの `last_touched_at` と比較し、`stale`、`current`、または理由付きの `unknown` を出力します。トークンやネットワークがなくても失敗しません。トークンがあれば、対応付けられた古いコピーでノードが見つからないときや `find` が空のときにも、ローカルコピーの保存し直しを案内します（MCP `freshness`） |
+| `pull [--only NAME]... [--stale] [--sources <mapping.json>] [--browser B] [--account NAME] \| --login [--browser B] [--account NAME] \| --logout [--account NAME]` | 最寄りの `.figlens/sources.json`（または `--sources`）からマッピングされた保存済みコピーを更新します。`--only` も `--stale` も指定しない場合は何もダウンロードせず、各デザインの鮮度を一覧表示します。`--only` はデザインを選び、`--stale` は古い、または存在しないコピーだけを取得します。専用の Chrome プロファイルが **File > Save local copy** を実行します。ダウンロードはデコードでき、現在のコピーより古くない `exported_at` を持つ必要があり、その場合にコピーをアトミックに置き換えます。チェックに失敗した場合は古いコピーを残し、失敗時はその段階名（`open`、`editor`、`menu`、`export`、`download`、`install`）が示されます。`--login` はサインイン用に表示ウィンドウを開きます（セッションが切れている場合は pull も開きます）。そこでサインインすると、別のデバイスの Figma からサインアウトされることがあります。`--logout` は従来および名前付きの全プロファイルを削除します。`--logout --account work` は `work` のみを削除します。Node、Chrome、および `playwright-core`（`npm i -g @runkids/figlens playwright-core`）または `PATH` 上の [`agent-browser`](https://agent-browser.dev/) CLI のいずれかが必要です。`--browser playwright\|agent-browser` でどちらかを選び（既定: 見つかれば `playwright-core`）、それぞれ別のプロファイルを持つため、切り替えると再度サインインが必要になります。Figma の UI は英語のみ対応。CLI のみ。アカウントの選択と token 設定は下記を参照してください。 |
 | `index prepare\|refresh\|rebuild\|clear\|status\|add\|remove\|relocate\|reset\|track\|untrack\|embed\|visual` | ユーザーごとの figlens state ディレクトリ、または workspace が以後記憶する `--storage DIR` の下にあるローカル workspace。`prepare <file> --scope NODE` でその範囲の検索インデックスを一度だけ作成し、以後 `search --file <file>`（または `--workspace DIR`）は再解析せず、workspace の全ソースをまとめてランク付けして答えます。`refresh` は変更されたファイル、`rebuild` はすべて（または `--source`/`--scope` の一つ）を再作成し、`clear` は使われていないインデックスを削除します。新しいインデックスができるまで以前のものが使われます。`reset` は workspace データベースだけを削除し、デザイン、エクスポート、記憶された場所には触れません。`track --scope NODE` は baseline ビルドからそのスコープの変更を記録し、`untrack` は履歴を残したまま停止します。 `embed` は公開済みスコープを設定済みモデルで埋め込みます（CPU とメモリを使用）。workspace のセマンティック検索が必要なときだけ実行してください。 `visual --scope NODE` は公開済みスコープの画面とコンポーネントを画像検索用にレンダリングし、ビジョンプロファイル設定時は埋め込みも行います。workspace の画像検索が必要なときだけ実行してください。 |
 | `jobs status\|cancel <jobId>` | インデックス作成の状態表示または取り消し。`cancel` は作成が止まってから戻ります |
 | `changes --file <file>\|--id ID\|--workspace DIR [--source ID] [--scope NODE] [--consumer NAME\|--subscription ID\|--cursor C] [--revision R] [--limit N]` | 追跡中のスコープで記録された変更を古い順に返します。公開されたビルドごとに 1 リビジョン（baseline または changes）で、カバレッジと変更種別・ファセットごとの件数を含みます。changes リビジョンには変更が及ぶレイヤーの `impact` 要約があります（スキーマ 7 より前は null）。`--revision` でそのリビジョンの変更ノード、続いて impact が列挙するレイヤーをページングします（`entry` がどちらかを示します）。`tracking` は変更を記録するために `index refresh` が必要なスコープを示します。読み取りのみ |
@@ -297,3 +297,49 @@ Pi、OpenCode、OMP は、それぞれのオプトイン用エントリから同
 node 引数には `12:345`、`12-345`、または `?node-id=` 付きの Figma URL を指定できます。`<file>` には `gs://bucket/object` も指定でき、`gcloud` ログインでダウンロードしてキャッシュします。固定オブジェクトでの受け渡し、必要なアクセス権、更新の制限は [GCS スナップショットガイド](../wiki/gcs.md)を参照してください。CLI は呼び出しごとにファイルをデコードします。MCP が再利用するのは最後に読み取った変更のないローカルファイルだけです。リモート入力は毎回解析し直します。CLI の全使用法は `figlens --help`、1 つのコマンドの項目は `figlens inspect --help`（`-h` も可）で確認できます。`index add gs://bucket/object` はその世代のピン留めしたコピーを登録し、`remote {uri, generation}` を返します。gcloud を実行するのは add だけです。
 
 `inspect` は記録済みのテキストのリサイズ、切り詰め、最大行数、装飾を含みます。Dev Mode の注釈は各ノードの `annotations`（プレーンテキストの `label` プレビュー、固定された `properties`、`categoryId`。`nodes` は `labelMarkdown` も含む）に入り、名前付きの `annotationCategories` が付きます。Ready for dev のフレームとセクションには `devStatus` が付き、`--flat` は両方を示します。計測は `handoffDiagnostics` に報告されます。auto-layout のない親には `childSpacing: "derived"` が付きます。子要素の間隔は座標の差で、auto-layout のルールではありません。`constraints` で固定されている場合もあります。`handoffDiagnostics` は保存済みでも未出力の意味情報を件数、例、[対象範囲の制限](../wiki/semantics.md#known-handoff-gaps)とともに示します。`_figlens.semantics` には保存済みのソースを持つフィールドだけが載ります（項目がなければ保存されていません）。これらの対応付けが Figma と比較されていないことは、レスポンスごとに一度、最上位の `_figlens.semantics.verification` に示されます。grid auto layout のフレームには行数・列数、間隔、保存済みのトラックサイズ（`_figlens.gridTracks`）が含まれます。出力は元ファイルを保護し、書き込み完了後に保存先を置き換えます。MCP のリクエスト行は 1 MiB、完全な応答は 8 MiB が上限で、超過時は明示的なエラーを返します。CLI では引き続き完全な JSON を出力できます。
+
+<a id="figma-accounts"></a>
+
+### Figma アカウント：ブラウザログインと API token
+
+アカウントはローカルの別名であり、検証済みの Figma 身元ではありません。ブラウザはコピーをダウンロードし、API token は metadata のみ確認します。それぞれに適切な権限を設定してください。別名なしの既存ユーザーは従来の Cookie と `FIGMA_TOKEN` を使い、移行・設定ファイル・再ログインは不要です。
+
+グローバル `accounts.json` は `$XDG_CONFIG_HOME/figlens/accounts.json`、未設定なら `~/.config/figlens/accounts.json` です。Windows は `%LOCALAPPDATA%/figlens/config/accounts.json`（`XDG_CONFIG_HOME` で上書き可能）。token の値ではなく環境変数名だけを記録します：
+
+```json
+{
+  "work": {"tokenEnv": "FIGMA_TOKEN_WORK"},
+  "client": {"tokenEnv": "FIGMA_TOKEN_CLIENT"}
+}
+```
+
+`file_metadata:read` を持つ personal access token を各環境変数に非公開で設定し、CLI shell または MCP host/server に継承させてください。秘密をコマンド、ツール引数、ログ、コミットするファイルに入れないでください。ブラウザログインで token は作成されません。プロジェクトの `.figlens/sources.json` に各デザインの別名を追加します（`file` はプロジェクトルート相対）：
+
+```json
+[
+  {"name":"app","url":"https://www.figma.com/design/WorkKey/","file":"designs/app.fig","account":"work"},
+  {"name":"web","url":"https://www.figma.com/design/ClientKey/","file":"designs/web.fig","account":"client"},
+  {"name":"old","url":"https://www.figma.com/design/DefaultKey/","file":"designs/old.fig"}
+]
+```
+
+```sh
+figlens pull --login --account work
+figlens pull --login --account client
+figlens pull
+figlens pull --only app --only web
+figlens pull --stale
+figlens freshness --account work
+figlens freshness designs/web.fig --account client
+figlens pull --only web --account work
+```
+
+`--account` なしでは各デザインの mapping の別名を使い、`account` のない項目は従来の既定を使います。最後にログインしたアカウントではありません。`--account work` は選択した全デザインのブラウザと API の選択を上書きします。単独の `pull`（`pull --account work` も）は一覧のみで、ダウンロードしません。`--only` に API token は不要。混在アカウントは隔離プロファイルで順番に実行し、失敗しても他のアカウントを試しません。
+
+直接 `freshness file.fig --url URL`（MCP: `file` + `url`）を指定すると mapping を参照しません。`--account`/`account` がなければ、そのファイルに別名があっても既定の `FIGMA_TOKEN` を使います。
+
+設定／別名なしは `account_not_configured`、読取不能／不正な設定は `account_config_invalid`、環境変数なし／空は `no_token`、API 401/403 は `token_rejected`。名前付きアカウントは `FIGMA_TOKEN` にフォールバックしません。明示的な `tokenEnv: "FIGMA_TOKEN"` は可能です。`--stale` は不明な既存コピーをスキップし、名前付き／混在の選択では欠損コピーを取得できます。すべて既定で token がない場合は従来のエラーを維持します。API 確認ができない場合は `--only NAME`。
+
+`freshness --account work`（直接の `--url` も可）と MCP `freshness` の `account: "work"` は API の選択を上書きします。ノード欠損／空 find の自動ヒントは mapping のアカウントを使用します。名前付き freshness 行には `account`、`tokenVar`（未解決時 null）、`tokenSet` を追加します。最上位の token フィールドは既定 `FIGMA_TOKEN` のみを示し、全アカウントの集計ではありません。`tokenSet` は値の存在であり、権限の証明ではありません。
+
+別名は小文字 ASCII 英字・数字・`_`・`-` の1～64文字、先頭は英字か数字。環境変数名は ASCII 英字・数字・`_` の1～128文字、先頭は英字か `_`。設定は最大200アカウント／1 MiB、各項目は `tokenEnv` のみ。不正な項目は設定全体を無効にします。`pull --logout --account work` はそのブラウザプロファイルのみ、単独の `--logout` は既定と名前付きの全プロファイルを削除します。設定や token は削除しません。

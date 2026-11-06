@@ -18,6 +18,7 @@ pub struct Request<'a> {
     pub file: Option<(&'a Path, &'a str)>,
     pub url: Option<&'a str>,
     pub start: Option<&'a Path>,
+    pub account: Option<&'a str>,
 }
 
 /// How long one listing may spend on requests (it holds the MCP interactive lane); designs it
@@ -31,9 +32,18 @@ pub fn report(
     allowed: &dyn Fn(&Path) -> bool,
     cancel: &AtomicBool,
 ) -> Result<Value, Box<dyn Error>> {
+    if let Some(account) = request.account {
+        freshness::validate_account(account)?;
+    }
     let token = freshness::token();
     let started = Instant::now();
-    let check = |source: &Source| {
+    let mut credentials = freshness::Credentials::default();
+    let mut check = |source: &Source| {
+        let credential = credentials.resolve(request.account.or(source.account.as_deref()));
+        let annotate = |mut report| {
+            credential.annotate(&mut report);
+            report
+        };
         if !allowed(&source.file) {
             // A missing file inside the roots is missing, not outside them.
             let inside = source
@@ -46,15 +56,19 @@ pub fn report(
             } else {
                 "outside_roots"
             };
-            return freshness::unknown(source.name.as_str().into(), &source.label, reason);
+            return annotate(freshness::unknown(
+                source.name.as_str().into(),
+                &source.label,
+                reason,
+            ));
         }
-        let token = match &token {
-            None => Err("no_token"),
-            Some(_) if cancel.load(Ordering::Relaxed) => Err("cancelled"),
-            Some(_) if started.elapsed() + freshness::REQUEST_LIMIT > DEADLINE => Err("deadline"),
-            Some(token) => Ok(token.as_str()),
+        let token = match &credential.value {
+            Err(reason) => Err(*reason),
+            Ok(_) if cancel.load(Ordering::Relaxed) => Err("cancelled"),
+            Ok(_) if started.elapsed() + freshness::REQUEST_LIMIT > DEADLINE => Err("deadline"),
+            Ok(token) => Ok(token.as_str()),
         };
-        freshness::check("curl", source, token)
+        annotate(freshness::check("curl", source, token))
     };
     let (mapping, designs) = match (request.sources, request.file, request.url) {
         (Some(_), Some(_), _) | (Some(_), _, Some(_)) => {
@@ -77,7 +91,11 @@ pub fn report(
             (None, vec![check(&source)])
         }
         (None, Some((file, label)), None) => {
-            let unknown = |reason: &str| freshness::unknown(Value::Null, label, reason);
+            let unknown = |reason: &str| {
+                let mut report = freshness::unknown(Value::Null, label, reason);
+                freshness::credential(request.account).annotate(&mut report);
+                report
+            };
             if !file.is_file() {
                 (None, vec![unknown("file_missing")])
             } else {

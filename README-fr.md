@@ -28,7 +28,7 @@ figlens transforme les fichiers Figma sauvegardés en contexte de design exploit
 - **Comparer l’UI en cours d’exécution.** `compare-image` compare votre capture au rendu de figlens et nomme les calques sous les régions qui diffèrent. Examinez ces écarts et les avertissements de rendu ; ce n’est pas une garantie de fidélité au pixel près.
 - **Suivre les changements du design.** `diff` compare les révisions sauvegardées ; `changes` et `watch` signalent les mises à jour des périmètres locaux suivis ; `freshness` indique quand une copie sauvegardée est plus ancienne que le fichier en ligne, et `pull` sauvegarde une nouvelle copie via votre propre connexion dans le navigateur. Sauvegardez un nouveau `.fig` depuis Figma pour récupérer les modifications : ce n’est pas une synchronisation en direct avec Figma.
 
-**Le fonctionnement hors ligne comme base.** Dans Figma, **File > Save local copy**. Placez `design.fig` à côté de votre code. Ensuite, un lien Figma suffit : son id de nœud choisit le frame. Sans copie enregistrée, copiez les calques dans Figma (clic droit > Copy) et lancez `figlens clipboard screen.fig` ; une copie ne contient ni images ni contours vectoriels ([comment](docs/README-fr.md#copy-a-selection)). Un binaire natif le lit en local, sans app Figma ouverte, connexion au compte ni appel réseau vers Figma ; seules la vérification facultative `freshness` (avec votre `FIGMA_TOKEN`) et `pull` (via votre connexion dans le navigateur) contactent Figma.
+**Le fonctionnement hors ligne comme base.** Dans Figma, **File > Save local copy**. Placez `design.fig` à côté de votre code. Ensuite, un lien Figma suffit : son id de nœud choisit le frame. Sans copie enregistrée, copiez les calques dans Figma (clic droit > Copy) et lancez `figlens clipboard screen.fig` ; une copie ne contient ni images ni contours vectoriels ([comment](docs/README-fr.md#copy-a-selection)). Un binaire natif le lit en local, sans app Figma ouverte, connexion au compte ni appel réseau vers Figma ; seules la vérification facultative `freshness` (avec un token API configuré ; par défaut : `FIGMA_TOKEN`) et `pull` (via votre connexion dans le navigateur) contactent Figma.
 
 <a id="start"></a>
 
@@ -192,7 +192,7 @@ Un agent qui utilise la CLI lit son guide avec `figlens workflow build` (ainsi q
 
 [Référence de la CLI](docs/README-fr.md#commands)
 
-Différents comptes Figma : `figlens pull --login --account work` et le champ facultatif `"account": "work"` dans la correspondance des sources. Aucune migration des sessions par défaut existantes.
+Différents comptes Figma : `figlens pull --login --account work` et le champ facultatif `"account": "work"` dans la correspondance des sources. Aucune migration des sessions par défaut existantes. [Comptes Figma : navigateur et tokens API](docs/README-fr.md#figma-accounts).
 
 <a id="setup-skill"></a>
 

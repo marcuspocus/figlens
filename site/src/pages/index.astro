@@ -87,7 +87,7 @@ const fmt = (n: number) => n.toLocaleString('en-US');
     <section id="who" class="band split">
       <div>
         <h2>More than a file reader. Design context the agent can act on.</h2>
-        <p class="section-lede">Offline is the foundation: save a local copy from Figma and put it next to the code. One native binary reads it without a running Figma app, login or network calls to Figma; only the opt-in freshness check (with your FIGMA_TOKEN) and pull (through your browser sign-in) reach Figma.</p>
+        <p class="section-lede">Offline is the foundation: save a local copy from Figma and put it next to the code. One native binary reads it without a running Figma app, login or network calls to Figma; only the opt-in freshness check (with a configured API token; default: FIGMA_TOKEN) and pull (through your browser sign-in) reach Figma.</p>
       </div>
       <dl class="ledger">
         {outcomes.map((outcome) => (
