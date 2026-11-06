@@ -14,6 +14,8 @@ figlens turns saved Figma files into design context your coding agent can act on
 
 Give your agent a saved `.fig`. figlens reads it on the machine where the agent runs, including a remote host or CI, with no Figma app, Figma sign-in or Figma API calls (only the opt-in `freshness` check, with a configured API token (default: `FIGMA_TOKEN`), and `pull`, through your browser sign-in, reach Figma).
 
+MCP `nodes` accepts `out` to save large node JSON to a file instead of an inline reply. Named accounts route each design to separate browser profiles and API-token environment variables; existing defaults stay unchanged. See the [account setup guide](https://figlens.runkids.cc/docs/cli/#figma-accounts).
+
 ## Start with Pi
 
 Requires Pi 1.3.0+. The package includes the CLI, MCP connection, extension and agent skill:

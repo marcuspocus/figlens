@@ -2,9 +2,9 @@
 export const REPO = 'https://github.com/runkids/figlens';
 
 export const outcomes = [
-  { title: 'Build from the source details', description: 'Read layout, text, styles, variables and Dev Mode annotations; export vector icons as SVG and images as assets. Bundle a frame’s data, assets and reference render, then check for missing files, font requirements and handoff limitations.' },
+  { title: 'Build from the source details', description: 'Read layout, text, styles, variables and Dev Mode annotations; export vector icons as SVG and images as assets. Bundle a frame’s data, assets and reference render, then check for missing files, font requirements and handoff limitations. MCP nodes can save large node JSON to a file with out instead of an inline reply.' },
   { title: 'Compare the running UI', description: 'Compare a screenshot with figlens’s render and get the layers under differing regions. Review those differences and rendering warnings: this is not a pixel-perfect guarantee.' },
-  { title: 'Follow design changes', description: 'Compare saved revisions with diff, use changes and watch to report updates to tracked local scopes, freshness to tell when a saved copy is older than the online file, and pull to save a new copy through your browser sign-in. Save a new .fig from Figma to pick up design edits; this is not live Figma sync.' },
+  { title: 'Follow design changes', description: 'Compare saved revisions with diff, use changes and watch to report updates to tracked local scopes, freshness to tell when a saved copy is older than the online file, and pull to save a new copy through your browser sign-in. Named accounts route each design to separate browser profiles and API-token environment variables; existing defaults stay unchanged. Save a new .fig from Figma to pick up design edits; this is not live Figma sync.' },
 ];
 
 // An illustrative frame (not a real customer design), drawn in src/scripts/screen.ts.

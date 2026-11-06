@@ -6,6 +6,8 @@ Save the design from Figma, put it next to your code, describe the screen. Pi fi
 
 The same package has independent [OpenCode V2](../opencode/README.md) and [OMP](../omp/README.md) entries with their own tested limits. Pi keeps its existing commands and runtime registration.
 
+MCP `nodes` accepts `out` to save large node JSON to a file instead of an inline reply. Named accounts route each design to separate browser profiles and API-token environment variables; existing defaults stay unchanged. See the [account setup guide](../docs/README.md#figma-accounts).
+
 ## Install
 
 Requires **Pi 1.3.0+**. One package ships the CLI, MCP server, viewer and agent skill:
