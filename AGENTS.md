@@ -23,7 +23,7 @@ Reads Figma `.fig` files offline: no API rate limits, login or running Figma. Ru
 
 - Never commit private design files or Figma exports; `samples/` stays gitignored. Only the original synthetic `examples/first-success/design.fig` is distributable, with its [provenance and update procedure](examples/first-success/README.md).
 - Shipped binaries build only from `Dockerfile.dist`'s digest-pinned base image; never point the release at a mutable tag.
-- The release tag, `Cargo.toml`, `Cargo.lock`, `npm/package.json`, the host plugin manifests and the Herdr mod's engine `VERSION` carry one version.
+- The release tag, `Cargo.toml`, `Cargo.lock`, `npm/package.json`, `server.json`, the host plugin manifests and the Herdr mod's engine `VERSION` carry one version.
 
 ## Load Context Per Task
 

@@ -28,7 +28,7 @@ Requested version: with the user's authorization for a direct push, push an empt
 ## 2. Review the Release PR
 
 - The version follows the policy in the `release` topic; a breaking change needs migration notes in the CHANGELOG.
-- `Cargo.toml`, `Cargo.lock`, `npm/package.json`, the host plugin manifests and the Herdr mod's engine `VERSION` carry the same version (`python3 -B -m unittest scripts/host_plugins_test.py`, `node --test herdr/tests/*.test.mjs`).
+- `Cargo.toml`, `Cargo.lock`, `npm/package.json`, `server.json`, the host plugin manifests and the Herdr mod's engine `VERSION` carry the same version (`python3 -B -m unittest scripts/host_plugins_test.py`, `node --test herdr/tests/*.test.mjs`).
 - The tracking manifest agrees with that version.
 - Every user-visible change in `<last tag>..origin/main` has a CHANGELOG entry and is described in the user-facing docs. Follow the [Release PR checklist](../../../wiki/review.md#release-pr) (`python3 scripts/ai-context.py review`): skipped commits and their recovery, the docs to check, and approving the PR's waiting CI run.
 - CI on `main` and the exact Release PR head is green.
@@ -61,13 +61,14 @@ Verify the title is exactly `v<version>` and the body matches the notes file. Re
 
 ## 5. Publish and verify distribution
 
-With publication authorized, run `gh workflow run publish-release.yml -f tag=v<version>`. Use this workflow so GitHub, Homebrew and npm all run. Watch it to completion and inspect each job. Investigate a failed channel before retrying; preserve the tag and version.
+With publication authorized, run `gh workflow run publish-release.yml -f tag=v<version>`. Use this workflow so GitHub, Homebrew, npm and the MCP Registry all run. Watch it to completion and inspect each job. Investigate a failed channel before retrying; preserve the tag and version. When only a job after `npm` failed, rerun that run's failed jobs (`gh run rerun <run-id> --failed`): a new dispatch stops at `npm publish`, which refuses a published version.
 
 Verify the public result:
 
 - GitHub marks the intended tag as latest, with the version-only title and reviewed body.
 - Homebrew's published formula has the version and archive hashes from `SHA256SUMS`.
 - npm exposes the requested version as `latest`, with both Pi extension and skill metadata. If npm reports processing and the registry still returns 404, wait and recheck availability; do not republish.
+- The MCP Registry lists the version: `curl -s 'https://registry.modelcontextprotocol.io/v0/servers?search=figlens'`.
 - Run `npx --yes @runkids/figlens@<version> --version` using isolated npm and binary caches under `samples/` (`npm_config_cache` and `XDG_CACHE_HOME`) so the check exercises the public package and download path.
 
 Report the release link, shipped behavior, actual checks and each distribution result. Distinguish unpublished drafts, successful publication and pending or failed channels. Finish only after the authorized steps are complete or a concrete blocker is reported.

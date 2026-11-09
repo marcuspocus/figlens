@@ -43,7 +43,7 @@ Demo media is not in the tree; docs link it at the `v0.10.1` tag (keep that tag)
 
 ## Versions
 
-Release Please bumps every manifest `version` and pinned `@runkids/figlens@<version>` through `extra-files` in `.github/release-please-config.json`. Documentation install commands carry no version (`npx -y @runkids/figlens mcp`, `/tree/main`, a plain `git clone`), so a release edits no doc. The only `generic` entries rewrite the marked `VERSION` line in the Herdr mod's two `engine.js` copies, which are code; `herdr/tests` checks they equal `Cargo.toml`. `scripts/host_plugins_test.py` checks that every manifest pin equals `npm/package.json` and is bumped by `extra-files`, that no tracked Markdown file pins a version, that marketplace sources are the repository root, and that manifest paths exist.
+Release Please bumps every manifest `version`, pinned `@runkids/figlens@<version>` and both versions in the MCP Registry's `server.json` ([release](release.md)) through `extra-files` in `.github/release-please-config.json`. Documentation install commands carry no version (`npx -y @runkids/figlens mcp`, `/tree/main`, a plain `git clone`), so a release edits no doc. The only `generic` entries rewrite the marked `VERSION` line in the Herdr mod's two `engine.js` copies, which are code; `herdr/tests` checks they equal `Cargo.toml`. `scripts/host_plugins_test.py` checks that every manifest pin equals `npm/package.json` and is bumped by `extra-files`, that `server.json` names the npm package and its `mcpName`, that no tracked Markdown file pins a version, that marketplace sources are the repository root, and that manifest paths exist.
 
 ## Adding a host
 

@@ -1,8 +1,9 @@
 name: Publish Release
 
-# Makes a checked draft public, then ships it to Homebrew, npm and the site.
+# Makes a checked draft public, then ships it to Homebrew, npm, the MCP Registry and the site.
 # Secrets: HOMEBREW_TAP_SSH_KEY (write deploy key on runkids/homebrew-tap). npm needs none: it trusts
 # this workflow through OIDC (Trusted Publisher on npmjs.com: runkids/figlens, publish-release.yml).
+# The MCP Registry needs none either: OIDC proves the io.github.runkids namespace.
 on:
   workflow_dispatch:
     inputs:
@@ -81,6 +82,42 @@ jobs:
       - name: npm publish
         working-directory: npm
         run: npm publish --access public
+
+  # The MCP Registry checks mcpName in the published npm version, so npm goes first.
+  mcp-registry:
+    needs: npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      MCP_PUBLISHER_VERSION: v1.8.8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Download and verify mcp-publisher
+        run: |
+          base="https://github.com/modelcontextprotocol/registry/releases/download/$MCP_PUBLISHER_VERSION"
+          archive=mcp-publisher_linux_amd64.tar.gz
+          curl -fsSLO "$base/$archive"
+          curl -fsSLO "$base/$archive.sigstore.json"
+          cosign verify-blob "$archive" --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/$MCP_PUBLISHER_VERSION" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+          tar xzf "$archive" mcp-publisher
+      - name: Publish server.json
+        run: |
+          listed="https://registry.modelcontextprotocol.io/v0/servers/$(jq -r '.name | @uri' server.json)/versions/$(jq -r .version server.json)"
+          # A version npm has just accepted can take a moment to be readable. A listed version
+          # cannot be published again, so a rerun passes when the registry already has it.
+          for attempt in 1 2 3 4 5; do
+            if curl -fsS -o /dev/null "$listed"; then exit 0; fi
+            ./mcp-publisher login github-oidc && ./mcp-publisher publish && exit 0
+            sleep 30
+          done
+          exit 1
 
   site:
     needs: publish

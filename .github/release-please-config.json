@@ -34,6 +34,8 @@
         { "type": "json", "path": ".kimi-plugin/plugin.json", "jsonpath": "$.mcpServers.figlens.args[1]" },
         { "type": "json", "path": ".antigravity-plugin/plugin.json", "jsonpath": "$.version" },
         { "type": "json", "path": "mcp_config.json", "jsonpath": "$.mcpServers.figlens.args[1]" },
+        { "type": "json", "path": "server.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "server.json", "jsonpath": "$.packages[0].version" },
         { "type": "generic", "path": "herdr/figlens/mods/figlens/engine.js" },
         { "type": "generic", "path": "herdr/figlens-layout/mods/figlens/engine.js" }
       ]

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.runkids/figlens",
+  "title": "figlens",
+  "description": "Offline Figma MCP server: layout, SVG assets, renders and revision diffs from saved .fig files",
+  "version": "0.14.2",
+  "websiteUrl": "https://figlens.runkids.cc",
+  "repository": {
+    "url": "https://github.com/runkids/figlens",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@runkids/figlens",
+      "version": "0.14.2",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ]
+    }
+  ]
+}
