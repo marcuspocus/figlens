@@ -58,6 +58,9 @@ class HostPluginsTest(unittest.TestCase):
         # The MCP Registry reads mcpName from the published package and rejects a different name.
         server, package = load('server.json'), load('npm/package.json')
         self.assertEqual((server['name'], server['packages'][0]['identifier']), (package['mcpName'], package['name']))
+        # Both versions follow the release: the registry refuses a version it already lists.
+        bumped = {e['jsonpath'] for e in self.extra if e['path'] == 'server.json'}
+        self.assertEqual(bumped, {'$.version', '$.packages[0].version'})
 
     def test_manifests_point_at_existing_paths(self):
         for path in HOST_FILES:

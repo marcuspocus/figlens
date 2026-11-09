@@ -1,8 +1,9 @@
 name: Publish Release
 
-# Makes a checked draft public, then ships it to Homebrew, npm and the site.
+# Makes a checked draft public, then ships it to Homebrew, npm, the MCP Registry and the site.
 # Secrets: HOMEBREW_TAP_SSH_KEY (write deploy key on runkids/homebrew-tap). npm needs none: it trusts
 # this workflow through OIDC (Trusted Publisher on npmjs.com: runkids/figlens, publish-release.yml).
+# The MCP Registry needs none either: OIDC proves the io.github.runkids namespace.
 on:
   workflow_dispatch:
     inputs:
@@ -82,8 +83,7 @@ jobs:
         working-directory: npm
         run: npm publish --access public
 
-  # The MCP Registry reads mcpName from the npm version server.json names, so npm goes first.
-  # No secret: the io.github.runkids namespace is proven through OIDC.
+  # The MCP Registry checks mcpName in the published npm version, so npm goes first.
   mcp-registry:
     needs: npm
     runs-on: ubuntu-latest
@@ -109,8 +109,11 @@ jobs:
           tar xzf "$archive" mcp-publisher
       - name: Publish server.json
         run: |
-          # A version npm has just accepted can take a moment to be readable.
+          listed="https://registry.modelcontextprotocol.io/v0/servers/$(jq -r '.name | @uri' server.json)/versions/$(jq -r .version server.json)"
+          # A version npm has just accepted can take a moment to be readable. A listed version
+          # cannot be published again, so a rerun passes when the registry already has it.
           for attempt in 1 2 3 4 5; do
+            if curl -fsS -o /dev/null "$listed"; then exit 0; fi
             ./mcp-publisher login github-oidc && ./mcp-publisher publish && exit 0
             sleep 30
           done
