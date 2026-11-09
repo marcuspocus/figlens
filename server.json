@@ -3,7 +3,7 @@
   "name": "io.github.runkids/figlens",
   "title": "figlens",
   "description": "Offline Figma MCP server: layout, SVG assets, renders and revision diffs from saved .fig files",
-  "version": "0.14.2",
+  "version": "0.14.3",
   "websiteUrl": "https://figlens.runkids.cc",
   "repository": {
     "url": "https://github.com/runkids/figlens",
@@ -14,7 +14,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@runkids/figlens",
-      "version": "0.14.2",
+      "version": "0.14.3",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
