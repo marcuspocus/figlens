@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.3](https://github.com/runkids/figlens/compare/v0.14.2...v0.14.3) (2026-11-09)
+
+
+### New Features
+
+* **release:** list figlens in the MCP Registry ([#252](https://github.com/runkids/figlens/issues/252)) ([427ff6d](https://github.com/runkids/figlens/commit/427ff6d6a398ce8ac1b6156698ddaca2607ef9c8))
+
 ## [0.14.2](https://github.com/runkids/figlens/compare/v0.14.1...v0.14.2) (2026-11-09)
 
 
