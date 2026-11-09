@@ -1,6 +1,6 @@
 [package]
 name = "figlens"
-version = "0.14.1"
+version = "0.14.2"
 edition = "2024"
 description = "Figma screens for coding agents, read from a saved .fig: REST-shaped nodes, variables, assets, renders and bundles, with no Figma app, login or API limit"
 license = "MIT"

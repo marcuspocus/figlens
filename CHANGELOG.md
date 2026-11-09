@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.2](https://github.com/runkids/figlens/compare/v0.14.1...v0.14.2) (2026-11-09)
+
+
+### Bug Fixes
+
+* **expand:** honor the scale factor of K-scaled instances ([#250](https://github.com/runkids/figlens/issues/250)) ([3ac24ac](https://github.com/runkids/figlens/commit/3ac24acbf02195f6257fd3df65d72380112de1de))
+
 ## [0.14.1](https://github.com/runkids/figlens/compare/v0.14.0...v0.14.1) (2026-11-06)
 
 
