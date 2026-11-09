@@ -555,8 +555,9 @@ impl Builder<'_, '_> {
     }
 
     /// Copies the font fields of the text style `r` applies into `k`: a node's own copies can
-    /// be stale, and the plugin reports the style's.
-    fn apply_text_style(&self, k: &mut Obj, r: &Obj) {
+    /// be stale, and the plugin reports the style's. Inside a K-scaled instance the style's
+    /// lengths take the node's `scale`.
+    fn apply_text_style(&self, k: &mut Obj, r: &Obj, scale: f64) {
         let Some(style) = self
             .style_refs(r)
             .get("text")
@@ -567,7 +568,7 @@ impl Builder<'_, '_> {
         };
         for f in ["fontName", "fontSize", "letterSpacing", "lineHeight"] {
             if let Some(v) = style.get(f) {
-                k.insert(f.into(), to_json(v));
+                k.insert(f.into(), scaled(f, to_json(v), scale));
             }
         }
     }
@@ -575,7 +576,8 @@ impl Builder<'_, '_> {
     /// `characterStyleOverrides`, `styleOverrideTable`, `lineTypes` and `lineIndentations`.
     /// An override entry lists the fields its kiwi entry sets; one that applies a text style
     /// lists the style's fields too.
-    fn text_overrides(&self, k: &Obj, out: &mut Obj) {
+    /// A range's linked text style is read at `scale`, as the node's own is.
+    fn text_overrides(&self, k: &Obj, scale: f64, out: &mut Obj) {
         let td = at(k, "textData");
         let ids = td["characterStyleIDs"]
             .as_array()
@@ -600,6 +602,7 @@ impl Builder<'_, '_> {
                 for (f, v) in object(to_json(self.tree.nodes[id.as_str()])) {
                     if !override_fields(&f).is_empty() {
                         set.extend(override_fields(&f));
+                        let v = scaled(&f, v, scale);
                         merged.insert(f, v);
                     }
                 }
@@ -670,7 +673,7 @@ impl Builder<'_, '_> {
                 // which keep their overridden values (checked against the plugin sweep).
                 if e.props.get("visible") != Some(&json!(false)) {
                     let style_ref = k.clone();
-                    self.apply_text_style(&mut k, &style_ref);
+                    self.apply_text_style(&mut k, &style_ref, e.scale);
                 }
                 if let Some(s) = e.size {
                     k.insert("size".into(), json!({ "x": s.x, "y": s.y }));
@@ -681,7 +684,7 @@ impl Builder<'_, '_> {
                 let node = self.tree.nodes[id];
                 let mut k = object(to_json(node));
                 let style_ref = k.clone();
-                self.apply_text_style(&mut k, &style_ref);
+                self.apply_text_style(&mut k, &style_ref, 1.0);
                 let name = at(&k, "name").as_str().unwrap_or("").to_owned();
                 (k, plugin_type(node), name, abs_matrix(self.tree, id, ""))
             }
@@ -757,7 +760,8 @@ impl Builder<'_, '_> {
             }
         }
         if kind == "TEXT" {
-            self.text_overrides(&kiwi, &mut out);
+            let scale = self.ex.nodes.get(id).map_or(1.0, |e| e.scale);
+            self.text_overrides(&kiwi, scale, &mut out);
         }
         let mut styles = self.style_refs(&kiwi);
         // A text style's own font-size and weight bindings show on the nodes that use it.
@@ -1663,6 +1667,14 @@ fn handles(kind: &str, transform: &Json) -> Json {
         .collect()
 }
 
+/// A text style's `field` value read in a K-scaled instance at `scale`.
+fn scaled(field: &str, v: Json, scale: f64) -> Json {
+    if scale == 1.0 {
+        return v;
+    }
+    crate::expand::scale_value(field, &v, scale).unwrap_or(v)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1717,6 +1729,92 @@ mod tests {
                 assert_eq!(diagnostics[0]["nodeId"], "1:2");
             }
         }
+    }
+
+    #[test]
+    fn a_scaled_instance_reports_scaled_radii_and_linked_text_sizes() {
+        use kiwi_schema::Value as K;
+        let object = |fields: Vec<(&'static str, K<'static>)>| {
+            K::Object("Test", fields.into_iter().collect())
+        };
+        let guid = |s, l| object(vec![("sessionID", K::UInt(s)), ("localID", K::UInt(l))]);
+        let size = |v| object(vec![("x", K::Float(v)), ("y", K::Float(v))]);
+        let inst = object(vec![
+            ("type", K::Enum("NodeType", "INSTANCE")),
+            ("size", size(50.0)),
+            (
+                "symbolData",
+                object(vec![
+                    ("symbolID", guid(1, 1)),
+                    ("uniformScaleFactor", K::Float(0.5)),
+                ]),
+            ),
+        ]);
+        let main = object(vec![
+            ("type", K::Enum("NodeType", "SYMBOL")),
+            ("size", size(100.0)),
+        ]);
+        let rect = object(vec![
+            ("type", K::Enum("NodeType", "RECTANGLE")),
+            ("size", size(40.0)),
+            ("cornerRadius", K::Float(8.0)),
+        ]);
+        let text = object(vec![
+            ("type", K::Enum("NodeType", "TEXT")),
+            ("size", size(40.0)),
+            ("fontSize", K::Float(12.0)),
+            ("styleIdForText", object(vec![("guid", guid(9, 9))])),
+            (
+                "textData",
+                object(vec![
+                    ("characters", K::String("ab".into())),
+                    ("characterStyleIDs", K::Array(vec![K::UInt(0), K::UInt(1)])),
+                    (
+                        "styleOverrideTable",
+                        K::Array(vec![object(vec![
+                            ("styleID", K::UInt(1)),
+                            ("styleIdForText", object(vec![("guid", guid(9, 9))])),
+                        ])]),
+                    ),
+                ]),
+            ),
+        ]);
+        let style = object(vec![
+            ("name", K::String("Body".into())),
+            ("styleType", K::Enum("StyleType", "TEXT")),
+            ("fontSize", K::Float(20.0)),
+            (
+                "lineHeight",
+                object(vec![
+                    ("value", K::Float(28.0)),
+                    ("units", K::Enum("NumberUnits", "PIXELS")),
+                ]),
+            ),
+        ]);
+        let tree = Tree {
+            nodes: HashMap::from([
+                ("inst".into(), &inst),
+                ("1:1".into(), &main),
+                ("1:2".into(), &rect),
+                ("1:3".into(), &text),
+                ("9:9".into(), &style),
+            ]),
+            children: HashMap::from([("1:1".into(), vec!["1:2".into(), "1:3".into()])]),
+            blobs: Vec::new(),
+        };
+        let doc = nodes(&tree, "inst");
+        let children = &doc["document"]["children"];
+        let text = &children[1];
+        assert_eq!(
+            (
+                &children[0]["cornerRadius"],
+                &text["style"]["fontSize"],
+                &text["style"]["lineHeightPx"],
+                &text["styleOverrideTable"]["1"]["fontSize"],
+            ),
+            (&json!(4.0), &json!(10.0), &json!(14.0), &json!(10.0)),
+            "{doc}"
+        );
     }
 
     #[test]

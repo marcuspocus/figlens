@@ -9,7 +9,7 @@ Reads Figma `.fig` files offline: no API rate limits, login or running Figma. Ru
 ## Always Applies
 
 - **Rust runs only in Docker** for development: `docker compose run --rm dev ...`; do not install or use a host Rust toolchain. Users run the native `figlens` binary with no Docker or Rust installed.
-- **Format changes need evidence.** Before changing how nodes are decoded, expanded or emitted, load `fig-format`; claim accuracy only after measuring with the `accuracy` topic, on a file the change was not written against.
+- **Format changes need evidence.** Before changing how nodes are decoded, expanded or emitted, load `fig-format` (and `instances` for expansion); claim accuracy only after measuring with the `accuracy` topic, on a file the change was not written against.
 - **Keep the docs true.** When a doc disagrees with the code, trust the code: verify, then fix the stale doc in the same task. When your change alters behaviour that a topic describes, update that topic page in the same change. Put a new lesson in its topic as a one-line rule beside the procedure; the kernel takes only rules every task needs. Run `python3 scripts/ai-context.py check` after any doc change (see `ai-context`).
 - **Search before you edit; change as little as possible.** Match the existing style.
 - **Check CLI, MCP, Pi, OpenCode and OMP together.** For every feature or optimization, assess each interface, complete affected behavior/contracts/guidance/tests, and explain why any interface needs no change. A new, changed or removed feature also updates `--help`, every README locale, the site, a served skill section and its wiki topic; see `review`.
@@ -42,7 +42,8 @@ python3 scripts/ai-context.py check     # validate paths, headings, links, orpha
 | `accounts` | Changing browser/API alias routing, accounts.json or environment references |
 | `performance` | Measuring load time and memory, the perf baseline, cache or decode cost |
 | `parsing` | Changing untrusted container/schema/value decoding or parsing budgets |
-| `fig-format` | Changing decoding, instance expansion, emitted REST fields or variables |
+| `fig-format` | Changing decoding, emitted REST fields or variables |
+| `instances` | Changing instance expansion: overrides, derived rows, properties, constraints, scale |
 | `tokens` | Changing DTCG variable export, validation or interoperability |
 | `discovery` | Changing find/inspect summaries or `--flat`, `tree --top-frames` or `export --match-dir` |
 | `search` | Changing search indexing, ranking, cursors, coverage or budgets |

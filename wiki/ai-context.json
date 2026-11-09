@@ -79,10 +79,18 @@
       ]
     },
     "fig-format": {
-      "description": "Changing decoding, instance expansion, emitted REST fields or variables.",
+      "description": "Changing decoding, emitted REST fields or variables.",
       "sources": [
         {
           "path": "wiki/fig-format.md"
+        }
+      ]
+    },
+    "instances": {
+      "description": "Changing instance expansion: override and derived rows, component properties, constraint resizes or scale.",
+      "sources": [
+        {
+          "path": "wiki/instances.md"
         }
       ]
     },

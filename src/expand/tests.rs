@@ -80,6 +80,7 @@ fn auto_layout_children_do_not_apply_constraints_again() {
             &derived,
             Mat::IDENTITY,
             Some((v2(24.0, 24.0), v2(28.0, 28.0))),
+            1.0,
         );
         assert_eq!(
             ex.out.nodes["Iinstance;group"].size,
@@ -146,6 +147,7 @@ fn swapped_names_use_the_component_set_unless_explicitly_overridden() {
             &Patches::new(),
             Mat::IDENTITY,
             None,
+            1.0,
         );
         assert_eq!(
             ex.out.nodes["Iouter;child"].name,
@@ -1360,6 +1362,7 @@ fn swaps_use_the_new_mains_visibility_unless_overridden() {
             &Patches::new(),
             Mat::IDENTITY,
             None,
+            1.0,
         );
         assert_eq!(
             ex.out.nodes.contains_key("Iouter;child;leaf"),
@@ -1634,4 +1637,406 @@ fn an_exhausted_estimate_stops_enumerating_its_collection() {
         1
     });
     assert_eq!(yielded, 11);
+}
+
+fn transform(tx: f32, ty: f32) -> Value<'static> {
+    obj(vec![
+        ("m00", Value::Float(1.0)),
+        ("m11", Value::Float(1.0)),
+        ("m02", Value::Float(tx)),
+        ("m12", Value::Float(ty)),
+    ])
+}
+
+fn row(guids: Vec<Value<'static>>, fields: Vec<(&'static str, Value<'static>)>) -> Value<'static> {
+    let mut all = vec![("guidPath", obj(vec![("guids", Value::Array(guids))]))];
+    all.extend(fields);
+    obj(all)
+}
+
+/// An instance of main `1:1` stored at `size`, scaled by `factor` with the Scale tool.
+fn scaled_instance(
+    factor: Option<f32>,
+    size_: f32,
+    overrides: Vec<Value<'static>>,
+    derived: Vec<Value<'static>>,
+) -> Value<'static> {
+    let mut sd = vec![
+        ("symbolID", guid(1, 1)),
+        ("symbolOverrides", Value::Array(overrides)),
+    ];
+    if let Some(f) = factor {
+        sd.push(("uniformScaleFactor", Value::Float(f)));
+    }
+    obj(vec![
+        ("type", Value::Enum("NodeType", "INSTANCE")),
+        ("size", size(size_, size_)),
+        ("symbolData", obj(sd)),
+        ("derivedSymbolData", Value::Array(derived)),
+    ])
+}
+
+/// A 200 px rectangle at (20, 40) in a 256 px main, with every kind of length it can hold.
+fn rectangle() -> Value<'static> {
+    let px = |v| {
+        obj(vec![
+            ("value", Value::Float(v)),
+            ("units", Value::Enum("NumberUnits", "PIXELS")),
+        ])
+    };
+    obj(vec![
+        ("type", Value::Enum("NodeType", "RECTANGLE")),
+        ("size", size(200.0, 200.0)),
+        ("transform", transform(20.0, 40.0)),
+        ("cornerRadius", Value::Float(64.0)),
+        ("strokeWeight", Value::Float(8.0)),
+        (
+            "dashPattern",
+            Value::Array(vec![Value::Float(16.0), Value::Float(8.0)]),
+        ),
+        (
+            "effects",
+            Value::Array(vec![obj(vec![
+                ("radius", Value::Float(20.0)),
+                ("spread", Value::Float(4.0)),
+                ("offset", size(10.0, 6.0)),
+                ("startOffset", size(0.5, 0.0)),
+            ])]),
+        ),
+        ("fontSize", Value::Float(16.0)),
+        ("letterSpacing", px(2.0)),
+        ("minSize", obj(vec![("value", size(12.0, 0.0))])),
+        (
+            "textData",
+            obj(vec![(
+                "styleOverrideTable",
+                Value::Array(vec![obj(vec![
+                    ("styleID", Value::UInt(1)),
+                    ("fontSize", Value::Float(20.0)),
+                    ("lineHeight", px(24.0)),
+                    (
+                        "letterSpacing",
+                        obj(vec![
+                            ("value", Value::Float(5.0)),
+                            ("units", Value::Enum("NumberUnits", "PERCENT")),
+                        ]),
+                    ),
+                ])]),
+            )]),
+        ),
+        (
+            "lineHeight",
+            obj(vec![
+                ("value", Value::Float(150.0)),
+                ("units", Value::Enum("NumberUnits", "PERCENT")),
+            ]),
+        ),
+    ])
+}
+
+fn rectangle_tree<'a>(
+    inst: &'a Value<'static>,
+    main: &'a Value<'static>,
+    rect: &'a Value<'static>,
+) -> Tree<'a> {
+    Tree {
+        nodes: HashMap::from([
+            ("inst".into(), inst),
+            ("1:1".into(), main),
+            ("1:2".into(), rect),
+        ]),
+        children: HashMap::from([("1:1".into(), vec!["1:2".into()])]),
+        blobs: Vec::new(),
+    }
+}
+
+#[test]
+fn a_scaled_instance_reads_its_mains_lengths_at_its_factor() {
+    let inst = scaled_instance(Some(0.5), 128.0, vec![], vec![]);
+    let main = obj(vec![("size", size(256.0, 256.0))]);
+    let rect = rectangle();
+    let ex = expand_instances(&rectangle_tree(&inst, &main, &rect), "inst");
+    let e = &ex.nodes["Iinst;1:2"];
+    assert_eq!(
+        (e.size, e.matrix.tx, e.matrix.ty, e.scale),
+        (Some(v2(100.0, 100.0)), 10.0, 20.0, 0.5)
+    );
+    assert_eq!(
+        serde_json::json!([
+            e.props["cornerRadius"],
+            e.props["strokeWeight"],
+            e.props["dashPattern"],
+            e.props["effects"][0]["radius"],
+            e.props["effects"][0]["spread"],
+            e.props["effects"][0]["offset"],
+            e.props["effects"][0]["startOffset"],
+            e.props["fontSize"],
+            e.props["letterSpacing"]["value"],
+            e.props["minSize"]["value"],
+        ]),
+        serde_json::json!([32.0, 4.0, [8.0, 4.0], 10.0, 2.0, {"x": 5.0, "y": 3.0}, {"x": 0.5, "y": 0.0}, 8.0, 1.0, {"x": 6.0, "y": 0.0}])
+    );
+    // A percent line height is no length.
+    assert!(!e.props.contains_key("lineHeight"));
+    let range = &e.props["textData"]["styleOverrideTable"][0];
+    assert_eq!(
+        (
+            &range["styleID"],
+            &range["fontSize"],
+            &range["lineHeight"]["value"],
+            &range["letterSpacing"]["value"]
+        ),
+        (
+            &serde_json::json!(1),
+            &serde_json::json!(10.0),
+            &serde_json::json!(12.0),
+            &serde_json::json!(5.0)
+        )
+    );
+}
+
+#[test]
+fn a_row_is_at_the_instances_scale_and_a_derived_one_wins() {
+    let path = || vec![guid(1, 2)];
+    let inst = scaled_instance(
+        Some(0.5),
+        128.0,
+        vec![row(
+            path(),
+            vec![
+                ("cornerRadius", Value::Float(7.0)),
+                ("strokeWeight", Value::Float(1.0)),
+            ],
+        )],
+        vec![row(
+            path(),
+            vec![
+                ("size", size(90.0, 90.0)),
+                ("strokeWeight", Value::Float(3.0)),
+            ],
+        )],
+    );
+    let main = obj(vec![("size", size(256.0, 256.0))]);
+    let rect = rectangle();
+    let ex = expand_instances(&rectangle_tree(&inst, &main, &rect), "inst");
+    let e = &ex.nodes["Iinst;1:2"];
+    assert_eq!(
+        (
+            e.size,
+            &e.props["cornerRadius"],
+            &e.props["strokeWeight"],
+            &e.props["fontSize"]
+        ),
+        (
+            Some(v2(90.0, 90.0)),
+            &serde_json::json!(7.0),
+            &serde_json::json!(3.0),
+            &serde_json::json!(8.0)
+        )
+    );
+}
+
+#[test]
+fn a_scaled_then_resized_instance_fits_from_its_scaled_main() {
+    // 0.5 makes the 100 px main 50 px; the instance was then resized to 100 px.
+    let inst = scaled_instance(Some(0.5), 100.0, vec![], vec![]);
+    let main = obj(vec![("size", size(100.0, 100.0))]);
+    let child = |constraint| {
+        obj(vec![
+            ("type", Value::Enum("NodeType", "RECTANGLE")),
+            ("size", size(40.0, 40.0)),
+            (
+                "horizontalConstraint",
+                Value::Enum("Constraint", constraint),
+            ),
+            ("verticalConstraint", Value::Enum("Constraint", constraint)),
+        ])
+    };
+    let (scale, min) = (child("SCALE"), child("MIN"));
+    let tree = Tree {
+        nodes: HashMap::from([
+            ("inst".into(), &inst),
+            ("1:1".into(), &main),
+            ("1:2".into(), &scale),
+            ("1:3".into(), &min),
+        ]),
+        children: HashMap::from([("1:1".into(), vec!["1:2".into(), "1:3".into()])]),
+        blobs: Vec::new(),
+    };
+    let ex = expand_instances(&tree, "inst");
+    assert_eq!(
+        (ex.nodes["Iinst;1:2"].size, ex.nodes["Iinst;1:3"].size),
+        (Some(v2(40.0, 40.0)), Some(v2(20.0, 20.0)))
+    );
+}
+
+#[test]
+fn nested_scaled_instances_compose_and_their_own_rows_take_the_outer_scale() {
+    // Outer 0.5 around Inner 0.5: Inner's main lengths are read at 0.25, while Inner's own
+    // override row is stored at the outer main's scale and only halves.
+    let outer = scaled_instance(Some(0.5), 100.0, vec![], vec![]);
+    let main = obj(vec![("size", size(200.0, 200.0))]);
+    let inner = inner_instance(0.5);
+    let (inner_main, plain, overridden) = inner_main_and_dots();
+    let ex = expand_instances(
+        &nested_tree([&outer, &main, &inner, &inner_main, &plain, &overridden]),
+        "inst",
+    );
+    let inner = &ex.nodes["Iinst;1:2"];
+    assert_eq!((inner.size, inner.matrix.tx), (Some(v2(50.0, 50.0)), 5.0));
+    let plain = &ex.nodes["Iinst;1:2;2:2"];
+    assert_eq!(
+        (plain.size, &plain.props["cornerRadius"], plain.scale),
+        (Some(v2(50.0, 50.0)), &serde_json::json!(10.0), 0.25)
+    );
+    let own = &ex.nodes["Iinst;1:2;2:3"].props;
+    assert_eq!(
+        (&own["cornerRadius"], &own["strokeWeight"]),
+        (&serde_json::json!(3.0), &serde_json::json!(3.0))
+    );
+}
+
+#[test]
+fn a_composed_factor_is_clamped() {
+    // 500 inside 500 composes to 250000, which reads the inner main at the 1000 limit.
+    let outer = scaled_instance(Some(500.0), 100_000.0, vec![], vec![]);
+    let main = obj(vec![("size", size(200.0, 200.0))]);
+    let inner = inner_instance(500.0);
+    let (inner_main, plain, overridden) = inner_main_and_dots();
+    let ex = expand_instances(
+        &nested_tree([&outer, &main, &inner, &inner_main, &plain, &overridden]),
+        "inst",
+    );
+    let plain = &ex.nodes["Iinst;1:2;2:2"];
+    assert_eq!(
+        (&plain.props["cornerRadius"], plain.scale),
+        (&serde_json::json!(40_000.0), 1000.0)
+    );
+}
+
+/// Instance `1:2` of main `2:1`, scaled by `factor`, with its own override and derived rows for
+/// its child `2:3`.
+fn inner_instance(factor: f32) -> Value<'static> {
+    let own = |field| vec![row(vec![guid(2, 3)], vec![(field, Value::Float(6.0))])];
+    obj(vec![
+        ("type", Value::Enum("NodeType", "INSTANCE")),
+        ("size", size(200.0 * factor, 200.0 * factor)),
+        ("transform", transform(10.0, 10.0)),
+        (
+            "symbolData",
+            obj(vec![
+                ("symbolID", guid(2, 1)),
+                ("uniformScaleFactor", Value::Float(factor)),
+                ("symbolOverrides", Value::Array(own("cornerRadius"))),
+            ]),
+        ),
+        ("derivedSymbolData", Value::Array(own("strokeWeight"))),
+    ])
+}
+
+/// Main `2:1` holding two 200 px dots of radius 40, `2:2` and `2:3`.
+fn inner_main_and_dots() -> (Value<'static>, Value<'static>, Value<'static>) {
+    let dot = || {
+        obj(vec![
+            ("type", Value::Enum("NodeType", "ELLIPSE")),
+            ("size", size(200.0, 200.0)),
+            ("cornerRadius", Value::Float(40.0)),
+        ])
+    };
+    (obj(vec![("size", size(200.0, 200.0))]), dot(), dot())
+}
+
+/// `inst` (main `1:1`) holding `1:2`, an instance of main `2:1` with children `2:2` and `2:3`.
+fn nested_tree<'a>(nodes: [&'a Value<'static>; 6]) -> Tree<'a> {
+    let ids = ["inst", "1:1", "1:2", "2:1", "2:2", "2:3"];
+    Tree {
+        nodes: ids.iter().map(|id| id.to_string()).zip(nodes).collect(),
+        children: HashMap::from([
+            ("1:1".into(), vec!["1:2".into()]),
+            ("2:1".into(), vec!["2:2".into(), "2:3".into()]),
+        ]),
+        blobs: Vec::new(),
+    }
+}
+
+#[test]
+fn an_unresized_scaled_instance_fits_nothing() {
+    // 0.3 is not exact in f32: the main's 100 px times it is a few ulps off the stored 30.
+    let inst = scaled_instance(Some(0.3), 30.0, vec![], vec![]);
+    let main = obj(vec![("size", size(100.0, 100.0))]);
+    let child = obj(vec![
+        ("type", Value::Enum("NodeType", "RECTANGLE")),
+        ("size", size(40.0, 40.0)),
+        ("horizontalConstraint", Value::Enum("Constraint", "STRETCH")),
+    ]);
+    let ex = expand_instances(&rectangle_tree(&inst, &main, &child), "inst");
+    let side = 40.0 * f64::from(0.3f32);
+    assert_eq!(ex.nodes["Iinst;1:2"].size, Some(v2(side, side)));
+}
+
+#[test]
+fn a_factor_of_one_missing_or_out_of_range_changes_nothing() {
+    for factor in [
+        Some(1.0),
+        None,
+        Some(-0.5),
+        Some(0.0),
+        Some(1e30),
+        Some(f32::NAN),
+    ] {
+        let inst = scaled_instance(factor, 256.0, vec![], vec![]);
+        let main = obj(vec![("size", size(256.0, 256.0))]);
+        let rect = rectangle();
+        let ex = expand_instances(&rectangle_tree(&inst, &main, &rect), "inst");
+        let e = &ex.nodes["Iinst;1:2"];
+        assert_eq!(
+            (
+                e.size,
+                e.matrix.tx,
+                e.scale,
+                e.props.contains_key("cornerRadius")
+            ),
+            (Some(v2(200.0, 200.0)), 20.0, 1.0, false),
+            "{factor:?}"
+        );
+    }
+}
+
+#[test]
+fn a_nested_rows_outline_keeps_the_size_it_was_drawn_at() {
+    // Inner's own derived row outlines its 200 px dot; at the outer 0.5 the dot is 100 px, so
+    // the paths are drawn at 200 px. An outer outline for the same layer is drawn at 100 px.
+    let outline = || ("fillGeometry", Value::Array(vec![]));
+    for outer_outline in [false, true] {
+        let derived = if outer_outline {
+            vec![row(vec![guid(1, 2), guid(2, 3)], vec![outline()])]
+        } else {
+            vec![]
+        };
+        let outer = scaled_instance(Some(0.5), 100.0, vec![], derived);
+        let main = obj(vec![("size", size(200.0, 200.0))]);
+        let inner = obj(vec![
+            ("type", Value::Enum("NodeType", "INSTANCE")),
+            ("size", size(200.0, 200.0)),
+            ("symbolData", obj(vec![("symbolID", guid(2, 1))])),
+            (
+                "derivedSymbolData",
+                Value::Array(vec![row(vec![guid(2, 3)], vec![outline()])]),
+            ),
+        ]);
+        let (inner_main, plain, overridden) = inner_main_and_dots();
+        let ex = expand_instances(
+            &nested_tree([&outer, &main, &inner, &inner_main, &plain, &overridden]),
+            "inst",
+        );
+        let dot = &ex.nodes["Iinst;1:2;2:3"];
+        assert_eq!(dot.size, Some(v2(100.0, 100.0)));
+        let drawn = (!outer_outline).then(|| serde_json::json!({"x": 200.0, "y": 200.0}));
+        assert_eq!(
+            dot.props.get("fillGeometrySize").cloned(),
+            drawn,
+            "{outer_outline}"
+        );
+        assert!(!dot.props.contains_key("fillGeometryScale"));
+    }
 }

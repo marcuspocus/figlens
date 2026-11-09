@@ -1,6 +1,6 @@
 # .fig format and pipeline
 
-How figlens turns a `.fig` into REST-shaped JSON and a bundle. Load this before changing decoding, expansion, emitted fields, variables or the bundle; SVG and raster output is the `render` topic.
+How figlens turns a `.fig` into REST-shaped JSON and a bundle. Load this before changing decoding, expansion, emitted fields, variables or the bundle; SVG and raster output is the `render` topic, and instance expansion rules are `instances`.
 
 ## Modules
 
@@ -49,13 +49,9 @@ Rules marked pending have local evidence; others are sweep-backed.
 - `canvas.fig`: `fig-kiwi` magic, u32 LE version (106), then u32-LE-length chunks: 0 = binary schema, 1 = `Message`. zstd or raw deflate. `scripts/kiwi-scan.py` lists schema types and counts nodes storing a field.
 - Node id = `guid` `sessionID:localID` = Figma URL `node-id` with `-` → `:`. `4294967295:4294967295` (u32::MAX twice) means no guid, e.g. an unset `overrideKey`; `guid_key` returns none for it, since using it as a path element gives unrelated instance sublayers one id and the tree then contains itself (Real Estate App UI Kit, 7 frames overflowed the stack).
 - GROUP is a FRAME with `resizeToFit`. `size` is pre-rotation; apply the `transform` chain before comparing with REST `absoluteBoundingBox`.
-- Instances store only themselves; expand from `symbolData.symbolID`. Child ids are `I<instance>;<nested instance ids…>;<node>`: only instance boundaries enter the path, plain frames do not. Path elements use `overrideKey ?? guid` (library component copies keep library ids in `overrideKey`).
+- Instances store only themselves; expand from `symbolData.symbolID`. Child ids are `I<instance>;<nested instance ids…>;<node>`: only instance boundaries enter the path, plain frames do not. Path elements use `overrideKey ?? guid` (library component copies keep library ids in `overrideKey`). How overrides, derived rows, properties, constraints and scale apply is the `instances` topic ([instances.md](instances.md)).
 - COMPONENT_SET is a FRAME with `isStateGroup`.
 - Untrusted input: `Tree::new` drops every node whose parent chain loops (and what hangs under it; about 5% of opening a large file), expansion skips an id it already produced and a component that contains itself (MCP `nodes` on a stored root also stops exponential fan-out at the reply budget), `subtree` visits each id once, `context.md` quotes design-file strings as one-line code spans, renders allow only known blend modes and resolve no `<image>` href outside `data:` URLs. A crafted `.fig` (its schema, and so its enum names, ship inside it) must not recurse forever or reach the disk.
-- `symbolData.symbolOverrides` and `derivedSymbolData` use the same guidPath keys; nested instances carry their own, relative to themselves. Merge **field by field** (outer wins per field): one list can hold several entries for the same path (e.g. a swap, then a size), and an outer derived entry may hold only geometry while the nested one holds the size. Whole-entry merging was the cause of what looked like footer design edits and an auto-layout gap (button 216→336); Figma does store those sizes. `overrideLevel` is not read and needs no ordering: across nine files (2026-10-28, #53), no list set one field twice for one path, and every outer entry with level ≥ 2 carried the same value as the nested instance's own entry.
-- `componentPropRefs` binds assignments: SYMBOL_ID swaps instances, BOOLEAN sets visibility, TEXT_DATA merges source `textData` unless directly overridden (calibration pending). `overriddenSymbolID` also swaps. Swaps take the new main's visibility and name (a variant's set name), unless explicitly renamed.
-- `derivedSymbolData` stores sizes only sometimes: SCALE/STRETCH constraint resizes must be computed (groups and boolean ops pass the outer resize through to their children), except for children in auto-layout flow (only ABSOLUTE-positioned ones follow constraints).
-- Variable-bound paints of instance sublayers must be resolved in the nearest explicit `variableModeBySetMap` mode (else the set's first mode); direct nodes' cached colors are already right. Library variable values are present in the `.fig`.
 
 ## Verified rules for the bundle fields (2026-10-22, 826-frame sweep)
 
@@ -68,7 +64,6 @@ Rules marked pending have local evidence; others are sweep-backed.
 - Missing `stackPaddingRight`/`Bottom` is 0, not the other side: 35 one-sided nodes in 3 files sat flush there (2026-10-23).
 - Effects: `FOREGROUND_BLUR` is REST `LAYER_BLUR`; `spread` only when nonzero; `showShadowBehindNode` only on DROP_SHADOW. SECTION and CANVAS have no blendMode/effects.
 - Path blobs (`commandsBlob`): u8 command (0 Z, 1 M, 2 L, 3 Q, 4 C) then f32 LE points. Vectors are in local px; glyphs in em units, y up (`translate(pos) scale(fs,-fs)`), and may start with Z.
-- Resized instance children: use derived `fillGeometry`/`strokeGeometry`/`derivedTextData` when present, else scale the source geometry by size / source size (fill and stroke separately).
 - absoluteRenderBounds: leaves are tight transformed geometry (INSIDE strokes intersected with the fill shape, effects expand it); containers union their own box with their children; clipped by `clipsContent` ancestors; null when fully clipped, hidden, opacity 0, a boolean operand, or a mask (siblings after a mask clip to it). Text truncation keeps `glyphs[..truncationStartIndex]`.
 - Assets as the plugin selects them: image fills → `assets/<sha256>` keyed by imageRef (last node in DFS order); rendered vector types not inside a boolean op → `node:<id>` SVG; blend/effect/mask nodes with an image in the subtree → `render:<id>` 2x PNG. Export size is `ceil(len*scale - 1e-3)`.
 

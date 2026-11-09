@@ -15,6 +15,15 @@ pub struct Vec2 {
     pub y: f64,
 }
 
+impl Vec2 {
+    fn times(self, k: f64) -> Vec2 {
+        Vec2 {
+            x: self.x * k,
+            y: self.y * k,
+        }
+    }
+}
+
 /// A node transform: linear part `a b c d` plus translation `tx ty`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Mat {
@@ -35,6 +44,15 @@ impl Mat {
         tx: 0.0,
         ty: 0.0,
     };
+
+    /// The transform with its translation times `k`; the linear part keeps rotation and flips.
+    fn moved(self, k: f64) -> Mat {
+        Mat {
+            tx: self.tx * k,
+            ty: self.ty * k,
+            ..self
+        }
+    }
 
     pub fn from_value(v: &Value) -> Mat {
         let f = |name: &str| v.get(name).map_or(0.0, |x| x.as_float() as f64);
@@ -116,6 +134,9 @@ pub struct Expanded {
     /// For an INSTANCE: the main component expansion followed, present or not, and whether a
     /// swap (`swap`) or the copied definition's binding (`definition`) named it.
     pub(crate) main: Option<(String, &'static str)>,
+    /// The composed `uniformScaleFactor` `source`'s own lengths were read at; 1 outside
+    /// K-scaled instances. A text style the node links takes it too.
+    pub scale: f64,
 }
 
 /// Most layers a scope may hold below its root, stored and expanded together. Measured real
@@ -190,14 +211,284 @@ impl Patch {
             size: self.size.or(inner.size),
             transform: self.transform.or(inner.transform),
             swap: self.swap.or(inner.swap),
-            props: inner.props.into_iter().chain(self.props).collect(),
+            props: {
+                // An outer outline was drawn at its own scale, not at the inner one's.
+                let mut props: Map<String, Json> = inner.props;
+                for (f, _, mark) in GEOMETRY {
+                    if self.props.contains_key(f) {
+                        props.remove(mark);
+                    }
+                }
+                props.extend(self.props);
+                props
+            },
             prototype_source: self.prototype_source.or(inner.prototype_source),
         }
     }
 }
 
+/// Outline fields, the size their paths were drawn at, and the internal mark of the factor a
+/// scaled row's outline was not drawn at.
+const GEOMETRY: [(&str, &str, &str); 2] = [
+    ("fillGeometry", "fillGeometrySize", "fillGeometryScale"),
+    (
+        "strokeGeometry",
+        "strokeGeometrySize",
+        "strokeGeometryScale",
+    ),
+];
+
+impl Patch {
+    /// The patch as read at `k` times its stored scale: an instance's own rows sit at the
+    /// scale of the main holding it, which a K-scaled outer instance multiplies.
+    fn scaled(mut self, k: f64) -> Patch {
+        if k == 1.0 {
+            return self;
+        }
+        self.size = self.size.map(|s| s.times(k));
+        self.transform = self.transform.map(|t| t.moved(k));
+        for (f, v) in self.props.iter_mut() {
+            if let Some(s) = scale_value(f, v, k) {
+                *v = s;
+            }
+        }
+        // Outline paths stay as drawn; `node_props` sizes them from the node's size over `k`.
+        for (f, _, mark) in GEOMETRY {
+            if self.props.contains_key(f) {
+                self.props.insert(mark.into(), k.into());
+            }
+        }
+        self
+    }
+}
+
 type Patches = HashMap<String, Patch>;
 type Resize = Option<(Vec2, Vec2)>;
+
+/// Factors outside this range are ignored, and composed factors are clamped to it.
+const SCALE_RANGE: std::ops::RangeInclusive<f64> = 1e-3..=1e3;
+
+/// Lengths the Scale tool (K) multiplies. A K-scaled instance keeps its own size and stores
+/// `symbolData.uniformScaleFactor`; Figma draws its main's lengths times that factor
+/// (checked against the values Figma saved in `derivedSymbolData`).
+const SCALED: [&str; 23] = [
+    "cornerRadius",
+    "rectangleTopLeftCornerRadius",
+    "rectangleTopRightCornerRadius",
+    "rectangleBottomLeftCornerRadius",
+    "rectangleBottomRightCornerRadius",
+    "strokeWeight",
+    "borderTopWeight",
+    "borderRightWeight",
+    "borderBottomWeight",
+    "borderLeftWeight",
+    "stackSpacing",
+    "stackPadding",
+    "stackCounterSpacing",
+    "stackHorizontalPadding",
+    "stackVerticalPadding",
+    "stackPaddingRight",
+    "stackPaddingBottom",
+    "gridRowGap",
+    "gridColumnGap",
+    "fontSize",
+    "paragraphSpacing",
+    "paragraphIndent",
+    "listSpacing",
+];
+
+/// Structured fields holding lengths: dashes, effect radii and offsets, pixel letter spacing
+/// and line height, min/max sizes, and the text ranges' own lengths.
+const SCALED_PARTS: [&str; 7] = [
+    "dashPattern",
+    "effects",
+    "letterSpacing",
+    "lineHeight",
+    "minSize",
+    "maxSize",
+    "textData",
+];
+
+// The helpers below stay out of line so `Expander::expand`, which recurses once per level up
+// to `MAX_DEPTH`, keeps its frame small.
+
+/// The `props` of an expanded copy of `child` that looks like `source` (itself, or the main
+/// a swap names), with override `o` and derived row `d`, reading `source`'s lengths at `k`,
+/// for a copy of `size`.
+#[inline(never)]
+fn node_props(
+    child: &Value,
+    source: &Value,
+    o: &Patch,
+    d: &Patch,
+    k: f64,
+    size: Option<Vec2>,
+) -> Map<String, Json> {
+    // Keep placement complete for semantic readers, including fields absent on the child.
+    let mut props: Map<String, Json> = PLACEMENT
+        .into_iter()
+        .chain(GRID_PLACEMENT)
+        .filter_map(|f| Some((f.to_owned(), to_json(child.get(f)?))))
+        .collect();
+    props.extend(scaled_lengths(source, k));
+    props.extend(o.props.clone());
+    // Figma re-derives the outlines of resized and re-texted nodes, and the lengths of K-scaled
+    // ones; without them the source's outlines are scaled from the size they were drawn at.
+    // Size and transform are placed through `Expanded::size` and `matrix`.
+    for (f, v) in &d.props {
+        if !placed(f) {
+            props.insert(f.clone(), v.clone());
+        }
+    }
+    for (f, at, mark) in GEOMETRY {
+        // The mark is internal: it never reaches the emitted props.
+        props.remove(mark);
+        let drawn = d.props.get(mark).and_then(Json::as_f64);
+        if !d.props.contains_key(f) {
+            if let Some(s) = source.get("size") {
+                props.insert(at.into(), to_json(s));
+            }
+        } else if let (Some(k), Some(s)) = (drawn, size) {
+            // A nested instance's own derived outline was drawn before the outer factor.
+            let s = s.times(1.0 / k);
+            props.insert(at.into(), serde_json::json!({"x": s.x, "y": s.y}));
+        }
+    }
+    props
+}
+
+/// `node`'s own lengths at `k` times their scale; none at 1.
+#[inline(never)]
+fn scaled_lengths(node: &Value, k: f64) -> Map<String, Json> {
+    if k == 1.0 {
+        return Map::new();
+    }
+    SCALED
+        .iter()
+        .chain(&SCALED_PARTS)
+        .filter_map(|f| Some(((*f).to_owned(), scale_value(f, &to_json(node.get(f)?), k)?)))
+        .collect()
+}
+
+/// Estimated bytes of `scaled_lengths(node, k)`, charged as `expand` charges copied fields.
+#[inline(never)]
+fn lengths_bytes(node: &Value, k: f64, left: &mut usize) -> usize {
+    if k == 1.0 {
+        return 0;
+    }
+    let present = SCALED
+        .iter()
+        .chain(&SCALED_PARTS)
+        .filter_map(|f| Some((*f, node.get(f)?)));
+    sum_while(present, left, |(f, v), left| {
+        f.len() + 24 + kiwi_bytes(v, left)
+    })
+}
+
+/// A nested instance's own rows, read at the scale `k` of the main holding it.
+#[inline(never)]
+fn own_rows(list: Option<&Value>, source: Option<&str>, k: f64) -> Patches {
+    if k == 1.0 {
+        return entries(list, source);
+    }
+    entries(list, source)
+        .into_iter()
+        .map(|(key, p)| (key, p.scaled(k)))
+        .collect()
+}
+
+/// Derived fields `expand` places through `Expanded::size` and `matrix` instead of `props`.
+fn placed(field: &str) -> bool {
+    matches!(field, "size" | "transform")
+}
+
+/// `node`'s valid `uniformScaleFactor`, else 1.
+fn scale_factor(node: &Value) -> f64 {
+    let f = node
+        .get("symbolData")
+        .and_then(|s| s.get("uniformScaleFactor"))
+        .map_or(1.0, |v| v.as_float() as f64);
+    if SCALE_RANGE.contains(&f) { f } else { 1.0 }
+}
+
+/// `field`'s value `v` at `k` times its scale, or `None` when it holds no length. Units in
+/// percent, unit-box positions (progressive blur) and counts stay as they are.
+pub(crate) fn scale_value(field: &str, v: &Json, k: f64) -> Option<Json> {
+    let num = |v: &Json| v.as_f64().map(|x| x * k).filter(|x| x.is_finite());
+    let vector = |v: &Json| -> Option<Json> {
+        let mut o = v.as_object()?.clone();
+        for axis in ["x", "y"] {
+            if let Some(x) = o.get(axis).and_then(num) {
+                o.insert(axis.into(), x.into());
+            }
+        }
+        Some(Json::Object(o))
+    };
+    match field {
+        f if SCALED.contains(&f) => num(v).map(Json::from),
+        "size" => vector(v),
+        "transform" => {
+            let mut o = v.as_object()?.clone();
+            for t in ["m02", "m12"] {
+                if let Some(x) = o.get(t).and_then(num) {
+                    o.insert(t.into(), x.into());
+                }
+            }
+            Some(Json::Object(o))
+        }
+        "dashPattern" => Some(Json::Array(
+            v.as_array()?
+                .iter()
+                .map(|d| num(d).map_or_else(|| d.clone(), Json::from))
+                .collect(),
+        )),
+        "effects" => Some(Json::Array(
+            v.as_array()?
+                .iter()
+                .map(|e| {
+                    let Some(mut o) = e.as_object().cloned() else {
+                        return e.clone();
+                    };
+                    for f in ["radius", "spread", "startRadius"] {
+                        if let Some(x) = o.get(f).and_then(num) {
+                            o.insert(f.into(), x.into());
+                        }
+                    }
+                    for f in ["offset", "noiseSize"] {
+                        if let Some(x) = o.get(f).and_then(vector) {
+                            o.insert(f.into(), x);
+                        }
+                    }
+                    Json::Object(o)
+                })
+                .collect(),
+        )),
+        "letterSpacing" | "lineHeight" if v["units"] == "PIXELS" => {
+            let mut o = v.as_object()?.clone();
+            o.insert("value".into(), num(&v["value"])?.into());
+            Some(Json::Object(o))
+        }
+        "minSize" | "maxSize" => {
+            let mut o = v.as_object()?.clone();
+            o.insert("value".into(), vector(&v["value"])?);
+            Some(Json::Object(o))
+        }
+        // Each text range's override entry holds the same lengths as the node.
+        "textData" => {
+            let mut o = v.as_object()?.clone();
+            let ranges = o.get_mut("styleOverrideTable")?.as_array_mut()?;
+            for entry in ranges.iter_mut().filter_map(Json::as_object_mut) {
+                for (f, v) in entry.iter_mut().filter(|(f, _)| *f != "textData") {
+                    if let Some(s) = scale_value(f, v, k) {
+                        *v = s;
+                    }
+                }
+            }
+            Some(Json::Object(o))
+        }
+        _ => None,
+    }
+}
 
 /// What stopped a bounded run first.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -562,9 +853,13 @@ fn constrain(size: Option<Vec2>, h: Option<&str>, v: Option<&str>, resize: Resiz
     })
 }
 
+/// A resize from `from` to `to`, or none when they are equal. A K-scaled size is an f32 factor
+/// times an f32 length, a few ulps off the size Figma stored for an unresized instance, so
+/// sizes within a millionth of each other are equal.
 fn resized(from: Option<Vec2>, to: Option<Vec2>) -> Resize {
+    let near = |a: f64, b: f64| (a - b).abs() <= 1e-6 * a.abs().max(b.abs()).max(1.0);
     match (from, to) {
-        (Some(f), Some(t)) if f != t => Some((f, t)),
+        (Some(f), Some(t)) if !(near(f.x, t.x) && near(f.y, t.y)) => Some((f, t)),
         _ => None,
     }
 }
@@ -797,12 +1092,14 @@ fn expand_all(
         let Some(matrix) = abs_matrix_while(tree, &id, root, || ex.spend(1, 0)) else {
             break;
         };
+        // A K-scaled instance fits its main from the main's scaled size, not its stored one.
+        let scale = scale_factor(inst);
         let resize = resized(
-            tree.nodes[&main].get("size").map(vec2),
+            tree.nodes[&main].get("size").map(|s| vec2(s).times(scale)),
             inst.get("size").map(vec2),
         );
         ex.symbols = vec![main.clone()];
-        ex.expand(&id, &id, &main, &[], &ov, &dv, matrix, resize);
+        ex.expand(&id, &id, &main, &[], &ov, &dv, matrix, resize, scale);
     }
     (ex.out, ex.bounds, ex.exceeded)
 }
@@ -912,6 +1209,8 @@ impl Expander<'_, '_> {
     }
 
     /// `path` holds only instance boundaries: Figma ids skip plain frames in between.
+    /// `scale` multiplies `symbol`'s own lengths; `ov` and `dv` are already at the outer
+    /// instance's scale.
     #[allow(clippy::too_many_arguments)]
     fn expand(
         &mut self,
@@ -923,6 +1222,7 @@ impl Expander<'_, '_> {
         dv: &Patches,
         m: Mat,
         resize: Resize,
+        scale: f64,
     ) {
         let tree = self.tree;
         for child_id in tree.children.get(symbol).into_iter().flatten() {
@@ -959,17 +1259,16 @@ impl Expander<'_, '_> {
                 .unwrap_or_else(|| child.get("name").map_or("", Value::as_string));
             if self.bounds.is_some() {
                 let source = o.swap.as_ref().filter(|s| tree.nodes.contains_key(*s));
-                let derived = ["fillGeometry", "strokeGeometry", "derivedTextData"]
-                    .iter()
-                    .filter_map(|f| d.props.get(*f));
+                let derived = d.props.iter().filter(|(f, _)| !placed(f));
+                let own = tree.nodes[source.unwrap_or(child_id)];
                 let placement = PLACEMENT
                     .iter()
                     .chain(&GRID_PLACEMENT)
                     .filter_map(|f| Some((*f, child.get(f)?)));
                 // A geometry-size entry copies the source size only where Figma derived no outline.
-                let copies = ["fillGeometry", "strokeGeometry"]
+                let copies = GEOMETRY
                     .iter()
-                    .filter(|f| !d.props.contains_key(**f))
+                    .filter(|(f, _, mark)| !d.props.contains_key(*f) || d.props.contains_key(*mark))
                     .count();
                 let size = tree.nodes[source.unwrap_or(child_id)]
                     .get("size")
@@ -979,10 +1278,11 @@ impl Expander<'_, '_> {
                 let estimate = |left: &mut usize| {
                     sum_while(&o.props, left, |(f, v), left| {
                         f.len() + 24 + json_bytes(v, left)
-                    }) + sum_while(derived, left, json_bytes)
-                        + sum_while(placement, left, |(f, v), left| {
-                            f.len() + 24 + kiwi_bytes(v, left)
-                        })
+                    }) + sum_while(derived, left, |(f, v), left| {
+                        f.len() + 24 + json_bytes(v, left)
+                    }) + sum_while(placement, left, |(f, v), left| {
+                        f.len() + 24 + kiwi_bytes(v, left)
+                    }) + lengths_bytes(own, scale, left)
                         + size.map_or(0, |s| copies * (48 + kiwi_bytes(s, left)))
                 };
                 // Kept per node: the `I{outer};{pk}` id twice (child list and node key), the
@@ -1005,7 +1305,7 @@ impl Expander<'_, '_> {
                 }
             }
             let kind = enum_name(child, "type");
-            let own_size = child.get("size").map(vec2);
+            let own_size = child.get("size").map(|s| vec2(s).times(scale));
             // Auto-layout owns normal-flow child geometry; constraints only apply to absolute children.
             let resize = if matches!(
                 enum_name(tree.nodes[symbol], "stackMode"),
@@ -1047,6 +1347,7 @@ impl Expander<'_, '_> {
                     child
                         .get("transform")
                         .map_or(Mat::IDENTITY, Mat::from_value)
+                        .moved(scale)
                 }));
             // A swapped instance looks like its new main; only how it sits in its parent stays its own.
             let source = o
@@ -1055,30 +1356,7 @@ impl Expander<'_, '_> {
                 .filter(|s| tree.nodes.contains_key(*s))
                 .unwrap_or(child_id)
                 .clone();
-            // Keep placement complete for semantic readers, including fields absent on the child.
-            let mut props: Map<String, Json> = PLACEMENT
-                .into_iter()
-                .chain(GRID_PLACEMENT)
-                .filter_map(|f| Some((f.to_owned(), to_json(child.get(f)?))))
-                .collect();
-            props.extend(o.props.clone());
-            // Figma re-derives the outlines of resized and re-texted nodes; without them the
-            // source's outlines are scaled from the size they were drawn at.
-            for f in ["fillGeometry", "strokeGeometry", "derivedTextData"] {
-                if let Some(v) = d.props.get(f) {
-                    props.insert(f.into(), v.clone());
-                }
-            }
-            for (f, at) in [
-                ("fillGeometry", "fillGeometrySize"),
-                ("strokeGeometry", "strokeGeometrySize"),
-            ] {
-                if !d.props.contains_key(f)
-                    && let Some(s) = tree.nodes[&source].get("size")
-                {
-                    props.insert(at.into(), to_json(s));
-                }
-            }
+            let props = node_props(child, tree.nodes[&source], o, d, scale, size);
             let visible = o.visible.or_else(|| flag(tree.nodes[&source], "visible"));
             let id = format!("I{outer};{pk}");
             // Figma ids are unique; a repeat would make the tree contain itself, so skip it.
@@ -1134,6 +1412,7 @@ impl Expander<'_, '_> {
                     props,
                     prototype_source,
                     main,
+                    scale,
                 },
             );
             // Inside an expanded instance, hidden nodes keep the node but omit its children.
@@ -1199,24 +1478,23 @@ impl Expander<'_, '_> {
                         return;
                     }
                 }
-                let merged = bind_properties(
-                    tree,
-                    &nested,
-                    &pk,
-                    nest(
-                        ov,
-                        &pk,
-                        entries(sd.and_then(|s| s.get("symbolOverrides")), Some(child_id)),
-                    ),
-                    child,
-                    o,
+                // The nested instance's own rows sit at the scale of the main holding it.
+                let overrides = own_rows(
+                    sd.and_then(|s| s.get("symbolOverrides")),
+                    Some(child_id),
+                    scale,
                 );
-                let merged_derived = nest(dv, &pk, entries(child.get("derivedSymbolData"), None));
+                let merged =
+                    bind_properties(tree, &nested, &pk, nest(ov, &pk, overrides), child, o);
+                let derived = own_rows(child.get("derivedSymbolData"), None, scale);
+                let merged_derived = nest(dv, &pk, derived);
+                let nested_scale =
+                    (scale * scale_factor(child)).clamp(*SCALE_RANGE.start(), *SCALE_RANGE.end());
                 let main_size = tree
                     .nodes
                     .get(&nested)
                     .and_then(|n| n.get("size"))
-                    .map(vec2);
+                    .map(|s| vec2(s).times(nested_scale));
                 self.symbols.push(nested.clone());
                 self.expand(
                     outer,
@@ -1227,6 +1505,7 @@ impl Expander<'_, '_> {
                     &merged_derived,
                     matrix,
                     resized(main_size, size),
+                    nested_scale,
                 );
                 self.symbols.pop();
                 self.depth -= 1;
@@ -1234,7 +1513,17 @@ impl Expander<'_, '_> {
                 if !self.descend() {
                     return;
                 }
-                self.expand(outer, &id, child_id, path, ov, dv, matrix, child_resize);
+                self.expand(
+                    outer,
+                    &id,
+                    child_id,
+                    path,
+                    ov,
+                    dv,
+                    matrix,
+                    child_resize,
+                    scale,
+                );
                 self.depth -= 1;
             }
         }

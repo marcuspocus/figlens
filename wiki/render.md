@@ -1,6 +1,6 @@
 # Rendering
 
-How figlens turns expanded nodes into SVG and raster images: text styles and glyphs, image fills, effects and shadows, export areas and image adjustments. Load this before changing `src/render.rs` or `src/export.rs`; decoding, expansion and emitted fields are the `fig-format` topic. Format rules here were checked against the plugin's renders; claim accuracy only after measuring with the `accuracy` topic.
+How figlens turns expanded nodes into SVG and raster images: text styles and glyphs, image fills, effects and shadows, export areas and image adjustments. Load this before changing `src/render.rs` or `src/export.rs`; decoding and emitted fields are the `fig-format` topic, instance expansion `instances`. Format rules here were checked against the plugin's renders; claim accuracy only after measuring with the `accuracy` topic.
 
 ## Verified rules for text styles and rendering (2026-10-22)
 

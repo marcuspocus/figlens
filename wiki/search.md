@@ -1,6 +1,6 @@
 # Search
 
-Bounded ranked retrieval over effective instance content (issue #89). Load the `fig-format` topic too when the change touches expansion itself.
+Bounded ranked retrieval over effective instance content (issue #89). Load the `instances` topic too when the change touches expansion itself.
 
 ## Index and retrieval
 

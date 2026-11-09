@@ -33,7 +33,7 @@ Run `git fetch origin` first so the base is current. Stop here if the ref does n
 ## Step 2: Gather context once
 
 1. **Spec**: in order, issue references in commit messages or the PR body (`gh issue view <n>`), a path in $ARGUMENTS, or the matching item in `wiki/direction.md`. If none exists, the Spec pass reports "no spec".
-2. **Rules**: `AGENTS.md`, plus every topic whose `AGENTS.md` row matches a touched area (`python3 scripts/ai-context.py <topic>`); area rules live there, not in the kernel. For example: `src/` decoding, expansion, REST output, variables, rendering or bundles → `fig-format` (and `accuracy` when the change claims closer output); `.github/`, `scripts/install*`, `scripts/*dist*`, `npm/`, `Dockerfile.dist` or a version → `release`; `wiki/`, `AGENTS.md`, `scripts/ai-context.py` → `ai-context`.
+2. **Rules**: `AGENTS.md`, plus every topic whose `AGENTS.md` row matches a touched area (`python3 scripts/ai-context.py <topic>`); area rules live there, not in the kernel. For example: `src/` decoding, expansion, REST output, variables, rendering or bundles → `fig-format` (plus `instances` for expansion, and `accuracy` when the change claims closer output); `.github/`, `scripts/install*`, `scripts/*dist*`, `npm/`, `Dockerfile.dist` or a version → `release`; `wiki/`, `AGENTS.md`, `scripts/ai-context.py` → `ai-context`.
 3. **Concepts**: name each command, flag, MCP tool or parameter, emitted REST field, bundle file, error message, or behavior the diff adds or alters. The Consumers pass sweeps these.
 
 ## Step 3: Run five passes in parallel

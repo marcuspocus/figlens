@@ -16,7 +16,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 /// Extraction version: a stored generation built with another one is rebuilt. It also versions
 /// the stored fingerprints (`fingerprint`).
-pub(crate) const RELATIONS: &str = "relations-6";
+pub(crate) const RELATIONS: &str = "relations-7";
 /// Relations extracted, in key order; `LIBRARY` is stored apart and not listed here.
 pub(crate) const KINDS: [&str; 7] = [
     "binds_variable",

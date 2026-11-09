@@ -13,7 +13,8 @@ The wiki holds procedures, reference and decisions, and no task needs all of it 
 | `accounts` | Changing browser/API alias routing, accounts.json or environment references | `accounts.md` |
 | `performance` | Measuring load time and memory, reading the perf baseline, changing cache or decode cost | `performance.md` |
 | `parsing` | Changing untrusted container/schema/value decoding or parsing budgets | `parsing.md`, `clipboard.md` |
-| `fig-format` | Changing decoding, instance expansion, emitted REST fields or variables | `fig-format.md` |
+| `fig-format` | Changing decoding, emitted REST fields or variables | `fig-format.md` |
+| `instances` | Changing instance expansion: override and derived rows, component properties, constraint resizes or scale | `instances.md` |
 | `tokens` | Changing DTCG variable export, validation or interoperability | `tokens.md` |
 | `discovery` | Changing find or inspect summaries (fields, limits, truncation, `--flat` lines), `tree --top-frames` screen lists or `export --match-dir` icon matching | `discovery.md` |
 | `search` | Changing search indexing, normalization, ranking, cursors, coverage or its budgets | `search.md`, `usages.md`, `library-usages.md` |

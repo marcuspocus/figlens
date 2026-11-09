@@ -4743,7 +4743,7 @@ fn a_92_generation_refreshed_under_new_relations_is_a_baseline_keeping_history_a
          ALTER TABLE subscriptions DROP COLUMN sources;
          ALTER TABLE subscriptions DROP COLUMN disabled; DROP INDEX sources_remote;
          ALTER TABLE sources DROP COLUMN remote; ALTER TABLE sources DROP COLUMN generation;
-         UPDATE generations SET versions = replace(versions, '\"relations-6\"', '\"relations-5\"');
+         UPDATE generations SET versions = replace(versions, '\"relations-7\"', '\"relations-5\"');
          DROP TABLE model_vectors; DROP TABLE model_refs; DROP TABLE model_layers; DROP TABLE visual_units; DROP TABLE visual_rasters; DROP INDEX jobs_visual; DROP INDEX jobs_embed; ALTER TABLE jobs DROP COLUMN profile_id;
          ALTER TABLE records DROP COLUMN props;
          PRAGMA user_version = 7;",
