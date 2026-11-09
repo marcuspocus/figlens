@@ -54,6 +54,11 @@ class HostPluginsTest(unittest.TestCase):
             paths = {jp for p, jp in bumped if p == path}
             self.assertEqual(len(paths), len(pinned) + sum(versions), f'{path}: an unbumped version or package')
 
+    def test_registry_entry_names_the_npm_package(self):
+        # The MCP Registry reads mcpName from the published package and rejects a different name.
+        server, package = load('server.json'), load('npm/package.json')
+        self.assertEqual((server['name'], server['packages'][0]['identifier']), (package['mcpName'], package['name']))
+
     def test_manifests_point_at_existing_paths(self):
         for path in HOST_FILES:
             data = load(path)

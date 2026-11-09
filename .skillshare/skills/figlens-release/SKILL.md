@@ -61,13 +61,14 @@ Verify the title is exactly `v<version>` and the body matches the notes file. Re
 
 ## 5. Publish and verify distribution
 
-With publication authorized, run `gh workflow run publish-release.yml -f tag=v<version>`. Use this workflow so GitHub, Homebrew and npm all run. Watch it to completion and inspect each job. Investigate a failed channel before retrying; preserve the tag and version.
+With publication authorized, run `gh workflow run publish-release.yml -f tag=v<version>`. Use this workflow so GitHub, Homebrew, npm and the MCP Registry all run. Watch it to completion and inspect each job. Investigate a failed channel before retrying; preserve the tag and version.
 
 Verify the public result:
 
 - GitHub marks the intended tag as latest, with the version-only title and reviewed body.
 - Homebrew's published formula has the version and archive hashes from `SHA256SUMS`.
 - npm exposes the requested version as `latest`, with both Pi extension and skill metadata. If npm reports processing and the registry still returns 404, wait and recheck availability; do not republish.
+- The MCP Registry lists the version: `curl -s 'https://registry.modelcontextprotocol.io/v0/servers?search=figlens'`.
 - Run `npx --yes @runkids/figlens@<version> --version` using isolated npm and binary caches under `samples/` (`npm_config_cache` and `XDG_CACHE_HOME`) so the check exercises the public package and download path.
 
 Report the release link, shipped behavior, actual checks and each distribution result. Distinguish unpublished drafts, successful publication and pending or failed channels. Finish only after the authorized steps are complete or a concrete blocker is reported.

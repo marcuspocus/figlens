@@ -82,6 +82,40 @@ jobs:
         working-directory: npm
         run: npm publish --access public
 
+  # The MCP Registry reads mcpName from the npm version server.json names, so npm goes first.
+  # No secret: the io.github.runkids namespace is proven through OIDC.
+  mcp-registry:
+    needs: npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      MCP_PUBLISHER_VERSION: v1.8.8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Download and verify mcp-publisher
+        run: |
+          base="https://github.com/modelcontextprotocol/registry/releases/download/$MCP_PUBLISHER_VERSION"
+          archive=mcp-publisher_linux_amd64.tar.gz
+          curl -fsSLO "$base/$archive"
+          curl -fsSLO "$base/$archive.sigstore.json"
+          cosign verify-blob "$archive" --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/$MCP_PUBLISHER_VERSION" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+          tar xzf "$archive" mcp-publisher
+      - name: Publish server.json
+        run: |
+          # A version npm has just accepted can take a moment to be readable.
+          for attempt in 1 2 3 4 5; do
+            ./mcp-publisher login github-oidc && ./mcp-publisher publish && exit 0
+            sleep 30
+          done
+          exit 1
+
   site:
     needs: publish
     uses: ./.github/workflows/site-pages.yml
