@@ -145,8 +145,10 @@ fn saved_copy_at(at: &str) -> Vec<u8> {
     for i in 0..source.len() {
         zip.raw_copy_file(source.by_index_raw(i).unwrap()).unwrap();
     }
-    zip.start_file("meta.json", zip::write::SimpleFileOptions::default())
-        .unwrap();
+    // A fixed time: the default is now, so two copies made seconds apart would differ.
+    let options =
+        zip::write::SimpleFileOptions::default().last_modified_time(zip::DateTime::default());
+    zip.start_file("meta.json", options).unwrap();
     zip.write_all(json!({"exported_at": at}).to_string().as_bytes())
         .unwrap();
     zip.finish().unwrap().into_inner()
